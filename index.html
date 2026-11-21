@@ -2,11 +2,12 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Bolão da Mega-Sena do Ameba</title>
 
-  <!-- PWA / Web Push no iPhone (iOS 16.4+) -->
+  <!-- PWA / Web Push (Android e iPhone iOS 16.4+) -->
   <link rel="manifest" href="./manifest.json" />
+  <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Bolão Ameba" />
@@ -34,10 +35,17 @@
       --text: #f1f5f9;
       --muted: #94a3b8;
       --radius: 12px;
+      --nav-height: 68px;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-    body { background: var(--bg); color: var(--text); min-height: 100vh; padding-bottom: 48px; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding-bottom: calc(var(--nav-height) + 28px + env(safe-area-inset-bottom, 0px));
+      -webkit-tap-highlight-color: transparent;
+    }
 
     .container { max-width: 960px; margin: 0 auto; padding: 16px; }
     .hidden { display: none !important; }
@@ -45,17 +53,19 @@
     header {
       background: linear-gradient(135deg, #064e3b, #0f172a);
       border-bottom: 1px solid var(--border);
-      padding: 16px;
+      padding: 14px 16px;
       position: sticky;
       top: 0;
       z-index: 20;
     }
     .header-inner {
       max-width: 960px; margin: 0 auto;
-      display: flex; flex-wrap: wrap; gap: 12px;
+      display: flex; flex-wrap: wrap; gap: 10px;
       align-items: center; justify-content: space-between;
     }
-    .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 1.15rem; }
+    .brand { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 1.1rem; }
+    .header-actions { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+
     .badge {
       display: inline-block; padding: 3px 8px; border-radius: 999px;
       font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
@@ -87,7 +97,7 @@
     button {
       cursor: pointer; border: none; border-radius: 8px;
       padding: 10px 14px; font-weight: 700; font-size: 0.9rem;
-      transition: opacity 0.15s, background 0.15s;
+      transition: opacity 0.15s, background 0.15s, transform 0.12s;
     }
     button:disabled { opacity: 0.5; cursor: not-allowed; }
     .btn-primary { background: var(--primary); color: #052e16; }
@@ -134,10 +144,6 @@
       border: 1px solid rgba(16, 185, 129, 0.4);
     }
 
-    .tabs { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 16px; }
-    .tab-btn { background: var(--surface); color: var(--muted); border: 1px solid var(--border); white-space: nowrap; }
-    .tab-btn.active { background: var(--primary); color: #052e16; border-color: var(--primary); }
-
     .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
     .row-between { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
 
@@ -181,6 +187,237 @@
       background: #090f1a; padding: 10px; border-radius: 8px; overflow-x: auto;
       font-size: 0.76rem; color: #cbd5e1; margin-top: 6px; white-space: pre-wrap;
     }
+
+    /* =====================================================================
+       BARRA DE NAVEGAÇÃO INFERIOR ESTILO APP DE CELULAR
+       ===================================================================== */
+    .bottom-nav {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 40;
+      background: rgba(13, 22, 38, 0.94);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border-top: 1px solid var(--border);
+      padding: 6px 8px calc(8px + env(safe-area-inset-bottom, 0px));
+      box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.45);
+    }
+    .bottom-nav-inner {
+      max-width: 680px;
+      margin: 0 auto;
+      display: flex;
+      align-items: stretch;
+      justify-content: space-around;
+      gap: 4px;
+    }
+    .bottom-nav-btn {
+      flex: 1;
+      min-width: 0;
+      background: transparent;
+      color: var(--muted);
+      border: none;
+      border-radius: 12px;
+      padding: 6px 4px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      font-size: 0.68rem;
+      font-weight: 600;
+      position: relative;
+      transition: color 0.18s ease, background 0.18s ease, transform 0.12s ease;
+    }
+    .bottom-nav-btn svg {
+      width: 22px;
+      height: 22px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      transition: transform 0.18s ease;
+    }
+    .bottom-nav-btn span {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }
+    .bottom-nav-btn:active {
+      transform: scale(0.94);
+    }
+    .bottom-nav-btn.active {
+      color: var(--primary);
+      background: rgba(16, 185, 129, 0.12);
+    }
+    .bottom-nav-btn.active svg {
+      transform: translateY(-1px);
+    }
+    .bottom-nav-btn.active::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 26px;
+      height: 3px;
+      border-radius: 0 0 99px 99px;
+      background: var(--primary);
+    }
+
+    /* =====================================================================
+       PÁGINA DE TOUR (USER GUIDE)
+       ===================================================================== */
+    .tour-hero {
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(19, 30, 49, 0.96));
+      border: 1px solid rgba(16, 185, 129, 0.45);
+      text-align: center;
+      padding: 24px 18px;
+    }
+    .tour-hero h2 {
+      justify-content: center;
+      font-size: 1.25rem;
+      margin-bottom: 8px;
+    }
+    .tour-hero p {
+      color: var(--muted);
+      font-size: 0.9rem;
+      line-height: 1.5;
+      max-width: 560px;
+      margin: 0 auto 16px;
+    }
+    .tour-guide-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 12px;
+    }
+    .tour-guide-card {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .tour-guide-card h3 {
+      color: var(--text);
+      font-size: 0.96rem;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .tour-guide-card p {
+      color: var(--muted);
+      font-size: 0.84rem;
+      line-height: 1.5;
+    }
+    .tour-guide-list {
+      margin: 6px 0 0 18px;
+      color: var(--muted);
+      font-size: 0.83rem;
+      line-height: 1.5;
+    }
+
+    /* =====================================================================
+       OVERLAY DE SPOTLIGHT INTERATIVO DO TOUR
+       ===================================================================== */
+    .tour-blocker {
+      position: fixed;
+      inset: 0;
+      z-index: 900;
+      background: transparent;
+    }
+    .tour-spotlight {
+      position: fixed;
+      z-index: 901;
+      border-radius: 12px;
+      border: 2px solid var(--primary);
+      box-shadow: 0 0 0 9999px rgba(4, 9, 20, 0.82), 0 0 24px rgba(16, 185, 129, 0.55);
+      pointer-events: none;
+      transition: top 0.28s ease, left 0.28s ease, width 0.28s ease, height 0.28s ease;
+    }
+    .tour-tooltip {
+      position: fixed;
+      z-index: 902;
+      width: min(360px, calc(100vw - 24px));
+      background: #101b2e;
+      border: 1px solid rgba(16, 185, 129, 0.6);
+      border-radius: 14px;
+      padding: 16px;
+      box-shadow: 0 18px 44px rgba(0, 0, 0, 0.65);
+      transition: top 0.25s ease, left 0.25s ease;
+    }
+    .tour-tooltip-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .tour-step-counter {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #34d399;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .tour-close-btn {
+      background: transparent;
+      color: var(--muted);
+      padding: 2px 6px;
+      font-size: 1rem;
+      line-height: 1;
+    }
+    .tour-close-btn:hover { color: var(--text); }
+    .tour-progress-track {
+      width: 100%;
+      height: 4px;
+      background: #1e293b;
+      border-radius: 99px;
+      overflow: hidden;
+      margin-bottom: 12px;
+    }
+    .tour-progress-fill {
+      height: 100%;
+      background: var(--primary);
+      width: 0%;
+      transition: width 0.25s ease;
+    }
+    .tour-tooltip h3 {
+      font-size: 1rem;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+    .tour-tooltip p {
+      font-size: 0.86rem;
+      color: #cbd5e1;
+      line-height: 1.5;
+      margin-bottom: 14px;
+    }
+    .tour-tooltip-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .tour-tooltip-nav {
+      display: flex;
+      gap: 8px;
+    }
+
+    @media (max-width: 520px) {
+      header { padding: 12px; }
+      .brand { font-size: 1rem; }
+      .container { padding: 12px; }
+      .card { padding: 14px; }
+      #userNameTop { display: none; }
+    }
   </style>
 </head>
 <body>
@@ -191,10 +428,10 @@
       🍀 Bolão do Ameba
       <span id="userRoleBadge" class="badge badge-green"></span>
     </div>
-    <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+    <div class="header-actions">
       <span id="userNameTop" class="muted"></span>
-      <button id="btnPush" class="btn-warning btn-sm" onclick="ativarNotificacoesPush()">🔔 Ativar Push</button>
-      <button class="btn-secondary btn-sm" onclick="carregarDashboard()">↻ Atualizar</button>
+      <button id="btnPush" class="btn-warning btn-sm" onclick="ativarNotificacoesPush()">🔔 Push</button>
+      <button class="btn-secondary btn-sm" onclick="carregarDashboard()">↻</button>
       <button class="btn-danger btn-sm" onclick="fazerLogout()">Sair</button>
     </div>
   </div>
@@ -203,13 +440,12 @@
 <div class="container">
   <!-- TELA DE LOGIN -->
   <section id="loginSection" class="card login-box">
-    <h2>🍀 Entrar no Bolão da Mega-Sena</h2>
-    <p class="muted">Use seu telefone cadastrado (com DDD) e sua senha.</p>
-    <label for="loginTelefone">Telefone (DDD + número)</label>
-    <input id="loginTelefone" type="tel" placeholder="Ex: 12999999999" />
+    <h2>🍀 Bolão do Ameba</h2>
+    <label for="loginTelefone">Telefone</label>
+    <input id="loginTelefone" type="tel" placeholder="12999999999" />
 
     <label for="loginSenha">Senha</label>
-    <input id="loginSenha" type="password" placeholder="Sua senha" />
+    <input id="loginSenha" type="password" placeholder="••••••" />
 
     <button id="btnLogin" class="btn-primary" style="width:100%; margin-top:16px;" onclick="fazerLogin()">Entrar</button>
     <div id="loginFeedback"></div>
@@ -220,54 +456,48 @@
     <!-- CARD ÚLTIMO RESULTADO DA MEGA-SENA -->
     <section id="cardUltimoResultado" class="card mega-banner">
       <div class="row-between">
-        <h2>🎱 Último Resultado Oficial da Mega-Sena</h2>
+        <h2>🎱 Mega-Sena</h2>
         <div id="adminBuscaResultadoWrap" class="hidden" style="display:flex; gap:6px; align-items:center;">
-          <input id="inputConcursoManual" type="number" placeholder="Nº concurso (opcional)" style="width:165px; padding:6px 8px; font-size:0.8rem;" />
-          <button id="btnBuscarMega" class="btn-primary btn-sm" onclick="forcarBuscaResultado()">🔄 Buscar Agora</button>
+          <input id="inputConcursoManual" type="number" placeholder="Concurso" style="width:120px; padding:6px 8px; font-size:0.8rem;" />
+          <button id="btnBuscarMega" class="btn-primary btn-sm" onclick="forcarBuscaResultado()">🔄 Buscar</button>
         </div>
       </div>
-      <div id="conteudoUltimoResultado" class="muted">Carregando resultados...</div>
+      <div id="conteudoUltimoResultado" class="muted">Carregando...</div>
     </section>
-
-    <nav class="tabs">
-      <button class="tab-btn active" data-tab="tabPagar" onclick="trocarAba('tabPagar', this)">💸 Pagar & Comprovante</button>
-      <button class="tab-btn" data-tab="tabRankings" onclick="trocarAba('tabRankings', this)">🏆 Rankings</button>
-      <button class="tab-btn" data-tab="tabRodadas" onclick="trocarAba('tabRodadas', this)">🎱 Rodadas & Conferência</button>
-      <button class="tab-btn" data-tab="tabCadastro" onclick="trocarAba('tabCadastro', this)">👤 Nome no Comprovante</button>
-      <button id="tabAdminBtn" class="tab-btn hidden" data-tab="tabAdmin" onclick="trocarAba('tabAdmin', this)">⚙️ Admin: Nova Rodada</button>
-    </nav>
 
     <!-- ABA 1: PAGAR E LEITOR DE COMPROVANTE -->
     <section id="tabPagar" class="tab-content">
       <div class="card">
-        <h2>💸 Dados para Pix</h2>
-        <div class="pix-box">
+        <h2>💸 Pix</h2>
+        <div id="pixBoxArea" class="pix-box">
           <div>
             <div class="muted">Recebedor</div>
             <strong id="pixRecebedor">-</strong>
             <div class="muted" style="margin-top:4px;">Chave Pix</div>
             <strong id="pixChave" style="color:var(--primary); word-break:break-all;">-</strong>
           </div>
-          <button class="btn-primary btn-sm" onclick="copiarPix()">Copiar Chave Pix</button>
+          <button class="btn-primary btn-sm" onclick="copiarPix()">Copiar Pix</button>
         </div>
 
-        <h3>Suas cotas pendentes</h3>
-        <div id="listaMinhasPendencias"></div>
+        <div id="pendenciasArea">
+          <h3>Pendências</h3>
+          <div id="listaMinhasPendencias"></div>
+        </div>
       </div>
 
       <!-- CARD DE LEITURA DE COMPROVANTE -->
       <div id="boxLeitor" class="card hidden">
         <div class="row-between">
-          <h2>🧾 Validar Comprovante (Sem IA • Local)</h2>
+          <h2>🧾 Comprovante</h2>
           <button class="btn-secondary btn-sm" onclick="fecharLeitor()">Fechar</button>
         </div>
         <p id="leitorResumo" class="muted" style="margin-bottom:10px;"></p>
 
-        <label for="arquivoComprovante">Anexe o comprovante Pix (PDF ou print JPG/PNG — máx. 10 MB)</label>
+        <label for="arquivoComprovante">Arquivo (PDF ou imagem)</label>
         <input id="arquivoComprovante" type="file" accept=".pdf,image/*" onchange="processarComprovante(event)" />
 
         <div id="leitorProgressoWrap" class="hidden" style="margin-top:10px;">
-          <div id="leitorStatusTexto" class="muted">Lendo documento...</div>
+          <div id="leitorStatusTexto" class="muted">Processando...</div>
           <div class="progress-bar-bg"><div id="leitorProgressoBar" class="progress-bar-fill"></div></div>
         </div>
 
@@ -276,7 +506,7 @@
         <div id="boxSugestaoPosUpload" class="alert alert-warn hidden"></div>
 
         <details id="detalhesTextoBruto" class="hidden">
-          <summary>Ver texto extraído do comprovante (diagnóstico)</summary>
+          <summary>Texto extraído</summary>
           <pre id="textoBrutoExtraido"></pre>
         </details>
       </div>
@@ -285,15 +515,13 @@
     <!-- ABA 2: RANKINGS -->
     <section id="tabRankings" class="tab-content hidden">
       <div class="grid-2">
-        <div class="card">
+        <div id="cardRankingAtual" class="card">
           <h2>🚨 Devedores Atuais</h2>
-          <p class="muted" style="margin-bottom:10px;">Quem está com saldo em aberto hoje (recebe Push diário até pagar).</p>
           <div id="rankingAtual"></div>
         </div>
 
-        <div class="card">
-          <h2>📜 Maiores Devedores da História</h2>
-          <p class="muted" style="margin-bottom:10px;">Total acumulado de débitos gerados em todas as rodadas.</p>
+        <div id="cardRankingHistorico" class="card">
+          <h2>📜 Ranking Histórico</h2>
           <div id="rankingHistorico"></div>
         </div>
       </div>
@@ -301,93 +529,221 @@
 
     <!-- ABA 3: RODADAS E CONFERÊNCIA AUTOMÁTICA -->
     <section id="tabRodadas" class="tab-content hidden">
-      <div class="card">
-        <h2>🎱 Histórico de Rodadas, Jogos & Conferência</h2>
-        <p class="muted" style="margin-bottom:12px;">Clique em 📄 para ver o comprovante no Drive. Quando o concurso for sorteado, os números acertados acendem em verde automaticamente.</p>
+      <div id="cardRodadas" class="card">
+        <h2>🎱 Rodadas</h2>
         <div id="listaRodadas"></div>
       </div>
     </section>
 
-    <!-- ABA 4: CADASTRO / NOME NO COMPROVANTE -->
+    <!-- ABA 4: PERFIL / NOME NO COMPROVANTE -->
     <section id="tabCadastro" class="tab-content hidden">
-      <div class="card">
-        <h2>👤 Cadastro & Nome no Comprovante</h2>
-        <p class="muted" style="margin-bottom:12px;">
-          Escolha qualquer usuário para ajustar como o nome aparece no comprovante Pix — isso aumenta a precisão da leitura automática.
-        </p>
+      <div id="cardCadastro" class="card">
+        <h2>👤 Perfil</h2>
 
         <label for="cadSelectUsuario">Usuário</label>
         <select id="cadSelectUsuario" onchange="aoTrocarUsuarioCadastro()"></select>
 
         <div id="camposNovoOuAdmin">
-          <label for="cadNome">Nome de exibição</label>
+          <label for="cadNome">Nome</label>
           <input id="cadNome" type="text" placeholder="Ex: Lucas Silva" oninput="atualizarSugestaoCadastro()" />
 
           <div id="camposCredenciaisAdmin">
-            <label for="cadTelefone">Telefone (login com DDD)</label>
-            <input id="cadTelefone" type="tel" placeholder="Ex: 12988887777" />
+            <label for="cadTelefone">Telefone</label>
+            <input id="cadTelefone" type="tel" placeholder="12988887777" />
 
             <label for="cadSenha">Senha</label>
-            <input id="cadSenha" type="text" placeholder="Senha inicial ou nova senha" />
+            <input id="cadSenha" type="text" placeholder="Senha" />
           </div>
         </div>
 
-        <label for="cadNomeComprovante">Nome exatamente como aparece no comprovante Pix</label>
-        <input id="cadNomeComprovante" type="text" placeholder="Ex: LUCAS EDUARDO DA SILVA" oninput="atualizarSugestaoCadastro()" />
+        <label for="cadNomeComprovante">Nome no comprovante</label>
+        <input id="cadNomeComprovante" type="text" placeholder="LUCAS EDUARDO DA SILVA" oninput="atualizarSugestaoCadastro()" />
 
         <div id="boxSugestaoCadastro" class="alert alert-ok hidden" style="margin-top:10px;"></div>
 
         <div style="display:flex; gap:10px; margin-top:14px; flex-wrap:wrap;">
-          <button class="btn-primary" onclick="salvarUsuarioCadastro()">Salvar Dados</button>
-          <button class="btn-secondary" onclick="aplicarSugestaoCadastro()">✨ Aplicar Sugestão de Nome</button>
+          <button class="btn-primary" onclick="salvarUsuarioCadastro()">Salvar</button>
+          <button class="btn-secondary" onclick="aplicarSugestaoCadastro()">✨ Sugestão</button>
         </div>
         <div id="cadFeedback"></div>
       </div>
     </section>
 
-    <!-- ABA 5: ADMIN - CRIAR NOVA RODADA + CONCURSO + JOGOS -->
-    <section id="tabAdmin" class="tab-content hidden">
-      <div class="card">
-        <h2>⚙️ Cadastrar Nova Rodada da Mega-Sena</h2>
-        <p class="muted" style="margin-bottom:10px;">
-          Regra de cotas inteiras: quem pegar <strong>0,5 cota (meia)</strong> precisa formar par com outro participante de <strong>0,5 cota</strong> para fechar número inteiro.
+    <!-- ABA 5: TOUR / USER GUIDE -->
+    <section id="tabTour" class="tab-content hidden">
+      <div class="card tour-hero">
+        <h2>🧭 Tour & Guia do App</h2>
+        <p>
+          Faça um passeio interativo pelas telas do Bolão do Ameba com destaque em cada funcionalidade, ou consulte abaixo o manual completo de uso.
         </p>
+        <button class="btn-primary" onclick="iniciarTour(0)" style="padding:12px 22px; font-size:0.95rem;">
+          ▶ Iniciar Tour Interativo
+        </button>
+      </div>
+
+      <div class="card">
+        <h2>📖 Guia por Funcionalidade</h2>
+        <div class="tour-guide-grid">
+          <div class="tour-guide-card">
+            <div>
+              <h3>🎱 Resultado da Mega-Sena</h3>
+              <p>O banner verde no topo busca automaticamente os sorteios oficiais, exibe as 6 dezenas, informa se acumulou e mostra o prêmio estimado do próximo concurso.</p>
+            </div>
+            <button class="btn-secondary btn-sm" onclick="iniciarTourNoPasso('resultado')">Destacar no app</button>
+          </div>
+
+          <div class="tour-guide-card">
+            <div>
+              <h3>🔔 Notificações Push no Celular</h3>
+              <p>Receba alertas diários se tiver cota em aberto e aviso automático assim que sair resultado novo da Mega-Sena.</p>
+              <ul class="tour-guide-list">
+                <li><strong>iPhone (Safari):</strong> abra no Safari → Compartilhar → <em>Adicionar à Tela de Início</em> → abra pelo ícone e toque em <strong>🔔 Push</strong>.</li>
+                <li><strong>Android (Chrome):</strong> abra no Chrome (fora do WhatsApp), toque em <strong>🔔 Push</strong> e clique em Permitir.</li>
+              </ul>
+            </div>
+            <button class="btn-secondary btn-sm" onclick="iniciarTourNoPasso('push')">Destacar no app</button>
+          </div>
+
+          <div class="tour-guide-card">
+            <div>
+              <h3>💸 Pix & Leitor de Comprovantes</h3>
+              <p>Copie a chave Pix, faça o pagamento e toque em <strong>Anexar Comprovante</strong> (PDF ou print até 10 MB). A validação roda 100% no seu aparelho sem IA, conferindo valor exato, recebedor e ID único antifraude — e salva uma cópia automática no Google Drive.</p>
+            </div>
+            <button class="btn-secondary btn-sm" onclick="iniciarTourNoPasso('pagar')">Destacar no app</button>
+          </div>
+
+          <div class="tour-guide-card">
+            <div>
+              <h3>🏆 Rankings</h3>
+              <p><strong>Devedores Atuais</strong> lista quem está com saldo pendente hoje (e recebe cobrança Push diária até pagar). O <strong>Ranking Histórico</strong> mostra o total acumulado de cotas geradas em todas as rodadas.</p>
+            </div>
+            <button class="btn-secondary btn-sm" onclick="iniciarTourNoPasso('rankings')">Destacar no app</button>
+          </div>
+
+          <div class="tour-guide-card">
+            <div>
+              <h3>📄 Rodadas & Conferência</h3>
+              <p>Acompanhe o rateio de cada rodada, clique no ícone <strong>📄</strong> para abrir o comprovante salvo no Google Drive e confira os bilhetes apostados: quando o sorteio sai, as dezenas acertadas acendem em verde (destacando Quadra, Quina e Sena).</p>
+            </div>
+            <button class="btn-secondary btn-sm" onclick="iniciarTourNoPasso('rodadas')">Destacar no app</button>
+          </div>
+
+          <div class="tour-guide-card">
+            <div>
+              <h3>👤 Perfil & Nome no Comprovante</h3>
+              <p>Ajuste o <strong>Nome no comprovante</strong> para ficar idêntico ao que o seu banco imprime no Pix. Isso aumenta a assertividade da leitura automática. Você também pode usar o botão <strong>✨ Sugestão</strong>.</p>
+            </div>
+            <button class="btn-secondary btn-sm" onclick="iniciarTourNoPasso('perfil')">Destacar no app</button>
+          </div>
+
+          <div id="tourAdminGuideCard" class="tour-guide-card hidden">
+            <div>
+              <h3>⚙️ Painel Admin</h3>
+              <p>Crie novas rodadas fechando <strong>cotas inteiras</strong> (quem pegar 0,5 cota precisa formar par com outro 0,5), informe o nº do concurso e cole os jogos (1 por linha, de 6 a 20 dezenas entre 01 e 60). Você também pode forçar a busca do resultado no topo ou dar <strong>Baixa Manual</strong> na aba Rodadas.</p>
+            </div>
+            <button class="btn-secondary btn-sm" onclick="iniciarTourNoPasso('admin')">Destacar no app</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ABA 6: ADMIN - CRIAR NOVA RODADA + CONCURSO + JOGOS -->
+    <section id="tabAdmin" class="tab-content hidden">
+      <div id="cardAdminRodada" class="card">
+        <h2>⚙️ Nova Rodada</h2>
 
         <div class="grid-2">
           <div>
-            <label for="rodadaDescricao">Descrição da Rodada</label>
-            <input id="rodadaDescricao" type="text" placeholder="Ex: Bolão Mega-Sena Acumulada" />
+            <label for="rodadaDescricao">Descrição</label>
+            <input id="rodadaDescricao" type="text" placeholder="Ex: Mega-Sena Acumulada" />
           </div>
           <div>
-            <label for="rodadaConcurso">Nº do Concurso (para conferência automática)</label>
+            <label for="rodadaConcurso">Nº do Concurso</label>
             <input id="rodadaConcurso" type="number" min="1" placeholder="Ex: 2945" />
           </div>
         </div>
 
-        <label for="rodadaValorTotal">Valor Total gasto nos jogos (R$)</label>
-        <input id="rodadaValorTotal" type="number" step="0.01" min="0" placeholder="Ex: 350.00" oninput="recalcularPreviewRodada()" />
+        <label for="rodadaValorTotal">Valor Total (R$)</label>
+        <input id="rodadaValorTotal" type="number" step="0.01" min="0" placeholder="350.00" oninput="recalcularPreviewRodada()" />
 
-        <label for="rodadaJogosTexto">Jogos feitos (opcional — cole um jogo por linha, de 6 a 20 dezenas entre 01 e 60)</label>
-        <textarea id="rodadaJogosTexto" placeholder="Exemplo:&#10;04 12 23 35 48 59&#10;02-09-17-31-44-55-60&#10;05, 11, 22, 33, 41, 58" oninput="atualizarPreviewJogos()"></textarea>
-        <div id="previewJogosInfo" class="muted" style="margin-top:4px;">Nenhum jogo informado.</div>
+        <label for="rodadaJogosTexto">Jogos (1 por linha)</label>
+        <textarea id="rodadaJogosTexto" placeholder="04 12 23 35 48 59&#10;02 09 17 31 44 55" oninput="atualizarPreviewJogos()"></textarea>
+        <div id="previewJogosInfo" class="muted" style="margin-top:4px;">0 jogos</div>
 
-        <h3 style="margin-top:16px;">Participantes e Cotas</h3>
+        <h3 style="margin-top:16px;">Participantes</h3>
         <div id="listaParticipantesAdmin"></div>
 
         <div class="summary-strip" id="previewRodadaBox">
-          <div>Total de cotas: <strong id="prevTotalCotas">0</strong></div>
-          <div>Status das cotas: <span id="prevStatusCotas" class="badge badge-red">Selecione participantes</span></div>
-          <div>1 Cota Inteira: <strong id="prevValorInteira">R$ 0,00</strong></div>
-          <div>½ Cota (Meia): <strong id="prevValorMeia">R$ 0,00</strong></div>
+          <div>Cotas: <strong id="prevTotalCotas">0</strong></div>
+          <div><span id="prevStatusCotas" class="badge badge-red">Selecione</span></div>
+          <div>Inteira: <strong id="prevValorInteira">R$ 0,00</strong></div>
+          <div>Meia: <strong id="prevValorMeia">R$ 0,00</strong></div>
         </div>
 
         <button id="btnCriarRodada" class="btn-primary" style="width:100%;" onclick="criarNovaRodada()" disabled>
-          Lançar Rodada e Gerar Dívidas
+          Lançar Rodada
         </button>
         <div id="adminRodadaFeedback"></div>
       </div>
     </section>
   </main>
+</div>
+
+<!-- BARRA DE NAVEGAÇÃO INFERIOR (ESTILO APP DE CELULAR) -->
+<nav id="bottomNav" class="bottom-nav hidden" aria-label="Navegação principal">
+  <div class="bottom-nav-inner">
+    <button class="bottom-nav-btn active" data-tab="tabPagar" onclick="trocarAba('tabPagar', this)">
+      <svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+      <span>Pagar</span>
+    </button>
+
+    <button class="bottom-nav-btn" data-tab="tabRankings" onclick="trocarAba('tabRankings', this)">
+      <svg viewBox="0 0 24 24"><path d="M8 21h8"/><path d="M12 17v4"/><path d="M7 4h10v5a5 5 0 0 1-10 0V4Z"/><path d="M7 6H4a1 1 0 0 0-1 1v1a3 3 0 0 0 3 3h1"/><path d="M17 6h3a1 1 0 0 1 1 1v1a3 3 0 0 1-3 3h-1"/></svg>
+      <span>Rankings</span>
+    </button>
+
+    <button class="bottom-nav-btn" data-tab="tabRodadas" onclick="trocarAba('tabRodadas', this)">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/><path d="M12 3v3"/><path d="M12 18v3"/><path d="M3 12h3"/><path d="M18 12h3"/></svg>
+      <span>Rodadas</span>
+    </button>
+
+    <button class="bottom-nav-btn" data-tab="tabCadastro" onclick="trocarAba('tabCadastro', this)">
+      <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <span>Perfil</span>
+    </button>
+
+    <button class="bottom-nav-btn" data-tab="tabTour" onclick="trocarAba('tabTour', this)">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
+      <span>Tour</span>
+    </button>
+
+    <button id="tabAdminBtn" class="bottom-nav-btn hidden" data-tab="tabAdmin" onclick="trocarAba('tabAdmin', this)">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
+      <span>Admin</span>
+    </button>
+  </div>
+</nav>
+
+<!-- ELEMENTOS DO TOUR INTERATIVO COM SPOTLIGHT -->
+<div id="tourBlocker" class="tour-blocker hidden" onclick="encerrarTour()"></div>
+<div id="tourSpotlight" class="tour-spotlight hidden"></div>
+<div id="tourTooltip" class="tour-tooltip hidden" role="dialog" aria-modal="true" aria-labelledby="tourTitle">
+  <div class="tour-tooltip-top">
+    <span id="tourStepCounter" class="tour-step-counter">Passo 1 de 1</span>
+    <button class="tour-close-btn" onclick="encerrarTour()" aria-label="Fechar tour">✕</button>
+  </div>
+  <div class="tour-progress-track">
+    <div id="tourProgressFill" class="tour-progress-fill"></div>
+  </div>
+  <h3 id="tourTitle"></h3>
+  <p id="tourText"></p>
+  <div class="tour-tooltip-actions">
+    <button class="btn-secondary btn-sm" onclick="encerrarTour()">Sair</button>
+    <div class="tour-tooltip-nav">
+      <button id="tourPrevBtn" class="btn-secondary btn-sm" onclick="anteriorPassoTour()">← Voltar</button>
+      <button id="tourNextBtn" class="btn-primary btn-sm" onclick="proximoPassoTour()">Próximo →</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -413,7 +769,8 @@
     rankingHistorico: [],
     pendenciaSelecionada: null,
     arquivoAtual: null,
-    sugestaoCadastroAtual: ''
+    sugestaoCadastroAtual: '',
+    abaAtual: 'tabPagar'
   };
 
   // =========================================================================
@@ -468,13 +825,13 @@
           subscriptionJson: 'ONESIGNAL:' + externalId
         });
 
-        btn.textContent = '🔔 Push Ativo';
+        btn.textContent = '🔔 Ativo';
         alert(res.message || 'Notificações Push ativadas!');
       } catch (err) {
         alert('Erro ao ativar Push no OneSignal: ' + (err.message || err));
       } finally {
         btn.disabled = false;
-        if (btn.textContent === 'Ativando...') btn.textContent = '🔔 Ativar Push';
+        if (btn.textContent === 'Ativando...') btn.textContent = '🔔 Push';
       }
     });
   }
@@ -531,11 +888,11 @@
     const txt = document.getElementById('rodadaJogosTexto').value;
     const infoEl = document.getElementById('previewJogosInfo');
     if (!txt.trim()) {
-      infoEl.innerHTML = 'Nenhum jogo informado.';
+      infoEl.innerHTML = '0 jogos';
       return;
     }
     const { jogosValidos, erros } = parsearJogosTexto(txt);
-    let html = `<span style="color:#34d399;"><strong>${jogosValidos.length}</strong> jogo(s) válido(s) reconhecido(s).</span>`;
+    let html = `<span style="color:#34d399;"><strong>${jogosValidos.length}</strong> jogo(s) válido(s)</span>`;
     if (erros.length > 0) {
       html += `<br/><span style="color:#fbbf24;">⚠️ ${erros.join(' | ')}</span>`;
     }
@@ -654,10 +1011,12 @@
   }
 
   function fazerLogout() {
+    encerrarTour();
     localStorage.removeItem('bolao_ameba_user');
     state.user = null;
     document.getElementById('appHeader').classList.add('hidden');
     document.getElementById('mainApp').classList.add('hidden');
+    document.getElementById('bottomNav').classList.add('hidden');
     document.getElementById('loginSection').classList.remove('hidden');
   }
 
@@ -665,15 +1024,17 @@
     document.getElementById('loginSection').classList.add('hidden');
     document.getElementById('appHeader').classList.remove('hidden');
     document.getElementById('mainApp').classList.remove('hidden');
+    document.getElementById('bottomNav').classList.remove('hidden');
 
     document.getElementById('userNameTop').textContent = state.user.nome;
     const roleBadge = document.getElementById('userRoleBadge');
     const isAdmin = state.user.perfil === 'admin';
-    roleBadge.textContent = isAdmin ? 'ADMIN' : 'PARTICIPANTE';
+    roleBadge.textContent = isAdmin ? 'ADMIN' : 'MEMBRO';
     roleBadge.className = isAdmin ? 'badge badge-amber' : 'badge badge-green';
 
     document.getElementById('tabAdminBtn').classList.toggle('hidden', !isAdmin);
     document.getElementById('adminBuscaResultadoWrap').classList.toggle('hidden', !isAdmin);
+    document.getElementById('tourAdminGuideCard').classList.toggle('hidden', !isAdmin);
 
     if (ONESIGNAL_APP_ID && !ONESIGNAL_APP_ID.includes('COLE_AQUI')) {
       window.OneSignalDeferred.push(async function(OneSignal) {
@@ -683,14 +1044,30 @@
       });
     }
 
+    trocarAba('tabPagar');
     carregarDashboard();
   }
 
   function trocarAba(tabId, btnEl) {
     document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    document.getElementById(tabId).classList.remove('hidden');
-    if (btnEl) btnEl.classList.add('active');
+    document.querySelectorAll('.bottom-nav-btn').forEach(b => b.classList.remove('active'));
+
+    const targetTab = document.getElementById(tabId);
+    if (targetTab) targetTab.classList.remove('hidden');
+
+    const activeBtn = btnEl || document.querySelector(`.bottom-nav-btn[data-tab="${tabId}"]`);
+    if (activeBtn) activeBtn.classList.add('active');
+
+    // Esconde o banner de resultado apenas na tela de Tour para manter o guia limpo
+    const bannerMega = document.getElementById('cardUltimoResultado');
+    if (bannerMega) {
+      bannerMega.classList.toggle('hidden', tabId === 'tabTour');
+    }
+
+    state.abaAtual = tabId;
+    if (!tourState.ativo) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   }
 
   // =========================================================================
@@ -732,17 +1109,17 @@
   function renderUltimoResultado() {
     const el = document.getElementById('conteudoUltimoResultado');
     if (!state.resultados || state.resultados.length === 0) {
-      el.innerHTML = `<span class="muted">Nenhum resultado buscado ainda. ${state.user.perfil === 'admin' ? 'Clique em "🔄 Buscar Agora" para carregar o último sorteio.' : ''}</span>`;
+      el.innerHTML = `<span class="muted">Sem resultados ainda.</span>`;
       return;
     }
 
     const ult = state.resultados[0];
     const bolinhas = ult.dezenas.map(d => `<span class="ball">${d}</span>`).join('');
     const badgeStatus = ult.acumulou
-      ? `<span class="badge badge-amber">ACUMULOU!</span>`
-      : `<span class="badge badge-green">TEVE GANHADOR NA SENA!</span>`;
+      ? `<span class="badge badge-amber">ACUMULOU</span>`
+      : `<span class="badge badge-green">GANHADOR NA SENA</span>`;
     const proxInfo = ult.valor_estimado_proximo > 0
-      ? ` • Próximo (${ult.data_proximo || 'em breve'}): <strong>${formatBRL(ult.valor_estimado_proximo)}</strong>`
+      ? `Próximo (${ult.data_proximo || '-'}): <strong>${formatBRL(ult.valor_estimado_proximo)}</strong>`
       : '';
 
     el.innerHTML = `
@@ -775,7 +1152,7 @@
       alert('Erro ao buscar resultado: ' + err.message);
     } finally {
       btn.disabled = false;
-      btn.textContent = '🔄 Buscar Agora';
+      btn.textContent = '🔄 Buscar';
     }
   }
 
@@ -797,7 +1174,7 @@
     );
 
     if (minhas.length === 0) {
-      container.innerHTML = `<div class="alert alert-ok">Você está em dia! Nenhuma pendência no bolão. 🎉</div>`;
+      container.innerHTML = `<div class="alert alert-ok">Tudo em dia! 🎉</div>`;
       return;
     }
 
@@ -828,7 +1205,7 @@
     state.pendenciaSelecionada = { ...p, saldo };
     state.arquivoAtual = null;
     document.getElementById('leitorResumo').innerHTML =
-      `Rodada: <strong>${rodada ? rodada.descricao : p.id_rodada}</strong> • Valor esperado: <strong>${formatBRL(saldo)}</strong> • Seu nome no comprovante: <strong>${state.user.nome_comprovante || state.user.nome}</strong>`;
+      `<strong>${rodada ? rodada.descricao : p.id_rodada}</strong> • ${formatBRL(saldo)} • ${state.user.nome_comprovante || state.user.nome}`;
     document.getElementById('arquivoComprovante').value = '';
     document.getElementById('leitorResultado').innerHTML = '';
     document.getElementById('boxSugestaoPosUpload').classList.add('hidden');
@@ -871,19 +1248,19 @@
 
       if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
         metodo = 'PDF';
-        progTxt.textContent = 'Extraindo texto do PDF...';
+        progTxt.textContent = 'Lendo PDF...';
         progBar.style.width = '50%';
         textoExtraido = await extrairTextoPDF(file);
         progBar.style.width = '90%';
       } else {
         metodo = 'OCR';
-        progTxt.textContent = 'Executando OCR local na imagem (pode levar alguns segundos)...';
+        progTxt.textContent = 'Lendo imagem (OCR)...';
         const resOcr = await Tesseract.recognize(file, 'por', {
           logger: m => {
             if (m.status === 'recognizing text') {
               const pct = Math.round((m.progress || 0) * 100);
               progBar.style.width = Math.max(15, pct) + '%';
-              progTxt.textContent = `Lendo comprovante via OCR: ${pct}%`;
+              progTxt.textContent = `OCR: ${pct}%`;
             }
           }
         });
@@ -891,7 +1268,7 @@
       }
 
       progBar.style.width = '100%';
-      progTxt.textContent = 'Leitura concluída. Validando dados...';
+      progTxt.textContent = 'Validando...';
 
       document.getElementById('textoBrutoExtraido').textContent = textoExtraido;
       document.getElementById('detalhesTextoBruto').classList.remove('hidden');
@@ -998,9 +1375,7 @@
       const boxSug = document.getElementById('boxSugestaoPosUpload');
       boxSug.classList.remove('hidden');
       boxSug.innerHTML = `
-        <strong>💡 Dica para melhorar a assertividade:</strong><br/>
-        Detectamos no comprovante o nome <strong>"${candidato}"</strong> (semelhança de ${Math.round(score * 100)}% com seu cadastro atual "${nomeCompAtual}").
-        Atualizar seu <em>Nome no Comprovante</em> ajuda nas próximas validações.
+        <strong>💡 Nome detectado:</strong> <strong>"${candidato}"</strong> (${Math.round(score * 100)}%)
         <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">
           <input id="inputSugestaoPosUpload" type="text" value="${candidato}" style="flex:1; min-width:200px;" />
           <button class="btn-primary btn-sm" onclick="aceitarSugestaoPosUpload()">Atualizar Nome</button>
@@ -1009,21 +1384,21 @@
     }
 
     const erros = [];
-    if (ehAgendamento) erros.push('O documento parece ser um agendamento e não um pagamento concluído.');
-    if (!valorBateu) erros.push(`Valor esperado (${formatBRL(valorEsperado)}) não encontrado. Valores lidos: ${valoresEncontrados.length ? valoresEncontrados.map(formatBRL).join(', ') : 'nenhum'}.`);
-    if (!recebedorBateu) erros.push(`Recebedor (${state.configPix.NOME_RECEBEDOR}) ou Chave Pix não identificado no comprovante.`);
-    if (!idTransacao) erros.push('ID único da transação (E2E/Autenticação) não foi identificado. Tente enviar o PDF original do banco.');
+    if (ehAgendamento) erros.push('Documento indica agendamento.');
+    if (!valorBateu) erros.push(`Valor esperado (${formatBRL(valorEsperado)}) não encontrado. Lidos: ${valoresEncontrados.length ? valoresEncontrados.map(formatBRL).join(', ') : 'nenhum'}.`);
+    if (!recebedorBateu) erros.push(`Recebedor (${state.configPix.NOME_RECEBEDOR}) ou Chave Pix não identificado.`);
+    if (!idTransacao) erros.push('ID da transação (E2E/Autenticação) não identificado.');
 
     if (erros.length > 0) {
       showMsg(
         'leitorResultado',
-        `<strong>Comprovante não aprovado automaticamente:</strong><ul style="margin-left:18px; margin-top:6px;">${erros.map(e => `<li>${e}</li>`).join('')}</ul>`,
+        `<strong>Não aprovado:</strong><ul style="margin-left:18px; margin-top:6px;">${erros.map(e => `<li>${e}</li>`).join('')}</ul>`,
         'err'
       );
       return;
     }
 
-    showMsg('leitorResultado', `Comprovante validado! Valor ${formatBRL(valorEsperado)} • Salvando no Google Drive e registrando baixa...`, 'ok');
+    showMsg('leitorResultado', `Validado (${formatBRL(valorEsperado)}) • Salvando no Drive...`, 'ok');
 
     try {
       let arquivoBase64 = '';
@@ -1058,7 +1433,7 @@
         showMsg('leitorResultado', `❌ ${res.message}`, 'err');
       }
     } catch (err) {
-      showMsg('leitorResultado', 'Erro ao salvar comprovante e enviar baixa: ' + err.message, 'err');
+      showMsg('leitorResultado', 'Erro ao registrar baixa: ' + err.message, 'err');
     }
   }
 
@@ -1095,13 +1470,13 @@
     const elHist = document.getElementById('rankingHistorico');
 
     if (state.devedoresAtuais.length === 0) {
-      elAtual.innerHTML = `<div class="alert alert-ok">Ninguém devendo no momento! 🎉</div>`;
+      elAtual.innerHTML = `<div class="alert alert-ok">Ninguém devendo! 🎉</div>`;
     } else {
       elAtual.innerHTML = state.devedoresAtuais.map((d, i) => `
         <div class="list-item row-between">
           <div>
             <strong>#${i + 1} ${d.nome}</strong>
-            <div class="muted">${d.rodadas_pendentes} rodada(s) pendente(s)</div>
+            <div class="muted">${d.rodadas_pendentes} rodada(s)</div>
           </div>
           <span class="badge badge-red">${formatBRL(d.divida_atual)}</span>
         </div>
@@ -1109,7 +1484,7 @@
     }
 
     if (state.rankingHistorico.length === 0) {
-      elHist.innerHTML = `<p class="muted">Ainda não há histórico registrado.</p>`;
+      elHist.innerHTML = `<p class="muted">Sem registros.</p>`;
     } else {
       elHist.innerHTML = state.rankingHistorico.map((d, i) => `
         <div class="list-item row-between">
@@ -1170,18 +1545,18 @@
       `;
     }).join('');
 
-    let resumoTopo = `🎱 Ver ${jogos.length} jogo(s) apostado(s)`;
+    let resumoTopo = `🎱 ${jogos.length} jogo(s)`;
     if (resultado) {
-      if (senas > 0) resumoTopo += ` — 🎉 ${senas} SENA(S)!`;
-      else if (quinas > 0) resumoTopo += ` — 🏆 ${quinas} QUINA(S)!`;
-      else if (quadras > 0) resumoTopo += ` — 🍀 ${quadras} QUADRA(S)!`;
-      else resumoTopo += ` — Conferido (máx. ${maxAcertos} acerto(s))`;
+      if (senas > 0) resumoTopo += ` — 🎉 ${senas} SENA(S)`;
+      else if (quinas > 0) resumoTopo += ` — 🏆 ${quinas} QUINA(S)`;
+      else if (quadras > 0) resumoTopo += ` — 🍀 ${quadras} QUADRA(S)`;
+      else resumoTopo += ` — Máx. ${maxAcertos} acerto(s)`;
     } else if (rodada.concurso) {
-      resumoTopo += ` — Aguardando sorteio do concurso ${rodada.concurso}`;
+      resumoTopo += ` — Aguardando ${rodada.concurso}`;
     }
 
     const cabecalhoSorteio = resultado
-      ? `<div class="muted" style="margin:8px 0;">Resultado oficial Concurso <strong>${resultado.concurso}</strong> (${resultado.data_apuracao}): <strong>${resultado.dezenas.join(' - ')}</strong></div>`
+      ? `<div class="muted" style="margin:8px 0;">Concurso <strong>${resultado.concurso}</strong> (${resultado.data_apuracao}): <strong>${resultado.dezenas.join(' - ')}</strong></div>`
       : '';
 
     return `
@@ -1196,7 +1571,7 @@
   function renderRodadas() {
     const container = document.getElementById('listaRodadas');
     if (state.rodadas.length === 0) {
-      container.innerHTML = `<p class="muted">Nenhuma rodada cadastrada ainda.</p>`;
+      container.innerHTML = `<p class="muted">Nenhuma rodada.</p>`;
       return;
     }
 
@@ -1216,7 +1591,7 @@
           : `<span class="muted">-</span>`;
 
         const btnManual = (state.user.perfil === 'admin' && saldo > 0)
-          ? `<button class="btn-warning btn-sm" onclick="baixaManualAdmin('${p.id_participacao}','${p.id_usuario}',${saldo})">Baixa Manual</button>`
+          ? `<button class="btn-warning btn-sm" onclick="baixaManualAdmin('${p.id_participacao}','${p.id_usuario}',${saldo})">Baixa</button>`
           : '';
 
         return `
@@ -1239,7 +1614,7 @@
           <div class="row-between" style="margin-bottom:8px;">
             <div>
               <strong>${r.descricao}</strong> ${tagConcurso}
-              <div class="muted">${r.data_criacao} • Total: ${formatBRL(r.valor_total)} • ${r.total_cotas} cota(s) de ${formatBRL(r.valor_cota)}</div>
+              <div class="muted">${r.data_criacao} • ${formatBRL(r.valor_total)} • ${r.total_cotas} cota(s) (${formatBRL(r.valor_cota)})</div>
             </div>
           </div>
           <div class="table-wrap">
@@ -1273,7 +1648,7 @@
   }
 
   // =========================================================================
-  // ABA 4: CADASTRO & SELETOR DE QUALQUER USUÁRIO + SUGESTÃO DE NOME
+  // ABA 4: PERFIL & SELETOR DE USUÁRIO + SUGESTÃO DE NOME
   // =========================================================================
   function renderCadastroUsuarios() {
     const sel = document.getElementById('cadSelectUsuario');
@@ -1284,7 +1659,7 @@
     ).join('');
 
     if (isAdmin) {
-      options = `<option value="__NOVO__">+ Cadastrar Novo Usuário</option>` + options;
+      options = `<option value="__NOVO__">+ Novo Usuário</option>` + options;
     }
 
     sel.innerHTML = options;
@@ -1334,10 +1709,7 @@
     state.sugestaoCadastroAtual = sugerido;
 
     box.classList.remove('hidden');
-    box.innerHTML = `
-      <strong>✨ Sugestão inteligente de Nome no Comprovante:</strong> <code>${sugerido}</code><br/>
-      <span class="muted">Similaridade atual entre o Nome e o Nome no Comprovante: <strong>${Math.round(sim * 100)}%</strong>.</span>
-    `;
+    box.innerHTML = `✨ <code>${sugerido}</code> • Similaridade: <strong>${Math.round(sim * 100)}%</strong>`;
   }
 
   function aplicarSugestaoCadastro() {
@@ -1355,7 +1727,7 @@
     const senha = document.getElementById('cadSenha').value.trim();
 
     if (ehNovo && (!nome || !telefone || !senha)) {
-      showMsg('cadFeedback', 'Para novo usuário, preencha nome, telefone e senha.', 'err');
+      showMsg('cadFeedback', 'Preencha nome, telefone e senha.', 'err');
       return;
     }
 
@@ -1377,7 +1749,7 @@
   }
 
   // =========================================================================
-  // ABA 5: ADMIN — NOVA RODADA COM TRAVA DE COTAS INTEIRAS + JOGOS
+  // ABA 6: ADMIN — NOVA RODADA COM TRAVA DE COTAS INTEIRAS + JOGOS
   // =========================================================================
   function renderAdminFormRodada() {
     const container = document.getElementById('listaParticipantesAdmin');
@@ -1385,11 +1757,11 @@
       <div class="cota-row">
         <div><strong>${u.nome}</strong></div>
         <select class="select-cota-admin" data-uid="${u.id_usuario}" data-nome="${u.nome}" onchange="recalcularPreviewRodada()">
-          <option value="0">Não participa</option>
-          <option value="0.5">0,5 (Meia cota)</option>
-          <option value="1">1 (Cota inteira)</option>
-          <option value="1.5">1,5 cotas</option>
-          <option value="2">2 cotas</option>
+          <option value="0">0</option>
+          <option value="0.5">0,5 (Meia)</option>
+          <option value="1">1 (Inteira)</option>
+          <option value="1.5">1,5</option>
+          <option value="2">2</option>
         </select>
       </div>
     `).join('');
@@ -1408,15 +1780,15 @@
 
     if (totalCotas === 0) {
       statusEl.className = 'badge badge-red';
-      statusEl.textContent = 'Selecione participantes';
+      statusEl.textContent = 'Selecione';
       btn.disabled = true;
     } else if (!ehInteiro) {
       statusEl.className = 'badge badge-amber';
-      statusEl.textContent = 'Falta formar par de meia cota!';
+      statusEl.textContent = 'Meia sem par';
       btn.disabled = true;
     } else {
       statusEl.className = 'badge badge-green';
-      statusEl.textContent = 'Cotas inteiras fechadas ✓';
+      statusEl.textContent = 'OK ✓';
       btn.disabled = valorTotal <= 0;
     }
 
@@ -1433,7 +1805,7 @@
     const { jogosValidos, erros } = parsearJogosTexto(jogosTexto);
 
     if (jogosTexto && erros.length > 0) {
-      showMsg('adminRodadaFeedback', 'Corrija as linhas de jogos antes de salvar: ' + erros.join(' | '), 'err');
+      showMsg('adminRodadaFeedback', 'Corrija as linhas de jogos: ' + erros.join(' | '), 'err');
       return;
     }
 
@@ -1443,13 +1815,13 @@
       .filter(p => p.fracao_cota > 0);
 
     if (!descricao || !valorTotal || participantes.length === 0) {
-      showMsg('adminRodadaFeedback', 'Preencha descrição, valor total e selecione os participantes.', 'err');
+      showMsg('adminRodadaFeedback', 'Preencha descrição, valor total e participantes.', 'err');
       return;
     }
 
     const btn = document.getElementById('btnCriarRodada');
     btn.disabled = true;
-    btn.textContent = 'Salvando rodada...';
+    btn.textContent = 'Salvando...';
 
     try {
       const res = await apiPost({
@@ -1473,10 +1845,251 @@
     } catch (err) {
       showMsg('adminRodadaFeedback', err.message, 'err');
     } finally {
-      btn.textContent = 'Lançar Rodada e Gerar Dívidas';
+      btn.textContent = 'Lançar Rodada';
       recalcularPreviewRodada();
     }
   }
+
+  // =========================================================================
+  // MOTOR DE TOUR INTERATIVO COM SPOTLIGHT (USER GUIDE)
+  // =========================================================================
+  let tourState = {
+    ativo: false,
+    passos: [],
+    indice: 0,
+    abaAnterior: 'tabTour'
+  };
+
+  function obterPassosTour() {
+    const isAdmin = state.user && state.user.perfil === 'admin';
+    const passos = [
+      {
+        id: 'nav',
+        tab: 'tabPagar',
+        selector: '#bottomNav',
+        titulo: '📱 Navegação por Ícones',
+        texto: 'Use esta barra fixa na parte de baixo para navegar entre todas as telas do app: Pagar, Rankings, Rodadas, Perfil e este Tour.'
+      },
+      {
+        id: 'resultado',
+        tab: 'tabPagar',
+        selector: '#cardUltimoResultado',
+        titulo: '🎱 Último Resultado da Mega-Sena',
+        texto: 'Aqui aparecem automaticamente as 6 dezenas do último sorteio oficial, se o prêmio acumulou e a estimativa do próximo concurso.'
+      },
+      {
+        id: 'push',
+        tab: 'tabPagar',
+        selector: '#btnPush',
+        titulo: '🔔 Notificações Push no Celular',
+        texto: 'Ative aqui para receber alertas diários quando houver cota em aberto e aviso automático assim que sair resultado novo. No iPhone, adicione o site à Tela de Início pelo Safari antes de ativar; no Android, abra pelo Chrome.'
+      },
+      {
+        id: 'pagar',
+        tab: 'tabPagar',
+        selector: '#pixBoxArea',
+        titulo: '💸 Chave Pix do Bolão',
+        texto: 'Confira o nome do recebedor e toque em "Copiar Pix" para fazer a transferência da sua cota sem erro de digitação.'
+      },
+      {
+        id: 'pendencias',
+        tab: 'tabPagar',
+        selector: '#pendenciasArea',
+        titulo: '🧾 Pendências & Validação de Comprovante',
+        texto: 'Suas cotas em aberto ficam listadas aqui. Toque em "Anexar Comprovante" e envie o PDF ou print do banco (até 10 MB). A leitura é local (sem IA), confere valor exato, recebedor e ID único antifraude, dá baixa na hora e salva o arquivo no Google Drive.'
+      },
+      {
+        id: 'rankings',
+        tab: 'tabRankings',
+        selector: '#cardRankingAtual',
+        titulo: '🚨 Devedores Atuais',
+        texto: 'Mostra quem está com saldo em aberto hoje, ordenado do maior para o menor valor. Quem aparece aqui recebe lembrete Push diário até quitar.'
+      },
+      {
+        id: 'historico',
+        tab: 'tabRankings',
+        selector: '#cardRankingHistorico',
+        titulo: '📜 Ranking Histórico',
+        texto: 'Acumula o total histórico de cotas geradas por cada participante ao longo de todas as rodadas do bolão.'
+      },
+      {
+        id: 'rodadas',
+        tab: 'tabRodadas',
+        selector: '#cardRodadas',
+        titulo: '📄 Rodadas, Comprovantes e Conferência',
+        texto: 'Veja o rateio completo de cada rodada e clique no ícone 📄 para visualizar o comprovante salvo no Google Drive. Quando o concurso é sorteado, os jogos cadastrados são conferidos sozinhos e os acertos acendem em verde (destacando Quadra, Quina e Sena).'
+      },
+      {
+        id: 'perfil',
+        tab: 'tabCadastro',
+        selector: '#cardCadastro',
+        titulo: '👤 Perfil & Nome no Comprovante',
+        texto: 'Ajuste o campo "Nome no comprovante" para ficar igual ao nome impresso pelo seu banco no Pix — isso aumenta a precisão da leitura automática. Use "✨ Sugestão" para padronizar rapidamente.'
+      }
+    ];
+
+    if (isAdmin) {
+      passos.push(
+        {
+          id: 'admin_busca',
+          tab: 'tabPagar',
+          selector: '#adminBuscaResultadoWrap',
+          titulo: '🔄 Admin: Buscar Resultado Agora',
+          texto: 'Como administrador, você pode puxar imediatamente o último concurso (deixando o campo vazio) ou digitar o número de um concurso específico e tocar em Buscar.'
+        },
+        {
+          id: 'admin',
+          tab: 'tabAdmin',
+          selector: '#cardAdminRodada',
+          titulo: '⚙️ Admin: Nova Rodada e Jogos',
+          texto: 'Cadastre novas rodadas fechando cotas inteiras (quem pegar 0,5 precisa formar par com outro 0,5). Informe o nº do concurso e cole os jogos (1 por linha, de 6 a 20 dezenas entre 01 e 60) para conferência e Push automáticos.'
+        }
+      );
+    }
+
+    return passos;
+  }
+
+  function iniciarTour(indiceInicial = 0) {
+    if (!state.user) return;
+    tourState.passos = obterPassosTour();
+    if (tourState.passos.length === 0) return;
+
+    tourState.abaAnterior = state.abaAtual || 'tabTour';
+    tourState.ativo = true;
+    tourState.indice = Math.max(0, Math.min(indiceInicial, tourState.passos.length - 1));
+
+    document.getElementById('tourBlocker').classList.remove('hidden');
+    document.getElementById('tourSpotlight').classList.remove('hidden');
+    document.getElementById('tourTooltip').classList.remove('hidden');
+
+    renderPassoTour();
+  }
+
+  function iniciarTourNoPasso(idPasso) {
+    const passos = obterPassosTour();
+    const idx = passos.findIndex(p => p.id === idPasso);
+    iniciarTour(idx >= 0 ? idx : 0);
+  }
+
+  function proximoPassoTour() {
+    if (!tourState.ativo) return;
+    if (tourState.indice < tourState.passos.length - 1) {
+      tourState.indice += 1;
+      renderPassoTour();
+    } else {
+      encerrarTour();
+    }
+  }
+
+  function anteriorPassoTour() {
+    if (!tourState.ativo || tourState.indice <= 0) return;
+    tourState.indice -= 1;
+    renderPassoTour();
+  }
+
+  function encerrarTour() {
+    if (!tourState.ativo) return;
+    tourState.ativo = false;
+    document.getElementById('tourBlocker').classList.add('hidden');
+    document.getElementById('tourSpotlight').classList.add('hidden');
+    document.getElementById('tourTooltip').classList.add('hidden');
+    if (state.user && tourState.abaAnterior) {
+      trocarAba(tourState.abaAnterior);
+    }
+  }
+
+  function renderPassoTour() {
+    const passo = tourState.passos[tourState.indice];
+    if (!passo) return;
+
+    // Garante que a aba do elemento está visível
+    if (passo.tab && state.abaAtual !== passo.tab) {
+      trocarAba(passo.tab);
+    }
+
+    // Atualiza conteúdo do tooltip
+    const total = tourState.passos.length;
+    const atual = tourState.indice + 1;
+    document.getElementById('tourStepCounter').textContent = `Passo ${atual} de ${total}`;
+    document.getElementById('tourProgressFill').style.width = `${Math.round((atual / total) * 100)}%`;
+    document.getElementById('tourTitle').textContent = passo.titulo;
+    document.getElementById('tourText').textContent = passo.texto;
+    document.getElementById('tourPrevBtn').disabled = tourState.indice === 0;
+    document.getElementById('tourNextBtn').textContent =
+      tourState.indice === total - 1 ? 'Concluir ✓' : 'Próximo →';
+
+    const el = document.querySelector(passo.selector);
+    if (el) {
+      const style = window.getComputedStyle(el);
+      if (style.position !== 'fixed') {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      // Recalcula após o scroll suave assentar
+      setTimeout(() => posicionarSpotlightETooltip(el), 60);
+      setTimeout(() => posicionarSpotlightETooltip(el), 320);
+    }
+  }
+
+  function posicionarSpotlightETooltip(el) {
+    if (!tourState.ativo || !el) return;
+    const spot = document.getElementById('tourSpotlight');
+    const tip = document.getElementById('tourTooltip');
+    const rect = el.getBoundingClientRect();
+
+    const pad = 6;
+    const top = Math.max(4, rect.top - pad);
+    const left = Math.max(4, rect.left - pad);
+    const width = Math.min(window.innerWidth - 8, rect.width + pad * 2);
+    const height = Math.min(window.innerHeight - 8, rect.height + pad * 2);
+
+    spot.style.top = `${top}px`;
+    spot.style.left = `${left}px`;
+    spot.style.width = `${width}px`;
+    spot.style.height = `${height}px`;
+
+    // Mede o tooltip para escolher melhor posição (abaixo ou acima do alvo)
+    const tipRect = tip.getBoundingClientRect();
+    const tipW = tipRect.width || Math.min(360, window.innerWidth - 24);
+    const tipH = tipRect.height || 200;
+    const margin = 12;
+
+    const spaceBelow = window.innerHeight - (top + height);
+    const spaceAbove = top;
+
+    let tipTop;
+    if (spaceBelow >= tipH + margin + 10) {
+      tipTop = top + height + margin;
+    } else if (spaceAbove >= tipH + margin + 10) {
+      tipTop = top - tipH - margin;
+    } else {
+      // Fallback centralizado verticalmente se o elemento for muito alto
+      tipTop = Math.max(margin, Math.min(window.innerHeight - tipH - margin, (window.innerHeight - tipH) / 2));
+    }
+
+    let tipLeft = left + (width / 2) - (tipW / 2);
+    tipLeft = Math.max(margin, Math.min(window.innerWidth - tipW - margin, tipLeft));
+
+    tip.style.top = `${tipTop}px`;
+    tip.style.left = `${tipLeft}px`;
+  }
+
+  function atualizarPosicaoTourAtual() {
+    if (!tourState.ativo) return;
+    const passo = tourState.passos[tourState.indice];
+    if (!passo) return;
+    const el = document.querySelector(passo.selector);
+    if (el) posicionarSpotlightETooltip(el);
+  }
+
+  window.addEventListener('resize', atualizarPosicaoTourAtual);
+  window.addEventListener('scroll', atualizarPosicaoTourAtual, { passive: true });
+  window.addEventListener('keydown', e => {
+    if (!tourState.ativo) return;
+    if (e.key === 'Escape') encerrarTour();
+    else if (e.key === 'ArrowRight') proximoPassoTour();
+    else if (e.key === 'ArrowLeft') anteriorPassoTour();
+  });
 </script>
 </body>
 </html>
