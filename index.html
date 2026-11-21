@@ -7,6 +7,8 @@
   <!-- Bibliotecas open-source de leitura local (sem IA generativa) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <!-- SDK OneSignal v16 -->
+  <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
   <style>
     :root {
       --bg: #0b1320;
@@ -82,6 +84,25 @@
     .btn-warning { background: rgba(245, 158, 11, 0.2); color: #fde68a; border: 1px solid rgba(245, 158, 11, 0.35); }
     .btn-sm { padding: 6px 10px; font-size: 0.8rem; }
 
+    .doc-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: rgba(59, 130, 246, 0.16);
+      border: 1px solid rgba(59, 130, 246, 0.35);
+      text-decoration: none;
+      font-size: 1rem;
+      margin-right: 4px;
+      transition: transform 0.12s, background 0.15s;
+    }
+    .doc-link:hover {
+      background: rgba(59, 130, 246, 0.32);
+      transform: scale(1.06);
+    }
+
     .tabs {
       display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 16px;
     }
@@ -105,7 +126,7 @@
     }
 
     table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
-    th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--border); }
+    th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--border); vertical-align: middle; }
     th { color: var(--muted); font-size: 0.78rem; text-transform: uppercase; }
     .table-wrap { overflow-x: auto; }
 
@@ -198,7 +219,7 @@
         <div id="listaMinhasPendencias"></div>
       </div>
 
-      <!-- MODAL/CARD DE LEITURA DE COMPROVANTE -->
+      <!-- CARD DE LEITURA DE COMPROVANTE -->
       <div id="boxLeitor" class="card hidden">
         <div class="row-between">
           <h2>🧾 Validar Comprovante (Sem IA • Local)</h2>
@@ -206,7 +227,7 @@
         </div>
         <p id="leitorResumo" class="muted" style="margin-bottom:10px;"></p>
 
-        <label for="arquivoComprovante">Anexe o comprovante Pix (PDF ou print JPG/PNG)</label>
+        <label for="arquivoComprovante">Anexe o comprovante Pix (PDF ou print JPG/PNG — máx. 10 MB)</label>
         <input id="arquivoComprovante" type="file" accept=".pdf,image/*" onchange="processarComprovante(event)" />
 
         <div id="leitorProgressoWrap" class="hidden" style="margin-top:10px;">
@@ -247,6 +268,7 @@
     <section id="tabRodadas" class="tab-content hidden">
       <div class="card">
         <h2>🎱 Histórico de Rodadas e Rateios</h2>
+        <p class="muted" style="margin-bottom:12px;">Clique no ícone 📄 para visualizar o comprovante salvo no Google Drive.</p>
         <div id="listaRodadas"></div>
       </div>
     </section>
@@ -323,12 +345,11 @@
 
 <script>
   // =========================================================================
-  // CONFIGURAÇÃO OBRIGATÓRIA — PREENCHA ANTES DE PUBLICAR NO GITHUB PAGES
+  // CONFIGURAÇÃO OBRIGATÓRIA — PREENCHA ESTAS 2 VARIÁVEIS
   // =========================================================================
-  const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbzusb3r9qDrDho39nl_G_kVlN050_US1Xk9JzUT0O0X6lCBzjw7Wq3Odu10jjhC7mYpgg/exec';
-  const VAPID_PUBLIC_KEY = '4a1947cf-09d3-4f97-a5db-6c68ed4a214a';
+  const GAS_API_URL = 'COLE_AQUI_SUA_WEB_APP_URL_DO_APPS_SCRIPT_TERMINADA_EM_EXEC';
+  const ONESIGNAL_APP_ID = 'COLE_AQUI_O_SEU_ONESIGNAL_APP_ID';
 
-  // Configura worker do PDF.js
   if (window.pdfjsLib) {
     pdfjsLib.GlobalWorkerOptions.workerSrc =
       'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -343,8 +364,72 @@
     devedoresAtuais: [],
     rankingHistorico: [],
     pendenciaSelecionada: null,
+    arquivoAtual: null,
     sugestaoCadastroAtual: ''
   };
+
+  // =========================================================================
+  // ONESIGNAL v16 — INICIALIZAÇÃO AUTOMÁTICA (RAIZ OU SUBPASTA DO GITHUB PAGES)
+  // =========================================================================
+  window.OneSignalDeferred = window.OneSignalDeferred || [];
+
+  if (ONESIGNAL_APP_ID && !ONESIGNAL_APP_ID.includes('COLE_AQUI')) {
+    window.OneSignalDeferred.push(async function(OneSignal) {
+      const basePath = window.location.pathname.endsWith('/')
+        ? window.location.pathname
+        : window.location.pathname.replace(/\/[^/]*$/, '/');
+
+      const initConfig = { appId: ONESIGNAL_APP_ID };
+      if (basePath !== '/') {
+        initConfig.serviceWorkerPath = basePath.replace(/^\//, '') + 'OneSignalSDKWorker.js';
+        initConfig.serviceWorkerParam = { scope: basePath };
+      }
+
+      await OneSignal.init(initConfig);
+
+      if (state.user && state.user.id_usuario) {
+        await OneSignal.login('mega_' + state.user.id_usuario);
+      }
+    });
+  }
+
+  async function ativarNotificacoesPush() {
+    if (!ONESIGNAL_APP_ID || ONESIGNAL_APP_ID.includes('COLE_AQUI')) {
+      alert('Configure o ONESIGNAL_APP_ID no início do arquivo index.html.');
+      return;
+    }
+
+    const btn = document.getElementById('btnPush');
+    btn.disabled = true;
+    btn.textContent = 'Ativando...';
+
+    window.OneSignalDeferred.push(async function(OneSignal) {
+      try {
+        await OneSignal.Notifications.requestPermission();
+        if (Notification.permission !== 'granted') {
+          alert('Permissão de notificação não concedida. No iPhone, adicione o site à Tela de Início primeiro.');
+          return;
+        }
+
+        const externalId = 'mega_' + state.user.id_usuario;
+        await OneSignal.login(externalId);
+
+        const res = await apiPost({
+          action: 'salvarPushSubscription',
+          id_usuario: state.user.id_usuario,
+          subscriptionJson: 'ONESIGNAL:' + externalId
+        });
+
+        btn.textContent = '🔔 Push Ativo';
+        alert(res.message || 'Notificações Push ativadas!');
+      } catch (err) {
+        alert('Erro ao ativar Push no OneSignal: ' + (err.message || err));
+      } finally {
+        btn.disabled = false;
+        if (btn.textContent === 'Ativando...') btn.textContent = '🔔 Ativar Push';
+      }
+    });
+  }
 
   // =========================================================================
   // COMUNICAÇÃO COM GOOGLE APPS SCRIPT (CORS-SAFE COM text/plain)
@@ -367,10 +452,23 @@
   }
 
   // =========================================================================
-  // UTILITÁRIOS DE FORMATAÇÃO E SIMILARIDADE DETERMINÍSTICA (SEM IA)
+  // UTILITÁRIOS DE FORMATAÇÃO, BASE64 E SIMILARIDADE DETERMINÍSTICA (SEM IA)
   // =========================================================================
   function formatBRL(v) {
     return (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  }
+
+  function arquivoParaBase64(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = String(reader.result || '');
+        const base64 = result.includes(',') ? result.split(',')[1] : result;
+        resolve(base64);
+      };
+      reader.onerror = () => reject(new Error('Falha ao preparar arquivo para envio ao Drive.'));
+      reader.readAsDataURL(file);
+    });
   }
 
   function normalizarTexto(str) {
@@ -496,6 +594,14 @@
       tabAdminBtn.classList.add('hidden');
     }
 
+    if (ONESIGNAL_APP_ID && !ONESIGNAL_APP_ID.includes('COLE_AQUI')) {
+      window.OneSignalDeferred.push(async function(OneSignal) {
+        try {
+          await OneSignal.login('mega_' + state.user.id_usuario);
+        } catch (_) {}
+      });
+    }
+
     carregarDashboard();
   }
 
@@ -521,7 +627,6 @@
       state.rankingHistorico = res.rankingHistorico || [];
       state.configPix = res.configPix || state.configPix;
 
-      // Atualiza nome_comprovante mais recente do usuário logado
       const eu = state.usuarios.find(u => u.id_usuario === state.user.id_usuario);
       if (eu) {
         state.user.nome_comprovante = eu.nome_comprovante || eu.nome;
@@ -549,7 +654,7 @@
   }
 
   // =========================================================================
-  // ABA 1: MINHAS PENDÊNCIAS E VALIDAÇÃO DE COMPROVANTE (PDF + OCR)
+  // ABA 1: MINHAS PENDÊNCIAS E VALIDAÇÃO DE COMPROVANTE (PDF + OCR + DRIVE)
   // =========================================================================
   function renderMinhasPendencias() {
     const container = document.getElementById('listaMinhasPendencias');
@@ -588,6 +693,7 @@
     const rodada = state.rodadas.find(r => r.id_rodada === p.id_rodada);
 
     state.pendenciaSelecionada = { ...p, saldo };
+    state.arquivoAtual = null;
     document.getElementById('leitorResumo').innerHTML =
       `Rodada: <strong>${rodada ? rodada.descricao : p.id_rodada}</strong> • Valor esperado: <strong>${formatBRL(saldo)}</strong> • Seu nome no comprovante: <strong>${state.user.nome_comprovante || state.user.nome}</strong>`;
     document.getElementById('arquivoComprovante').value = '';
@@ -601,11 +707,19 @@
   function fecharLeitor() {
     document.getElementById('boxLeitor').classList.add('hidden');
     state.pendenciaSelecionada = null;
+    state.arquivoAtual = null;
   }
 
   async function processarComprovante(event) {
     const file = event.target.files[0];
     if (!file || !state.pendenciaSelecionada) return;
+
+    if (file.size > 10 * 1024 * 1024) {
+      showMsg('leitorResultado', 'O arquivo ultrapassa 10 MB. Envie um PDF ou print menor.', 'err');
+      return;
+    }
+
+    state.arquivoAtual = file;
 
     const progWrap = document.getElementById('leitorProgressoWrap');
     const progBar = document.getElementById('leitorProgressoBar');
@@ -680,7 +794,6 @@
     let melhorCandidato = null;
     let melhorScore = 0;
 
-    // 1) Procura padrões após rótulos comuns de pagador/origem
     const rotulosPagador = /(DE|PAGADOR|ORIGEM|ENVIADO POR|NOME DO PAGADOR|CONTA DE ORIGEM)\s*:?\s*([A-Za-zÀ-ÿ\s]{4,60})/gi;
     const candidatosExtras = [];
     let match;
@@ -692,7 +805,6 @@
 
     for (const linha of todosCandidatos) {
       const norm = normalizarTexto(linha);
-      // Descarta linhas que são basicamente números, datas, valores ou o próprio recebedor
       if (/\d{3,}/.test(norm)) continue;
       if (norm.split(' ').length < 2) continue;
       if (nomeRecebedorNorm && calcularSimilaridade(norm, nomeRecebedorNorm) >= 0.75) continue;
@@ -716,10 +828,8 @@
     const textoNorm = normalizarTexto(textoBruto);
     const valorEsperado = Number(pend.saldo);
 
-    // 1) Verifica se é um agendamento (recusa agendamentos)
     const ehAgendamento = /\bAGENDAD[OA]\b|\bAGENDAMENTO\b/.test(textoNorm) && !/\bEFETIVAD[OA]\b|\bCONCLUID[OA]\b|\bREALIZAD[OA]\b/.test(textoNorm);
 
-    // 2) Extrai e valida o valor monetário
     const regexValor = /(?:R\$\s*)?(\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2})/g;
     const valoresEncontrados = [];
     let mVal;
@@ -729,7 +839,6 @@
     }
     const valorBateu = valoresEncontrados.some(v => Math.abs(v - valorEsperado) < 0.01);
 
-    // 3) Valida recebedor (nome do recebedor ou chave Pix)
     const recebedorTokens = normalizarTexto(state.configPix.NOME_RECEBEDOR)
       .split(' ')
       .filter(t => t.length > 2);
@@ -739,7 +848,6 @@
       (recebedorTokens.length > 0 && tokensEncontrados.length >= Math.min(2, recebedorTokens.length)) ||
       (chaveNorm.length >= 6 && textoNorm.includes(chaveNorm));
 
-    // 4) Extrai ID da transação (E2E Pix ou código de autenticação/protocolo)
     const textoSemQuebras = textoBruto.replace(/[\r\n]+/g, ' ');
     let idTransacao = '';
     const matchE2E = textoSemQuebras.match(/\bE[0-9A-Za-z]{20,35}\b/);
@@ -750,7 +858,6 @@
       if (matchAlt) idTransacao = matchAlt[1].toUpperCase();
     }
 
-    // 5) Inteligência de sugestão pós-upload para nome_comprovante
     const nomeCompAtual = state.user.nome_comprovante || state.user.nome;
     const { candidato, score } = extrairCandidatoNomePagador(textoBruto, nomeCompAtual);
 
@@ -768,7 +875,6 @@
       `;
     }
 
-    // Monta diagnóstico de validação
     const erros = [];
     if (ehAgendamento) erros.push('O documento parece ser um agendamento e não um pagamento concluído.');
     if (!valorBateu) erros.push(`Valor esperado (${formatBRL(valorEsperado)}) não encontrado. Valores lidos: ${valoresEncontrados.length ? valoresEncontrados.map(formatBRL).join(', ') : 'nenhum'}.`);
@@ -784,27 +890,42 @@
       return;
     }
 
-    // Tudo validado! Envia baixa para o Google Sheets via GAS
-    showMsg('leitorResultado', `Comprovante validado! Valor ${formatBRL(valorEsperado)} • ID ${idTransacao}. Registrando baixa na planilha...`, 'ok');
+    showMsg('leitorResultado', `Comprovante validado! Valor ${formatBRL(valorEsperado)} • Salvando no Google Drive e registrando baixa...`, 'ok');
 
     try {
+      let arquivoBase64 = '';
+      let arquivoNome = '';
+      let arquivoMime = '';
+
+      if (state.arquivoAtual) {
+        arquivoBase64 = await arquivoParaBase64(state.arquivoAtual);
+        arquivoNome = state.arquivoAtual.name || 'comprovante';
+        arquivoMime = state.arquivoAtual.type || 'application/octet-stream';
+      }
+
       const res = await apiPost({
         action: 'registrarPagamento',
         id_participacao: pend.id_participacao,
         id_usuario: state.user.id_usuario,
         id_transacao: idTransacao,
         valor_pago: valorEsperado,
-        metodo
+        metodo,
+        arquivo_base64: arquivoBase64,
+        arquivo_nome: arquivoNome,
+        arquivo_mime: arquivoMime
       });
 
       if (res.success) {
-        showMsg('leitorResultado', `✅ ${res.message} (ID: ${idTransacao})`, 'ok');
+        const linkHtml = res.link_comprovante
+          ? ` • <a href="${res.link_comprovante}" target="_blank" rel="noopener noreferrer" title="Ver comprovante" class="doc-link" style="vertical-align:middle;">📄</a>`
+          : '';
+        showMsg('leitorResultado', `✅ ${res.message} (ID: ${idTransacao})${linkHtml}`, 'ok');
         await carregarDashboard();
       } else {
         showMsg('leitorResultado', `❌ ${res.message}`, 'err');
       }
     } catch (err) {
-      showMsg('leitorResultado', 'Erro ao enviar baixa: ' + err.message, 'err');
+      showMsg('leitorResultado', 'Erro ao salvar comprovante e enviar baixa: ' + err.message, 'err');
     }
   }
 
@@ -867,7 +988,7 @@
   }
 
   // =========================================================================
-  // ABA 3: RODADAS E BAIXA MANUAL DO ADMIN
+  // ABA 3: RODADAS (COM ÍCONE 📄 DE COMPROVANTE VISÍVEL PARA TODOS)
   // =========================================================================
   function renderRodadas() {
     const container = document.getElementById('listaRodadas');
@@ -883,15 +1004,25 @@
         const badge = saldo <= 0
           ? `<span class="badge badge-green">PAGO</span>`
           : `<span class="badge badge-red">FALTA ${formatBRL(saldo)}</span>`;
+
+        const links = Array.isArray(p.links_comprovantes) ? p.links_comprovantes : [];
+        const celulaComp = links.length > 0
+          ? links.map(url =>
+              `<a href="${url}" target="_blank" rel="noopener noreferrer" title="Ver comprovante" aria-label="Ver comprovante" class="doc-link">📄</a>`
+            ).join('')
+          : `<span class="muted">-</span>`;
+
         const btnManual = (state.user.perfil === 'admin' && saldo > 0)
           ? `<button class="btn-warning btn-sm" onclick="baixaManualAdmin('${p.id_participacao}','${p.id_usuario}',${saldo})">Baixa Manual</button>`
           : '';
+
         return `
           <tr>
             <td>${p.nome_usuario}</td>
             <td>${p.fracao_cota}</td>
             <td>${formatBRL(p.valor_devido)}</td>
             <td>${badge}</td>
+            <td>${celulaComp}</td>
             <td>${btnManual}</td>
           </tr>
         `;
@@ -907,7 +1038,7 @@
           </div>
           <div class="table-wrap">
             <table>
-              <thead><tr><th>Amigo</th><th>Cota</th><th>Valor</th><th>Status</th><th></th></tr></thead>
+              <thead><tr><th>Amigo</th><th>Cota</th><th>Valor</th><th>Status</th><th>Doc</th><th></th></tr></thead>
               <tbody>${linhas}</tbody>
             </table>
           </div>
@@ -1062,7 +1193,6 @@
     const selects = [...document.querySelectorAll('.select-cota-admin')];
     const valorTotal = parseFloat(document.getElementById('rodadaValorTotal').value) || 0;
     const totalCotas = selects.reduce((acc, s) => acc + parseFloat(s.value), 0);
-    // Usa arredondamento inteiro para evitar imprecisão de ponto flutuante
     const ehInteiro = totalCotas > 0 && (Math.round(totalCotas * 100) % 100 === 0);
 
     document.getElementById('prevTotalCotas').textContent = totalCotas.toString().replace('.', ',');
@@ -1124,55 +1254,6 @@
     } finally {
       btn.textContent = 'Lançar Rodada e Gerar Dívidas';
       recalcularPreviewRodada();
-    }
-  }
-
-  // =========================================================================
-  // NOTIFICAÇÕES PUSH (USANDO A MESMA CHAVE VAPID DO BOLÃO DA COPA)
-  // =========================================================================
-  function urlBase64ToUint8Array(base64String) {
-    const padding = '='.repeat((4 - base64String.length % 4) % 4);
-    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-    const rawData = window.atob(base64);
-    const outputArray = new Uint8Array(rawData.length);
-    for (let i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i);
-    return outputArray;
-  }
-
-  async function ativarNotificacoesPush() {
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-      alert('Seu navegador não suporta notificações Push (no iPhone, adicione o site à Tela de Início primeiro).');
-      return;
-    }
-    if (!VAPID_PUBLIC_KEY || VAPID_PUBLIC_KEY.includes('COLE_AQUI')) {
-      alert('Configure a VAPID_PUBLIC_KEY no arquivo index.html antes de ativar o Push.');
-      return;
-    }
-
-    try {
-      const permission = await Notification.requestPermission();
-      if (permission !== 'granted') {
-        alert('Permissão de notificação negada.');
-        return;
-      }
-
-      const reg = await navigator.serviceWorker.register('./sw.js');
-      await navigator.serviceWorker.ready;
-
-      const subscription = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
-      });
-
-      const res = await apiPost({
-        action: 'salvarPushSubscription',
-        id_usuario: state.user.id_usuario,
-        subscriptionJson: JSON.stringify(subscription)
-      });
-
-      alert(res.message || 'Notificações Push ativadas!');
-    } catch (err) {
-      alert('Erro ao ativar Push: ' + err.message);
     }
   }
 </script>
