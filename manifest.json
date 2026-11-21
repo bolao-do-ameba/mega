@@ -1,0 +1,9 @@
+{
+  "name": "Bolão da Mega-Sena do Ameba",
+  "short_name": "Bolão Ameba",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0b1320",
+  "theme_color": "#064e3b"
+}
