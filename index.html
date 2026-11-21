@@ -1,0 +1,1180 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bolão da Mega-Sena do Ameba</title>
+  <!-- Bibliotecas open-source de leitura local (sem IA generativa) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <style>
+    :root {
+      --bg: #0b1320;
+      --surface: #131e31;
+      --surface-2: #1a2840;
+      --border: #263859;
+      --primary: #10b981;
+      --primary-hover: #059669;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --radius: 12px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background: var(--bg); color: var(--text); min-height: 100vh; padding-bottom: 48px; }
+
+    .container { max-width: 960px; margin: 0 auto; padding: 16px; }
+    .hidden { display: none !important; }
+
+    header {
+      background: linear-gradient(135deg, #064e3b, #0f172a);
+      border-bottom: 1px solid var(--border);
+      padding: 16px;
+      position: sticky;
+      top: 0;
+      z-index: 20;
+    }
+    .header-inner {
+      max-width: 960px; margin: 0 auto;
+      display: flex; flex-wrap: wrap; gap: 12px;
+      align-items: center; justify-content: space-between;
+    }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 1.15rem; }
+    .badge {
+      display: inline-block; padding: 3px 8px; border-radius: 999px;
+      font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+    }
+    .badge-green { background: rgba(16, 185, 129, 0.18); color: #34d399; }
+    .badge-red { background: rgba(239, 68, 68, 0.18); color: #f87171; }
+    .badge-amber { background: rgba(245, 158, 11, 0.18); color: #fbbf24; }
+    .badge-blue { background: rgba(59, 130, 246, 0.18); color: #60a5fa; }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px;
+      margin-bottom: 16px;
+    }
+    .card h2 { font-size: 1.08rem; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+    .card h3 { font-size: 0.95rem; margin-bottom: 8px; color: var(--muted); }
+
+    label { display: block; font-size: 0.85rem; color: var(--muted); margin-bottom: 6px; margin-top: 10px; }
+    input, select, textarea {
+      width: 100%; padding: 11px 12px; border-radius: 8px;
+      border: 1px solid var(--border); background: var(--surface-2);
+      color: var(--text); font-size: 0.95rem; outline: none;
+    }
+    input:focus, select:focus { border-color: var(--primary); }
+
+    button {
+      cursor: pointer; border: none; border-radius: 8px;
+      padding: 10px 14px; font-weight: 700; font-size: 0.9rem;
+      transition: opacity 0.15s, background 0.15s;
+    }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-primary { background: var(--primary); color: #052e16; }
+    .btn-primary:hover:not(:disabled) { background: var(--primary-hover); color: #fff; }
+    .btn-secondary { background: var(--surface-2); color: var(--text); border: 1px solid var(--border); }
+    .btn-danger { background: rgba(239, 68, 68, 0.2); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.35); }
+    .btn-warning { background: rgba(245, 158, 11, 0.2); color: #fde68a; border: 1px solid rgba(245, 158, 11, 0.35); }
+    .btn-sm { padding: 6px 10px; font-size: 0.8rem; }
+
+    .tabs {
+      display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 16px;
+    }
+    .tab-btn {
+      background: var(--surface); color: var(--muted); border: 1px solid var(--border);
+      white-space: nowrap;
+    }
+    .tab-btn.active { background: var(--primary); color: #052e16; border-color: var(--primary); }
+
+    .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+    .row-between { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+
+    .pix-box {
+      background: var(--surface-2); border: 1px dashed var(--primary);
+      border-radius: 10px; padding: 12px; margin-bottom: 14px;
+      display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+    }
+    .list-item {
+      background: var(--surface-2); border: 1px solid var(--border);
+      border-radius: 10px; padding: 12px; margin-bottom: 10px;
+    }
+
+    table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+    th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--border); }
+    th { color: var(--muted); font-size: 0.78rem; text-transform: uppercase; }
+    .table-wrap { overflow-x: auto; }
+
+    .alert {
+      padding: 12px; border-radius: 8px; margin-top: 12px; font-size: 0.88rem; line-height: 1.45;
+    }
+    .alert-ok { background: rgba(16, 185, 129, 0.14); border: 1px solid rgba(16, 185, 129, 0.4); color: #a7f3d0; }
+    .alert-warn { background: rgba(245, 158, 11, 0.14); border: 1px solid rgba(245, 158, 11, 0.4); color: #fde68a; }
+    .alert-err { background: rgba(239, 68, 68, 0.14); border: 1px solid rgba(239, 68, 68, 0.4); color: #fecaca; }
+
+    .progress-bar-bg { width: 100%; height: 8px; background: #0f172a; border-radius: 999px; overflow: hidden; margin-top: 8px; }
+    .progress-bar-fill { height: 100%; width: 0%; background: var(--primary); transition: width 0.2s; }
+
+    .login-box { max-width: 420px; margin: 54px auto; }
+    .cota-row {
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+      padding: 8px 10px; background: var(--surface-2); border-radius: 8px; margin-bottom: 8px;
+    }
+    .cota-row select { width: 145px; padding: 7px; }
+    .summary-strip {
+      display: flex; flex-wrap: wrap; gap: 14px; padding: 12px;
+      border-radius: 8px; background: #0f172a; border: 1px solid var(--border); margin: 12px 0;
+      font-size: 0.88rem;
+    }
+    .muted { color: var(--muted); font-size: 0.84rem; }
+    details summary { cursor: pointer; color: var(--muted); font-size: 0.82rem; margin-top: 8px; }
+    pre {
+      background: #090f1a; padding: 10px; border-radius: 8px; overflow-x: auto;
+      font-size: 0.76rem; color: #cbd5e1; margin-top: 6px; white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+
+<header id="appHeader" class="hidden">
+  <div class="header-inner">
+    <div class="brand">
+      🍀 Bolão do Ameba
+      <span id="userRoleBadge" class="badge badge-green"></span>
+    </div>
+    <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+      <span id="userNameTop" class="muted"></span>
+      <button id="btnPush" class="btn-warning btn-sm" onclick="ativarNotificacoesPush()">🔔 Ativar Push</button>
+      <button class="btn-secondary btn-sm" onclick="carregarDashboard()">↻ Atualizar</button>
+      <button class="btn-danger btn-sm" onclick="fazerLogout()">Sair</button>
+    </div>
+  </div>
+</header>
+
+<div class="container">
+  <!-- TELA DE LOGIN -->
+  <section id="loginSection" class="card login-box">
+    <h2>🍀 Entrar no Bolão da Mega-Sena</h2>
+    <p class="muted">Use seu telefone cadastrado (com DDD) e sua senha.</p>
+    <label for="loginTelefone">Telefone (DDD + número)</label>
+    <input id="loginTelefone" type="tel" placeholder="Ex: 12999999999" />
+
+    <label for="loginSenha">Senha</label>
+    <input id="loginSenha" type="password" placeholder="Sua senha" />
+
+    <button id="btnLogin" class="btn-primary" style="width:100%; margin-top:16px;" onclick="fazerLogin()">Entrar</button>
+    <div id="loginFeedback"></div>
+  </section>
+
+  <!-- APP PRINCIPAL -->
+  <main id="mainApp" class="hidden">
+    <nav class="tabs">
+      <button class="tab-btn active" data-tab="tabPagar" onclick="trocarAba('tabPagar', this)">💸 Pagar & Comprovante</button>
+      <button class="tab-btn" data-tab="tabRankings" onclick="trocarAba('tabRankings', this)">🏆 Rankings</button>
+      <button class="tab-btn" data-tab="tabRodadas" onclick="trocarAba('tabRodadas', this)">🎱 Rodadas</button>
+      <button class="tab-btn" data-tab="tabCadastro" onclick="trocarAba('tabCadastro', this)">👤 Nome no Comprovante</button>
+      <button id="tabAdminBtn" class="tab-btn hidden" data-tab="tabAdmin" onclick="trocarAba('tabAdmin', this)">⚙️ Admin: Nova Rodada</button>
+    </nav>
+
+    <!-- ABA 1: PAGAR E LEITOR DE COMPROVANTE -->
+    <section id="tabPagar" class="tab-content">
+      <div class="card">
+        <h2>💸 Dados para Pix</h2>
+        <div class="pix-box">
+          <div>
+            <div class="muted">Recebedor</div>
+            <strong id="pixRecebedor">-</strong>
+            <div class="muted" style="margin-top:4px;">Chave Pix</div>
+            <strong id="pixChave" style="color:var(--primary); word-break:break-all;">-</strong>
+          </div>
+          <button class="btn-primary btn-sm" onclick="copiarPix()">Copiar Chave Pix</button>
+        </div>
+
+        <h3>Suas cotas pendentes</h3>
+        <div id="listaMinhasPendencias"></div>
+      </div>
+
+      <!-- MODAL/CARD DE LEITURA DE COMPROVANTE -->
+      <div id="boxLeitor" class="card hidden">
+        <div class="row-between">
+          <h2>🧾 Validar Comprovante (Sem IA • Local)</h2>
+          <button class="btn-secondary btn-sm" onclick="fecharLeitor()">Fechar</button>
+        </div>
+        <p id="leitorResumo" class="muted" style="margin-bottom:10px;"></p>
+
+        <label for="arquivoComprovante">Anexe o comprovante Pix (PDF ou print JPG/PNG)</label>
+        <input id="arquivoComprovante" type="file" accept=".pdf,image/*" onchange="processarComprovante(event)" />
+
+        <div id="leitorProgressoWrap" class="hidden" style="margin-top:10px;">
+          <div id="leitorStatusTexto" class="muted">Lendo documento...</div>
+          <div class="progress-bar-bg"><div id="leitorProgressoBar" class="progress-bar-fill"></div></div>
+        </div>
+
+        <div id="leitorResultado"></div>
+
+        <!-- SUGESTÃO PÓS-UPLOAD DE MELHORIA DO NOME NO COMPROVANTE -->
+        <div id="boxSugestaoPosUpload" class="alert alert-warn hidden"></div>
+
+        <details id="detalhesTextoBruto" class="hidden">
+          <summary>Ver texto extraído do comprovante (diagnóstico)</summary>
+          <pre id="textoBrutoExtraido"></pre>
+        </details>
+      </div>
+    </section>
+
+    <!-- ABA 2: RANKINGS -->
+    <section id="tabRankings" class="tab-content hidden">
+      <div class="grid-2">
+        <div class="card">
+          <h2>🚨 Devedores Atuais</h2>
+          <p class="muted" style="margin-bottom:10px;">Quem está com saldo em aberto hoje (recebe Push diário até pagar).</p>
+          <div id="rankingAtual"></div>
+        </div>
+
+        <div class="card">
+          <h2>📜 Maiores Devedores da História</h2>
+          <p class="muted" style="margin-bottom:10px;">Total acumulado de débitos gerados em todas as rodadas.</p>
+          <div id="rankingHistorico"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ABA 3: RODADAS -->
+    <section id="tabRodadas" class="tab-content hidden">
+      <div class="card">
+        <h2>🎱 Histórico de Rodadas e Rateios</h2>
+        <div id="listaRodadas"></div>
+      </div>
+    </section>
+
+    <!-- ABA 4: CADASTRO / NOME NO COMPROVANTE COM SUGESTÃO INTELIGENTE -->
+    <section id="tabCadastro" class="tab-content hidden">
+      <div class="card">
+        <h2>👤 Cadastro & Nome no Comprovante</h2>
+        <p class="muted" style="margin-bottom:12px;">
+          Escolha qualquer usuário para ajustar como o nome aparece no comprovante Pix — isso aumenta a precisão da leitura automática.
+        </p>
+
+        <label for="cadSelectUsuario">Usuário</label>
+        <select id="cadSelectUsuario" onchange="aoTrocarUsuarioCadastro()"></select>
+
+        <div id="camposNovoOuAdmin">
+          <label for="cadNome">Nome de exibição</label>
+          <input id="cadNome" type="text" placeholder="Ex: Lucas Silva" oninput="atualizarSugestaoCadastro()" />
+
+          <div id="camposCredenciaisAdmin">
+            <label for="cadTelefone">Telefone (login com DDD)</label>
+            <input id="cadTelefone" type="tel" placeholder="Ex: 12988887777" />
+
+            <label for="cadSenha">Senha</label>
+            <input id="cadSenha" type="text" placeholder="Senha inicial ou nova senha" />
+          </div>
+        </div>
+
+        <label for="cadNomeComprovante">Nome exatamente como aparece no comprovante Pix</label>
+        <input id="cadNomeComprovante" type="text" placeholder="Ex: LUCAS EDUARDO DA SILVA" oninput="atualizarSugestaoCadastro()" />
+
+        <div id="boxSugestaoCadastro" class="alert alert-ok hidden" style="margin-top:10px;"></div>
+
+        <div style="display:flex; gap:10px; margin-top:14px; flex-wrap:wrap;">
+          <button class="btn-primary" onclick="salvarUsuarioCadastro()">Salvar Dados</button>
+          <button class="btn-secondary" onclick="aplicarSugestaoCadastro()">✨ Aplicar Sugestão de Nome</button>
+        </div>
+        <div id="cadFeedback"></div>
+      </div>
+    </section>
+
+    <!-- ABA 5: ADMIN - CRIAR NOVA RODADA -->
+    <section id="tabAdmin" class="tab-content hidden">
+      <div class="card">
+        <h2>⚙️ Cadastrar Nova Rodada da Mega-Sena</h2>
+        <p class="muted" style="margin-bottom:10px;">
+          Regra de cotas inteiras: quem pegar <strong>0,5 cota (meia)</strong> precisa formar par com outro participante de <strong>0,5 cota</strong> para fechar número inteiro.
+        </p>
+
+        <label for="rodadaDescricao">Descrição da Rodada / Concurso</label>
+        <input id="rodadaDescricao" type="text" placeholder="Ex: Mega-Sena Concurso 2850 - 10 jogos" />
+
+        <label for="rodadaValorTotal">Valor Total gasto nos jogos (R$)</label>
+        <input id="rodadaValorTotal" type="number" step="0.01" min="0" placeholder="Ex: 350.00" oninput="recalcularPreviewRodada()" />
+
+        <h3 style="margin-top:16px;">Participantes e Cotas</h3>
+        <div id="listaParticipantesAdmin"></div>
+
+        <div class="summary-strip" id="previewRodadaBox">
+          <div>Total de cotas: <strong id="prevTotalCotas">0</strong></div>
+          <div>Status das cotas: <span id="prevStatusCotas" class="badge badge-red">Selecione participantes</span></div>
+          <div>1 Cota Inteira: <strong id="prevValorInteira">R$ 0,00</strong></div>
+          <div>½ Cota (Meia): <strong id="prevValorMeia">R$ 0,00</strong></div>
+        </div>
+
+        <button id="btnCriarRodada" class="btn-primary" style="width:100%;" onclick="criarNovaRodada()" disabled>
+          Lançar Rodada e Gerar Dívidas
+        </button>
+        <div id="adminRodadaFeedback"></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+  // =========================================================================
+  // CONFIGURAÇÃO OBRIGATÓRIA — PREENCHA ANTES DE PUBLICAR NO GITHUB PAGES
+  // =========================================================================
+  const GAS_API_URL = 'COLE_AQUI_SUA_WEB_APP_URL_DO_APPS_SCRIPT_TERMINADA_EM_EXEC';
+  const VAPID_PUBLIC_KEY = 'COLE_AQUI_A_CHAVE_PUBLICA_VAPID_DO_BOLAO_DA_COPA';
+
+  // Configura worker do PDF.js
+  if (window.pdfjsLib) {
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  }
+
+  let state = {
+    user: null,
+    configPix: { NOME_RECEBEDOR: '', CHAVE_PIX: '', URL_PORTAL: '' },
+    usuarios: [],
+    rodadas: [],
+    participacoes: [],
+    devedoresAtuais: [],
+    rankingHistorico: [],
+    pendenciaSelecionada: null,
+    sugestaoCadastroAtual: ''
+  };
+
+  // =========================================================================
+  // COMUNICAÇÃO COM GOOGLE APPS SCRIPT (CORS-SAFE COM text/plain)
+  // =========================================================================
+  async function apiPost(payload) {
+    if (!GAS_API_URL || GAS_API_URL.includes('COLE_AQUI')) {
+      throw new Error('Configure a variável GAS_API_URL no início do arquivo index.html.');
+    }
+    const resp = await fetch(GAS_API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload)
+    });
+    const text = await resp.text();
+    try {
+      return JSON.parse(text);
+    } catch (e) {
+      throw new Error('Resposta inesperada do servidor GAS.');
+    }
+  }
+
+  // =========================================================================
+  // UTILITÁRIOS DE FORMATAÇÃO E SIMILARIDADE DETERMINÍSTICA (SEM IA)
+  // =========================================================================
+  function formatBRL(v) {
+    return (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  }
+
+  function normalizarTexto(str) {
+    return String(str || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toUpperCase()
+      .replace(/[^A-Z0-9\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function levenshtein(a, b) {
+    const m = a.length, n = b.length;
+    if (m === 0) return n;
+    if (n === 0) return m;
+    const dp = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
+    for (let i = 0; i <= m; i++) dp[i][0] = i;
+    for (let j = 0; j <= n; j++) dp[0][j] = j;
+    for (let i = 1; i <= m; i++) {
+      for (let j = 1; j <= n; j++) {
+        const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+        dp[i][j] = Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + cost);
+      }
+    }
+    return dp[m][n];
+  }
+
+  function calcularSimilaridade(a, b) {
+    const n1 = normalizarTexto(a);
+    const n2 = normalizarTexto(b);
+    if (!n1 || !n2) return 0;
+    if (n1 === n2) return 1;
+
+    const stopwords = new Set(['DE', 'DA', 'DO', 'DAS', 'DOS', 'E']);
+    const t1 = n1.split(' ').filter(t => t.length > 1 && !stopwords.has(t));
+    const t2 = n2.split(' ').filter(t => t.length > 1 && !stopwords.has(t));
+    const set2 = new Set(t2);
+    const inter = t1.filter(t => set2.has(t)).length;
+    const uniao = new Set([...t1, ...t2]).size;
+    const jaccard = uniao > 0 ? inter / uniao : 0;
+
+    const maxLen = Math.max(n1.length, n2.length);
+    const levSim = maxLen > 0 ? 1 - (levenshtein(n1, n2) / maxLen) : 0;
+    const contido = (n1.includes(n2) || n2.includes(n1)) ? 0.2 : 0;
+
+    return Math.min(1, Number((jaccard * 0.55 + levSim * 0.35 + contido).toFixed(2)));
+  }
+
+  function showMsg(elId, msg, tipo = 'ok') {
+    const cls = tipo === 'err' ? 'alert-err' : tipo === 'warn' ? 'alert-warn' : 'alert-ok';
+    document.getElementById(elId).innerHTML = `<div class="alert ${cls}">${msg}</div>`;
+  }
+
+  // =========================================================================
+  // AUTENTICAÇÃO E SESSÃO
+  // =========================================================================
+  window.addEventListener('DOMContentLoaded', () => {
+    const saved = localStorage.getItem('bolao_ameba_user');
+    if (saved) {
+      try {
+        state.user = JSON.parse(saved);
+        entrarNoApp();
+      } catch (_) {
+        localStorage.removeItem('bolao_ameba_user');
+      }
+    }
+  });
+
+  async function fazerLogin() {
+    const telefone = document.getElementById('loginTelefone').value.trim();
+    const senha = document.getElementById('loginSenha').value.trim();
+    if (!telefone || !senha) {
+      showMsg('loginFeedback', 'Informe telefone e senha.', 'err');
+      return;
+    }
+
+    const btn = document.getElementById('btnLogin');
+    btn.disabled = true;
+    btn.textContent = 'Entrando...';
+    document.getElementById('loginFeedback').innerHTML = '';
+
+    try {
+      const res = await apiPost({ action: 'login', telefone, senha });
+      if (!res.success) {
+        showMsg('loginFeedback', res.message || 'Falha no login.', 'err');
+      } else {
+        state.user = res.user;
+        state.configPix = res.configPix || state.configPix;
+        localStorage.setItem('bolao_ameba_user', JSON.stringify(res.user));
+        entrarNoApp();
+      }
+    } catch (err) {
+      showMsg('loginFeedback', err.message, 'err');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Entrar';
+    }
+  }
+
+  function fazerLogout() {
+    localStorage.removeItem('bolao_ameba_user');
+    state.user = null;
+    document.getElementById('appHeader').classList.add('hidden');
+    document.getElementById('mainApp').classList.add('hidden');
+    document.getElementById('loginSection').classList.remove('hidden');
+  }
+
+  function entrarNoApp() {
+    document.getElementById('loginSection').classList.add('hidden');
+    document.getElementById('appHeader').classList.remove('hidden');
+    document.getElementById('mainApp').classList.remove('hidden');
+
+    document.getElementById('userNameTop').textContent = state.user.nome;
+    const roleBadge = document.getElementById('userRoleBadge');
+    roleBadge.textContent = state.user.perfil === 'admin' ? 'ADMIN' : 'PARTICIPANTE';
+    roleBadge.className = state.user.perfil === 'admin' ? 'badge badge-amber' : 'badge badge-green';
+
+    const tabAdminBtn = document.getElementById('tabAdminBtn');
+    if (state.user.perfil === 'admin') {
+      tabAdminBtn.classList.remove('hidden');
+    } else {
+      tabAdminBtn.classList.add('hidden');
+    }
+
+    carregarDashboard();
+  }
+
+  function trocarAba(tabId, btnEl) {
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(tabId).classList.remove('hidden');
+    if (btnEl) btnEl.classList.add('active');
+  }
+
+  // =========================================================================
+  // CARREGAMENTO DO DASHBOARD
+  // =========================================================================
+  async function carregarDashboard() {
+    try {
+      const res = await apiPost({ action: 'getDashboard' });
+      if (!res.success) return;
+
+      state.usuarios = res.usuarios || [];
+      state.rodadas = res.rodadas || [];
+      state.participacoes = res.participacoes || [];
+      state.devedoresAtuais = res.devedoresAtuais || [];
+      state.rankingHistorico = res.rankingHistorico || [];
+      state.configPix = res.configPix || state.configPix;
+
+      // Atualiza nome_comprovante mais recente do usuário logado
+      const eu = state.usuarios.find(u => u.id_usuario === state.user.id_usuario);
+      if (eu) {
+        state.user.nome_comprovante = eu.nome_comprovante || eu.nome;
+        localStorage.setItem('bolao_ameba_user', JSON.stringify(state.user));
+      }
+
+      document.getElementById('pixRecebedor').textContent = state.configPix.NOME_RECEBEDOR || '-';
+      document.getElementById('pixChave').textContent = state.configPix.CHAVE_PIX || '-';
+
+      renderMinhasPendencias();
+      renderRankings();
+      renderRodadas();
+      renderCadastroUsuarios();
+      if (state.user.perfil === 'admin') renderAdminFormRodada();
+    } catch (err) {
+      alert('Erro ao carregar dados: ' + err.message);
+    }
+  }
+
+  function copiarPix() {
+    if (!state.configPix.CHAVE_PIX) return;
+    navigator.clipboard.writeText(state.configPix.CHAVE_PIX).then(() => {
+      alert('Chave Pix copiada!');
+    });
+  }
+
+  // =========================================================================
+  // ABA 1: MINHAS PENDÊNCIAS E VALIDAÇÃO DE COMPROVANTE (PDF + OCR)
+  // =========================================================================
+  function renderMinhasPendencias() {
+    const container = document.getElementById('listaMinhasPendencias');
+    const minhas = state.participacoes.filter(p =>
+      p.id_usuario === state.user.id_usuario &&
+      Number(p.valor_devido) > Number(p.valor_pago || 0)
+    );
+
+    if (minhas.length === 0) {
+      container.innerHTML = `<div class="alert alert-ok">Você está em dia! Nenhuma pendência no bolão. 🎉</div>`;
+      return;
+    }
+
+    container.innerHTML = minhas.map(p => {
+      const rodada = state.rodadas.find(r => r.id_rodada === p.id_rodada);
+      const saldo = Number((Number(p.valor_devido) - Number(p.valor_pago || 0)).toFixed(2));
+      return `
+        <div class="list-item row-between">
+          <div>
+            <strong>${rodada ? rodada.descricao : p.id_rodada}</strong>
+            <div class="muted">Cota: ${p.fracao_cota} • Devido: ${formatBRL(p.valor_devido)} • Pago: ${formatBRL(p.valor_pago || 0)}</div>
+          </div>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <span class="badge badge-red">Falta ${formatBRL(saldo)}</span>
+            <button class="btn-primary btn-sm" onclick="abrirLeitor('${p.id_participacao}')">Anexar Comprovante</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function abrirLeitor(idParticipacao) {
+    const p = state.participacoes.find(x => x.id_participacao === idParticipacao);
+    if (!p) return;
+    const saldo = Number((Number(p.valor_devido) - Number(p.valor_pago || 0)).toFixed(2));
+    const rodada = state.rodadas.find(r => r.id_rodada === p.id_rodada);
+
+    state.pendenciaSelecionada = { ...p, saldo };
+    document.getElementById('leitorResumo').innerHTML =
+      `Rodada: <strong>${rodada ? rodada.descricao : p.id_rodada}</strong> • Valor esperado: <strong>${formatBRL(saldo)}</strong> • Seu nome no comprovante: <strong>${state.user.nome_comprovante || state.user.nome}</strong>`;
+    document.getElementById('arquivoComprovante').value = '';
+    document.getElementById('leitorResultado').innerHTML = '';
+    document.getElementById('boxSugestaoPosUpload').classList.add('hidden');
+    document.getElementById('detalhesTextoBruto').classList.add('hidden');
+    document.getElementById('boxLeitor').classList.remove('hidden');
+    document.getElementById('boxLeitor').scrollIntoView({ behavior: 'smooth' });
+  }
+
+  function fecharLeitor() {
+    document.getElementById('boxLeitor').classList.add('hidden');
+    state.pendenciaSelecionada = null;
+  }
+
+  async function processarComprovante(event) {
+    const file = event.target.files[0];
+    if (!file || !state.pendenciaSelecionada) return;
+
+    const progWrap = document.getElementById('leitorProgressoWrap');
+    const progBar = document.getElementById('leitorProgressoBar');
+    const progTxt = document.getElementById('leitorStatusTexto');
+    const resultEl = document.getElementById('leitorResultado');
+    const sugBox = document.getElementById('boxSugestaoPosUpload');
+
+    progWrap.classList.remove('hidden');
+    progBar.style.width = '15%';
+    resultEl.innerHTML = '';
+    sugBox.classList.add('hidden');
+
+    try {
+      let textoExtraido = '';
+      let metodo = 'OCR';
+
+      if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+        metodo = 'PDF';
+        progTxt.textContent = 'Extraindo texto do PDF...';
+        progBar.style.width = '50%';
+        textoExtraido = await extrairTextoPDF(file);
+        progBar.style.width = '90%';
+      } else {
+        metodo = 'OCR';
+        progTxt.textContent = 'Executando OCR local na imagem (pode levar alguns segundos)...';
+        const resOcr = await Tesseract.recognize(file, 'por', {
+          logger: m => {
+            if (m.status === 'recognizing text') {
+              const pct = Math.round((m.progress || 0) * 100);
+              progBar.style.width = Math.max(15, pct) + '%';
+              progTxt.textContent = `Lendo comprovante via OCR: ${pct}%`;
+            }
+          }
+        });
+        textoExtraido = resOcr.data.text || '';
+      }
+
+      progBar.style.width = '100%';
+      progTxt.textContent = 'Leitura concluída. Validando dados...';
+
+      document.getElementById('textoBrutoExtraido').textContent = textoExtraido;
+      document.getElementById('detalhesTextoBruto').classList.remove('hidden');
+
+      await analisarEValidarComprovante(textoExtraido, metodo);
+    } catch (err) {
+      showMsg('leitorResultado', 'Erro ao ler o arquivo: ' + err.message, 'err');
+    } finally {
+      setTimeout(() => progWrap.classList.add('hidden'), 600);
+    }
+  }
+
+  async function extrairTextoPDF(file) {
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    let textoCompleto = '';
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const content = await page.getTextContent();
+      const linhas = content.items.map(item => item.str).join(' ');
+      textoCompleto += linhas + '\n';
+    }
+    return textoCompleto;
+  }
+
+  function extrairCandidatoNomePagador(textoBruto, nomeAtual) {
+    const linhas = textoBruto
+      .split(/\r?\n/)
+      .map(l => l.trim())
+      .filter(l => l.length >= 4 && l.length <= 70);
+
+    const nomeRecebedorNorm = normalizarTexto(state.configPix.NOME_RECEBEDOR);
+    let melhorCandidato = null;
+    let melhorScore = 0;
+
+    // 1) Procura padrões após rótulos comuns de pagador/origem
+    const rotulosPagador = /(DE|PAGADOR|ORIGEM|ENVIADO POR|NOME DO PAGADOR|CONTA DE ORIGEM)\s*:?\s*([A-Za-zÀ-ÿ\s]{4,60})/gi;
+    const candidatosExtras = [];
+    let match;
+    while ((match = rotulosPagador.exec(textoBruto)) !== null) {
+      if (match[2]) candidatosExtras.push(match[2].trim());
+    }
+
+    const todosCandidatos = [...new Set([...candidatosExtras, ...linhas])];
+
+    for (const linha of todosCandidatos) {
+      const norm = normalizarTexto(linha);
+      // Descarta linhas que são basicamente números, datas, valores ou o próprio recebedor
+      if (/\d{3,}/.test(norm)) continue;
+      if (norm.split(' ').length < 2) continue;
+      if (nomeRecebedorNorm && calcularSimilaridade(norm, nomeRecebedorNorm) >= 0.75) continue;
+
+      const scoreComAtual = Math.max(
+        calcularSimilaridade(norm, nomeAtual),
+        calcularSimilaridade(norm, state.user.nome)
+      );
+
+      if (scoreComAtual > melhorScore) {
+        melhorScore = scoreComAtual;
+        melhorCandidato = norm;
+      }
+    }
+
+    return { candidato: melhorCandidato, score: melhorScore };
+  }
+
+  async function analisarEValidarComprovante(textoBruto, metodo) {
+    const pend = state.pendenciaSelecionada;
+    const textoNorm = normalizarTexto(textoBruto);
+    const valorEsperado = Number(pend.saldo);
+
+    // 1) Verifica se é um agendamento (recusa agendamentos)
+    const ehAgendamento = /\bAGENDAD[OA]\b|\bAGENDAMENTO\b/.test(textoNorm) && !/\bEFETIVAD[OA]\b|\bCONCLUID[OA]\b|\bREALIZAD[OA]\b/.test(textoNorm);
+
+    // 2) Extrai e valida o valor monetário
+    const regexValor = /(?:R\$\s*)?(\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2})/g;
+    const valoresEncontrados = [];
+    let mVal;
+    while ((mVal = regexValor.exec(textoBruto)) !== null) {
+      const num = parseFloat(mVal[1].replace(/\./g, '').replace(',', '.'));
+      if (!isNaN(num)) valoresEncontrados.push(num);
+    }
+    const valorBateu = valoresEncontrados.some(v => Math.abs(v - valorEsperado) < 0.01);
+
+    // 3) Valida recebedor (nome do recebedor ou chave Pix)
+    const recebedorTokens = normalizarTexto(state.configPix.NOME_RECEBEDOR)
+      .split(' ')
+      .filter(t => t.length > 2);
+    const tokensEncontrados = recebedorTokens.filter(t => textoNorm.includes(t));
+    const chaveNorm = normalizarTexto(state.configPix.CHAVE_PIX);
+    const recebedorBateu =
+      (recebedorTokens.length > 0 && tokensEncontrados.length >= Math.min(2, recebedorTokens.length)) ||
+      (chaveNorm.length >= 6 && textoNorm.includes(chaveNorm));
+
+    // 4) Extrai ID da transação (E2E Pix ou código de autenticação/protocolo)
+    const textoSemQuebras = textoBruto.replace(/[\r\n]+/g, ' ');
+    let idTransacao = '';
+    const matchE2E = textoSemQuebras.match(/\bE[0-9A-Za-z]{20,35}\b/);
+    if (matchE2E) {
+      idTransacao = matchE2E[0].toUpperCase();
+    } else {
+      const matchAlt = textoSemQuebras.match(/(?:ID DA TRANSACAO|ID TRANSACAO|AUTENTICACAO|PROTOCOLO|CODIGO DA TRANSACAO)\s*[:#-]?\s*([A-Za-z0-9-]{10,40})/i);
+      if (matchAlt) idTransacao = matchAlt[1].toUpperCase();
+    }
+
+    // 5) Inteligência de sugestão pós-upload para nome_comprovante
+    const nomeCompAtual = state.user.nome_comprovante || state.user.nome;
+    const { candidato, score } = extrairCandidatoNomePagador(textoBruto, nomeCompAtual);
+
+    if (candidato && score >= 0.45 && normalizarTexto(nomeCompAtual) !== candidato) {
+      const boxSug = document.getElementById('boxSugestaoPosUpload');
+      boxSug.classList.remove('hidden');
+      boxSug.innerHTML = `
+        <strong>💡 Dica para melhorar a assertividade:</strong><br/>
+        Detectamos no comprovante o nome <strong>"${candidato}"</strong> (semelhança de ${Math.round(score * 100)}% com seu cadastro atual "${nomeCompAtual}").
+        Atualizar seu <em>Nome no Comprovante</em> ajuda nas próximas validações.
+        <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">
+          <input id="inputSugestaoPosUpload" type="text" value="${candidato}" style="flex:1; min-width:200px;" />
+          <button class="btn-primary btn-sm" onclick="aceitarSugestaoPosUpload()">Atualizar Nome</button>
+        </div>
+      `;
+    }
+
+    // Monta diagnóstico de validação
+    const erros = [];
+    if (ehAgendamento) erros.push('O documento parece ser um agendamento e não um pagamento concluído.');
+    if (!valorBateu) erros.push(`Valor esperado (${formatBRL(valorEsperado)}) não encontrado. Valores lidos: ${valoresEncontrados.length ? valoresEncontrados.map(formatBRL).join(', ') : 'nenhum'}.`);
+    if (!recebedorBateu) erros.push(`Recebedor (${state.configPix.NOME_RECEBEDOR}) ou Chave Pix não identificado no comprovante.`);
+    if (!idTransacao) erros.push('ID único da transação (E2E/Autenticação) não foi identificado. Tente enviar o PDF original do banco.');
+
+    if (erros.length > 0) {
+      showMsg(
+        'leitorResultado',
+        `<strong>Comprovante não aprovado automaticamente:</strong><ul style="margin-left:18px; margin-top:6px;">${erros.map(e => `<li>${e}</li>`).join('')}</ul>`,
+        'err'
+      );
+      return;
+    }
+
+    // Tudo validado! Envia baixa para o Google Sheets via GAS
+    showMsg('leitorResultado', `Comprovante validado! Valor ${formatBRL(valorEsperado)} • ID ${idTransacao}. Registrando baixa na planilha...`, 'ok');
+
+    try {
+      const res = await apiPost({
+        action: 'registrarPagamento',
+        id_participacao: pend.id_participacao,
+        id_usuario: state.user.id_usuario,
+        id_transacao: idTransacao,
+        valor_pago: valorEsperado,
+        metodo
+      });
+
+      if (res.success) {
+        showMsg('leitorResultado', `✅ ${res.message} (ID: ${idTransacao})`, 'ok');
+        await carregarDashboard();
+      } else {
+        showMsg('leitorResultado', `❌ ${res.message}`, 'err');
+      }
+    } catch (err) {
+      showMsg('leitorResultado', 'Erro ao enviar baixa: ' + err.message, 'err');
+    }
+  }
+
+  async function aceitarSugestaoPosUpload() {
+    const novoNome = document.getElementById('inputSugestaoPosUpload').value.trim();
+    if (!novoNome) return;
+
+    try {
+      const res = await apiPost({
+        action: 'atualizarNomeComprovante',
+        atorId: state.user.id_usuario,
+        id_usuario: state.user.id_usuario,
+        novo_nome_comprovante: novoNome
+      });
+      if (res.success) {
+        state.user.nome_comprovante = novoNome;
+        localStorage.setItem('bolao_ameba_user', JSON.stringify(state.user));
+        document.getElementById('boxSugestaoPosUpload').innerHTML = `✅ ${res.message}`;
+        document.getElementById('boxSugestaoPosUpload').className = 'alert alert-ok';
+        await carregarDashboard();
+      } else {
+        alert(res.message);
+      }
+    } catch (err) {
+      alert('Erro ao atualizar nome: ' + err.message);
+    }
+  }
+
+  // =========================================================================
+  // ABA 2: RANKINGS (ATUAIS E HISTÓRICO)
+  // =========================================================================
+  function renderRankings() {
+    const elAtual = document.getElementById('rankingAtual');
+    const elHist = document.getElementById('rankingHistorico');
+
+    if (state.devedoresAtuais.length === 0) {
+      elAtual.innerHTML = `<div class="alert alert-ok">Ninguém devendo no momento! 🎉</div>`;
+    } else {
+      elAtual.innerHTML = state.devedoresAtuais.map((d, i) => `
+        <div class="list-item row-between">
+          <div>
+            <strong>#${i + 1} ${d.nome}</strong>
+            <div class="muted">${d.rodadas_pendentes} rodada(s) pendente(s)</div>
+          </div>
+          <span class="badge badge-red">${formatBRL(d.divida_atual)}</span>
+        </div>
+      `).join('');
+    }
+
+    if (state.rankingHistorico.length === 0) {
+      elHist.innerHTML = `<p class="muted">Ainda não há histórico registrado.</p>`;
+    } else {
+      elHist.innerHTML = state.rankingHistorico.map((d, i) => `
+        <div class="list-item row-between">
+          <div><strong>#${i + 1} ${d.nome}</strong></div>
+          <span class="badge badge-blue">${formatBRL(d.historico_dividas_geradas)}</span>
+        </div>
+      `).join('');
+    }
+  }
+
+  // =========================================================================
+  // ABA 3: RODADAS E BAIXA MANUAL DO ADMIN
+  // =========================================================================
+  function renderRodadas() {
+    const container = document.getElementById('listaRodadas');
+    if (state.rodadas.length === 0) {
+      container.innerHTML = `<p class="muted">Nenhuma rodada cadastrada ainda.</p>`;
+      return;
+    }
+
+    container.innerHTML = state.rodadas.map(r => {
+      const parts = state.participacoes.filter(p => p.id_rodada === r.id_rodada);
+      const linhas = parts.map(p => {
+        const saldo = Number((Number(p.valor_devido) - Number(p.valor_pago || 0)).toFixed(2));
+        const badge = saldo <= 0
+          ? `<span class="badge badge-green">PAGO</span>`
+          : `<span class="badge badge-red">FALTA ${formatBRL(saldo)}</span>`;
+        const btnManual = (state.user.perfil === 'admin' && saldo > 0)
+          ? `<button class="btn-warning btn-sm" onclick="baixaManualAdmin('${p.id_participacao}','${p.id_usuario}',${saldo})">Baixa Manual</button>`
+          : '';
+        return `
+          <tr>
+            <td>${p.nome_usuario}</td>
+            <td>${p.fracao_cota}</td>
+            <td>${formatBRL(p.valor_devido)}</td>
+            <td>${badge}</td>
+            <td>${btnManual}</td>
+          </tr>
+        `;
+      }).join('');
+
+      return `
+        <div class="list-item">
+          <div class="row-between" style="margin-bottom:8px;">
+            <div>
+              <strong>${r.descricao}</strong>
+              <div class="muted">${r.data_criacao} • Total: ${formatBRL(r.valor_total)} • ${r.total_cotas} cota(s) de ${formatBRL(r.valor_cota)}</div>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Amigo</th><th>Cota</th><th>Valor</th><th>Status</th><th></th></tr></thead>
+              <tbody>${linhas}</tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  async function baixaManualAdmin(idParticipacao, idUsuario, saldo) {
+    if (!confirm(`Confirmar baixa manual de ${formatBRL(saldo)}?`)) return;
+    try {
+      const res = await apiPost({
+        action: 'registrarPagamento',
+        id_participacao: idParticipacao,
+        id_usuario: idUsuario,
+        id_transacao: '',
+        valor_pago: saldo,
+        metodo: 'MANUAL'
+      });
+      alert(res.message);
+      if (res.success) await carregarDashboard();
+    } catch (err) {
+      alert('Erro na baixa manual: ' + err.message);
+    }
+  }
+
+  // =========================================================================
+  // ABA 4: CADASTRO & SELETOR DE QUALQUER USUÁRIO + SUGESTÃO DE NOME
+  // =========================================================================
+  function renderCadastroUsuarios() {
+    const sel = document.getElementById('cadSelectUsuario');
+    const isAdmin = state.user.perfil === 'admin';
+
+    let options = state.usuarios.map(u =>
+      `<option value="${u.id_usuario}">${u.nome} (${u.id_usuario})</option>`
+    ).join('');
+
+    if (isAdmin) {
+      options = `<option value="__NOVO__">+ Cadastrar Novo Usuário</option>` + options;
+    }
+
+    sel.innerHTML = options;
+    sel.value = state.user.id_usuario;
+    aoTrocarUsuarioCadastro();
+  }
+
+  function aoTrocarUsuarioCadastro() {
+    const selVal = document.getElementById('cadSelectUsuario').value;
+    const isAdmin = state.user.perfil === 'admin';
+    const ehNovo = selVal === '__NOVO__';
+
+    document.getElementById('camposCredenciaisAdmin').classList.toggle('hidden', !isAdmin);
+    document.getElementById('cadNome').disabled = !isAdmin && !ehNovo;
+
+    if (ehNovo) {
+      document.getElementById('cadNome').value = '';
+      document.getElementById('cadNomeComprovante').value = '';
+      document.getElementById('cadTelefone').value = '';
+      document.getElementById('cadSenha').value = '';
+    } else {
+      const u = state.usuarios.find(x => x.id_usuario === selVal);
+      if (u) {
+        document.getElementById('cadNome').value = u.nome || '';
+        document.getElementById('cadNomeComprovante').value = u.nome_comprovante || u.nome || '';
+        document.getElementById('cadTelefone').value = '';
+        document.getElementById('cadSenha').value = '';
+      }
+    }
+    document.getElementById('cadFeedback').innerHTML = '';
+    atualizarSugestaoCadastro();
+  }
+
+  function atualizarSugestaoCadastro() {
+    const nome = document.getElementById('cadNome').value.trim();
+    const nomeComp = document.getElementById('cadNomeComprovante').value.trim();
+    const box = document.getElementById('boxSugestaoCadastro');
+
+    if (!nome) {
+      box.classList.add('hidden');
+      state.sugestaoCadastroAtual = '';
+      return;
+    }
+
+    const sugerido = normalizarTexto(nome);
+    const sim = calcularSimilaridade(nome, nomeComp || nome);
+    state.sugestaoCadastroAtual = sugerido;
+
+    box.classList.remove('hidden');
+    box.innerHTML = `
+      <strong>✨ Sugestão inteligente de Nome no Comprovante:</strong> <code>${sugerido}</code><br/>
+      <span class="muted">Similaridade atual entre o Nome e o Nome no Comprovante: <strong>${Math.round(sim * 100)}%</strong>.</span>
+    `;
+  }
+
+  function aplicarSugestaoCadastro() {
+    if (!state.sugestaoCadastroAtual) return;
+    document.getElementById('cadNomeComprovante').value = state.sugestaoCadastroAtual;
+    atualizarSugestaoCadastro();
+  }
+
+  async function salvarUsuarioCadastro() {
+    const selVal = document.getElementById('cadSelectUsuario').value;
+    const ehNovo = selVal === '__NOVO__';
+    const nome = document.getElementById('cadNome').value.trim();
+    const nomeComprovante = document.getElementById('cadNomeComprovante').value.trim();
+    const telefone = document.getElementById('cadTelefone').value.trim();
+    const senha = document.getElementById('cadSenha').value.trim();
+
+    if (ehNovo && (!nome || !telefone || !senha)) {
+      showMsg('cadFeedback', 'Para novo usuário, preencha nome, telefone e senha.', 'err');
+      return;
+    }
+
+    try {
+      const res = await apiPost({
+        action: 'cadastrarUsuario',
+        atorId: state.user.id_usuario,
+        idUsuarioAlvo: ehNovo ? '' : selVal,
+        nome,
+        nomeComprovante: nomeComprovante || normalizarTexto(nome),
+        telefone,
+        senha
+      });
+      showMsg('cadFeedback', res.message, res.success ? 'ok' : 'err');
+      if (res.success) await carregarDashboard();
+    } catch (err) {
+      showMsg('cadFeedback', err.message, 'err');
+    }
+  }
+
+  // =========================================================================
+  // ABA 5: ADMIN — NOVA RODADA COM TRAVA DE COTAS INTEIRAS
+  // =========================================================================
+  function renderAdminFormRodada() {
+    const container = document.getElementById('listaParticipantesAdmin');
+    container.innerHTML = state.usuarios.map(u => `
+      <div class="cota-row">
+        <div><strong>${u.nome}</strong></div>
+        <select class="select-cota-admin" data-uid="${u.id_usuario}" data-nome="${u.nome}" onchange="recalcularPreviewRodada()">
+          <option value="0">Não participa</option>
+          <option value="0.5">0,5 (Meia cota)</option>
+          <option value="1">1 (Cota inteira)</option>
+          <option value="1.5">1,5 cotas</option>
+          <option value="2">2 cotas</option>
+        </select>
+      </div>
+    `).join('');
+    recalcularPreviewRodada();
+  }
+
+  function recalcularPreviewRodada() {
+    const selects = [...document.querySelectorAll('.select-cota-admin')];
+    const valorTotal = parseFloat(document.getElementById('rodadaValorTotal').value) || 0;
+    const totalCotas = selects.reduce((acc, s) => acc + parseFloat(s.value), 0);
+    // Usa arredondamento inteiro para evitar imprecisão de ponto flutuante
+    const ehInteiro = totalCotas > 0 && (Math.round(totalCotas * 100) % 100 === 0);
+
+    document.getElementById('prevTotalCotas').textContent = totalCotas.toString().replace('.', ',');
+    const statusEl = document.getElementById('prevStatusCotas');
+    const btn = document.getElementById('btnCriarRodada');
+
+    if (totalCotas === 0) {
+      statusEl.className = 'badge badge-red';
+      statusEl.textContent = 'Selecione participantes';
+      btn.disabled = true;
+    } else if (!ehInteiro) {
+      statusEl.className = 'badge badge-amber';
+      statusEl.textContent = 'Falta formar par de meia cota!';
+      btn.disabled = true;
+    } else {
+      statusEl.className = 'badge badge-green';
+      statusEl.textContent = 'Cotas inteiras fechadas ✓';
+      btn.disabled = valorTotal <= 0;
+    }
+
+    const valorCota = ehInteiro && valorTotal > 0 ? valorTotal / totalCotas : 0;
+    document.getElementById('prevValorInteira').textContent = formatBRL(valorCota);
+    document.getElementById('prevValorMeia').textContent = formatBRL(valorCota / 2);
+  }
+
+  async function criarNovaRodada() {
+    const descricao = document.getElementById('rodadaDescricao').value.trim();
+    const valorTotal = parseFloat(document.getElementById('rodadaValorTotal').value);
+    const selects = [...document.querySelectorAll('.select-cota-admin')];
+    const participantes = selects
+      .map(s => ({ id_usuario: s.dataset.uid, nome_usuario: s.dataset.nome, fracao_cota: parseFloat(s.value) }))
+      .filter(p => p.fracao_cota > 0);
+
+    if (!descricao || !valorTotal || participantes.length === 0) {
+      showMsg('adminRodadaFeedback', 'Preencha descrição, valor total e selecione os participantes.', 'err');
+      return;
+    }
+
+    const btn = document.getElementById('btnCriarRodada');
+    btn.disabled = true;
+    btn.textContent = 'Salvando rodada...';
+
+    try {
+      const res = await apiPost({
+        action: 'criarRodada',
+        adminId: state.user.id_usuario,
+        descricao,
+        valorTotal,
+        participantes
+      });
+      showMsg('adminRodadaFeedback', res.message, res.success ? 'ok' : 'err');
+      if (res.success) {
+        document.getElementById('rodadaDescricao').value = '';
+        document.getElementById('rodadaValorTotal').value = '';
+        await carregarDashboard();
+      }
+    } catch (err) {
+      showMsg('adminRodadaFeedback', err.message, 'err');
+    } finally {
+      btn.textContent = 'Lançar Rodada e Gerar Dívidas';
+      recalcularPreviewRodada();
+    }
+  }
+
+  // =========================================================================
+  // NOTIFICAÇÕES PUSH (USANDO A MESMA CHAVE VAPID DO BOLÃO DA COPA)
+  // =========================================================================
+  function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i);
+    return outputArray;
+  }
+
+  async function ativarNotificacoesPush() {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      alert('Seu navegador não suporta notificações Push (no iPhone, adicione o site à Tela de Início primeiro).');
+      return;
+    }
+    if (!VAPID_PUBLIC_KEY || VAPID_PUBLIC_KEY.includes('COLE_AQUI')) {
+      alert('Configure a VAPID_PUBLIC_KEY no arquivo index.html antes de ativar o Push.');
+      return;
+    }
+
+    try {
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') {
+        alert('Permissão de notificação negada.');
+        return;
+      }
+
+      const reg = await navigator.serviceWorker.register('./sw.js');
+      await navigator.serviceWorker.ready;
+
+      const subscription = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+      });
+
+      const res = await apiPost({
+        action: 'salvarPushSubscription',
+        id_usuario: state.user.id_usuario,
+        subscriptionJson: JSON.stringify(subscription)
+      });
+
+      alert(res.message || 'Notificações Push ativadas!');
+    } catch (err) {
+      alert('Erro ao ativar Push: ' + err.message);
+    }
+  }
+</script>
+</body>
+</html>
