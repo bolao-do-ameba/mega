@@ -81,7 +81,8 @@
       border: 1px solid var(--border); background: var(--surface-2);
       color: var(--text); font-size: 0.95rem; outline: none;
     }
-    input:focus, select:focus { border-color: var(--primary); }
+    textarea { resize: vertical; min-height: 110px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    input:focus, select:focus, textarea:focus { border-color: var(--primary); }
 
     button {
       cursor: pointer; border: none; border-radius: 8px;
@@ -97,31 +98,44 @@
     .btn-sm { padding: 6px 10px; font-size: 0.8rem; }
 
     .doc-link {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 32px;
-      height: 32px;
-      border-radius: 8px;
-      background: rgba(59, 130, 246, 0.16);
-      border: 1px solid rgba(59, 130, 246, 0.35);
-      text-decoration: none;
-      font-size: 1rem;
-      margin-right: 4px;
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 32px; height: 32px; border-radius: 8px;
+      background: rgba(59, 130, 246, 0.16); border: 1px solid rgba(59, 130, 246, 0.35);
+      text-decoration: none; font-size: 1rem; margin-right: 4px;
       transition: transform 0.12s, background 0.15s;
     }
-    .doc-link:hover {
-      background: rgba(59, 130, 246, 0.32);
-      transform: scale(1.06);
+    .doc-link:hover { background: rgba(59, 130, 246, 0.32); transform: scale(1.06); }
+
+    /* Bolinhas da Mega-Sena */
+    .balls-wrap { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 10px 0; }
+    .ball {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 38px; height: 38px; border-radius: 50%;
+      font-weight: 800; font-size: 0.95rem;
+      background: linear-gradient(145deg, #10b981, #047857);
+      color: #fff; box-shadow: 0 2px 8px rgba(16, 185, 129, 0.35);
+    }
+    .ball-sm {
+      width: 30px; height: 30px; font-size: 0.8rem;
+      background: #1e293b; color: #94a3b8; border: 1px solid var(--border); box-shadow: none;
+    }
+    .ball-hit {
+      background: linear-gradient(145deg, #10b981, #059669) !important;
+      color: #fff !important; border-color: #34d399 !important;
+      box-shadow: 0 0 8px rgba(16, 185, 129, 0.55) !important;
+    }
+    .jogo-row {
+      display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+      padding: 8px 10px; border-radius: 8px; background: #0f172a; border: 1px solid var(--border);
+      margin-bottom: 6px;
+    }
+    .mega-banner {
+      background: linear-gradient(135deg, rgba(6, 78, 59, 0.45), rgba(19, 30, 49, 0.95));
+      border: 1px solid rgba(16, 185, 129, 0.4);
     }
 
-    .tabs {
-      display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 16px;
-    }
-    .tab-btn {
-      background: var(--surface); color: var(--muted); border: 1px solid var(--border);
-      white-space: nowrap;
-    }
+    .tabs { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 16px; }
+    .tab-btn { background: var(--surface); color: var(--muted); border: 1px solid var(--border); white-space: nowrap; }
     .tab-btn.active { background: var(--primary); color: #052e16; border-color: var(--primary); }
 
     .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
@@ -142,9 +156,7 @@
     th { color: var(--muted); font-size: 0.78rem; text-transform: uppercase; }
     .table-wrap { overflow-x: auto; }
 
-    .alert {
-      padding: 12px; border-radius: 8px; margin-top: 12px; font-size: 0.88rem; line-height: 1.45;
-    }
+    .alert { padding: 12px; border-radius: 8px; margin-top: 12px; font-size: 0.88rem; line-height: 1.45; }
     .alert-ok { background: rgba(16, 185, 129, 0.14); border: 1px solid rgba(16, 185, 129, 0.4); color: #a7f3d0; }
     .alert-warn { background: rgba(245, 158, 11, 0.14); border: 1px solid rgba(245, 158, 11, 0.4); color: #fde68a; }
     .alert-err { background: rgba(239, 68, 68, 0.14); border: 1px solid rgba(239, 68, 68, 0.4); color: #fecaca; }
@@ -164,7 +176,7 @@
       font-size: 0.88rem;
     }
     .muted { color: var(--muted); font-size: 0.84rem; }
-    details summary { cursor: pointer; color: var(--muted); font-size: 0.82rem; margin-top: 8px; }
+    details summary { cursor: pointer; color: var(--muted); font-size: 0.84rem; margin-top: 8px; font-weight: 600; }
     pre {
       background: #090f1a; padding: 10px; border-radius: 8px; overflow-x: auto;
       font-size: 0.76rem; color: #cbd5e1; margin-top: 6px; white-space: pre-wrap;
@@ -205,10 +217,22 @@
 
   <!-- APP PRINCIPAL -->
   <main id="mainApp" class="hidden">
+    <!-- CARD ÚLTIMO RESULTADO DA MEGA-SENA -->
+    <section id="cardUltimoResultado" class="card mega-banner">
+      <div class="row-between">
+        <h2>🎱 Último Resultado Oficial da Mega-Sena</h2>
+        <div id="adminBuscaResultadoWrap" class="hidden" style="display:flex; gap:6px; align-items:center;">
+          <input id="inputConcursoManual" type="number" placeholder="Nº concurso (opcional)" style="width:165px; padding:6px 8px; font-size:0.8rem;" />
+          <button id="btnBuscarMega" class="btn-primary btn-sm" onclick="forcarBuscaResultado()">🔄 Buscar Agora</button>
+        </div>
+      </div>
+      <div id="conteudoUltimoResultado" class="muted">Carregando resultados...</div>
+    </section>
+
     <nav class="tabs">
       <button class="tab-btn active" data-tab="tabPagar" onclick="trocarAba('tabPagar', this)">💸 Pagar & Comprovante</button>
       <button class="tab-btn" data-tab="tabRankings" onclick="trocarAba('tabRankings', this)">🏆 Rankings</button>
-      <button class="tab-btn" data-tab="tabRodadas" onclick="trocarAba('tabRodadas', this)">🎱 Rodadas</button>
+      <button class="tab-btn" data-tab="tabRodadas" onclick="trocarAba('tabRodadas', this)">🎱 Rodadas & Conferência</button>
       <button class="tab-btn" data-tab="tabCadastro" onclick="trocarAba('tabCadastro', this)">👤 Nome no Comprovante</button>
       <button id="tabAdminBtn" class="tab-btn hidden" data-tab="tabAdmin" onclick="trocarAba('tabAdmin', this)">⚙️ Admin: Nova Rodada</button>
     </nav>
@@ -249,7 +273,6 @@
 
         <div id="leitorResultado"></div>
 
-        <!-- SUGESTÃO PÓS-UPLOAD DE MELHORIA DO NOME NO COMPROVANTE -->
         <div id="boxSugestaoPosUpload" class="alert alert-warn hidden"></div>
 
         <details id="detalhesTextoBruto" class="hidden">
@@ -276,16 +299,16 @@
       </div>
     </section>
 
-    <!-- ABA 3: RODADAS -->
+    <!-- ABA 3: RODADAS E CONFERÊNCIA AUTOMÁTICA -->
     <section id="tabRodadas" class="tab-content hidden">
       <div class="card">
-        <h2>🎱 Histórico de Rodadas e Rateios</h2>
-        <p class="muted" style="margin-bottom:12px;">Clique no ícone 📄 para visualizar o comprovante salvo no Google Drive.</p>
+        <h2>🎱 Histórico de Rodadas, Jogos & Conferência</h2>
+        <p class="muted" style="margin-bottom:12px;">Clique em 📄 para ver o comprovante no Drive. Quando o concurso for sorteado, os números acertados acendem em verde automaticamente.</p>
         <div id="listaRodadas"></div>
       </div>
     </section>
 
-    <!-- ABA 4: CADASTRO / NOME NO COMPROVANTE COM SUGESTÃO INTELIGENTE -->
+    <!-- ABA 4: CADASTRO / NOME NO COMPROVANTE -->
     <section id="tabCadastro" class="tab-content hidden">
       <div class="card">
         <h2>👤 Cadastro & Nome no Comprovante</h2>
@@ -322,7 +345,7 @@
       </div>
     </section>
 
-    <!-- ABA 5: ADMIN - CRIAR NOVA RODADA -->
+    <!-- ABA 5: ADMIN - CRIAR NOVA RODADA + CONCURSO + JOGOS -->
     <section id="tabAdmin" class="tab-content hidden">
       <div class="card">
         <h2>⚙️ Cadastrar Nova Rodada da Mega-Sena</h2>
@@ -330,11 +353,23 @@
           Regra de cotas inteiras: quem pegar <strong>0,5 cota (meia)</strong> precisa formar par com outro participante de <strong>0,5 cota</strong> para fechar número inteiro.
         </p>
 
-        <label for="rodadaDescricao">Descrição da Rodada / Concurso</label>
-        <input id="rodadaDescricao" type="text" placeholder="Ex: Mega-Sena Concurso 2850 - 10 jogos" />
+        <div class="grid-2">
+          <div>
+            <label for="rodadaDescricao">Descrição da Rodada</label>
+            <input id="rodadaDescricao" type="text" placeholder="Ex: Bolão Mega-Sena Acumulada" />
+          </div>
+          <div>
+            <label for="rodadaConcurso">Nº do Concurso (para conferência automática)</label>
+            <input id="rodadaConcurso" type="number" min="1" placeholder="Ex: 2945" />
+          </div>
+        </div>
 
         <label for="rodadaValorTotal">Valor Total gasto nos jogos (R$)</label>
         <input id="rodadaValorTotal" type="number" step="0.01" min="0" placeholder="Ex: 350.00" oninput="recalcularPreviewRodada()" />
+
+        <label for="rodadaJogosTexto">Jogos feitos (opcional — cole um jogo por linha, de 6 a 20 dezenas entre 01 e 60)</label>
+        <textarea id="rodadaJogosTexto" placeholder="Exemplo:&#10;04 12 23 35 48 59&#10;02-09-17-31-44-55-60&#10;05, 11, 22, 33, 41, 58" oninput="atualizarPreviewJogos()"></textarea>
+        <div id="previewJogosInfo" class="muted" style="margin-top:4px;">Nenhum jogo informado.</div>
 
         <h3 style="margin-top:16px;">Participantes e Cotas</h3>
         <div id="listaParticipantesAdmin"></div>
@@ -373,6 +408,7 @@
     usuarios: [],
     rodadas: [],
     participacoes: [],
+    resultados: [],
     devedoresAtuais: [],
     rankingHistorico: [],
     pendenciaSelecionada: null,
@@ -464,10 +500,46 @@
   }
 
   // =========================================================================
-  // UTILITÁRIOS DE FORMATAÇÃO, BASE64 E SIMILARIDADE DETERMINÍSTICA (SEM IA)
+  // UTILITÁRIOS DE FORMATAÇÃO, PARSER DE JOGOS E SIMILARIDADE (SEM IA)
   // =========================================================================
   function formatBRL(v) {
     return (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  }
+
+  function parsearJogosTexto(texto) {
+    const linhas = String(texto || '').split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    const jogosValidos = [];
+    const erros = [];
+
+    linhas.forEach((linha, idx) => {
+      const nums = (linha.match(/\d+/g) || [])
+        .map(n => parseInt(n, 10))
+        .filter(n => n >= 1 && n <= 60);
+      const unicos = [...new Set(nums)].sort((a, b) => a - b);
+
+      if (unicos.length >= 6 && unicos.length <= 20) {
+        jogosValidos.push(unicos.map(n => String(n).padStart(2, '0')));
+      } else {
+        erros.push(`Linha ${idx + 1}: encontrada(s) ${unicos.length} dezena(s) válida(s) (precisa ter entre 6 e 20 de 01 a 60).`);
+      }
+    });
+
+    return { jogosValidos, erros };
+  }
+
+  function atualizarPreviewJogos() {
+    const txt = document.getElementById('rodadaJogosTexto').value;
+    const infoEl = document.getElementById('previewJogosInfo');
+    if (!txt.trim()) {
+      infoEl.innerHTML = 'Nenhum jogo informado.';
+      return;
+    }
+    const { jogosValidos, erros } = parsearJogosTexto(txt);
+    let html = `<span style="color:#34d399;"><strong>${jogosValidos.length}</strong> jogo(s) válido(s) reconhecido(s).</span>`;
+    if (erros.length > 0) {
+      html += `<br/><span style="color:#fbbf24;">⚠️ ${erros.join(' | ')}</span>`;
+    }
+    infoEl.innerHTML = html;
   }
 
   function arquivoParaBase64(file) {
@@ -596,15 +668,12 @@
 
     document.getElementById('userNameTop').textContent = state.user.nome;
     const roleBadge = document.getElementById('userRoleBadge');
-    roleBadge.textContent = state.user.perfil === 'admin' ? 'ADMIN' : 'PARTICIPANTE';
-    roleBadge.className = state.user.perfil === 'admin' ? 'badge badge-amber' : 'badge badge-green';
+    const isAdmin = state.user.perfil === 'admin';
+    roleBadge.textContent = isAdmin ? 'ADMIN' : 'PARTICIPANTE';
+    roleBadge.className = isAdmin ? 'badge badge-amber' : 'badge badge-green';
 
-    const tabAdminBtn = document.getElementById('tabAdminBtn');
-    if (state.user.perfil === 'admin') {
-      tabAdminBtn.classList.remove('hidden');
-    } else {
-      tabAdminBtn.classList.add('hidden');
-    }
+    document.getElementById('tabAdminBtn').classList.toggle('hidden', !isAdmin);
+    document.getElementById('adminBuscaResultadoWrap').classList.toggle('hidden', !isAdmin);
 
     if (ONESIGNAL_APP_ID && !ONESIGNAL_APP_ID.includes('COLE_AQUI')) {
       window.OneSignalDeferred.push(async function(OneSignal) {
@@ -625,7 +694,7 @@
   }
 
   // =========================================================================
-  // CARREGAMENTO DO DASHBOARD
+  // CARREGAMENTO DO DASHBOARD E ÚLTIMO RESULTADO DA MEGA-SENA
   // =========================================================================
   async function carregarDashboard() {
     try {
@@ -635,6 +704,7 @@
       state.usuarios = res.usuarios || [];
       state.rodadas = res.rodadas || [];
       state.participacoes = res.participacoes || [];
+      state.resultados = res.resultados || [];
       state.devedoresAtuais = res.devedoresAtuais || [];
       state.rankingHistorico = res.rankingHistorico || [];
       state.configPix = res.configPix || state.configPix;
@@ -648,6 +718,7 @@
       document.getElementById('pixRecebedor').textContent = state.configPix.NOME_RECEBEDOR || '-';
       document.getElementById('pixChave').textContent = state.configPix.CHAVE_PIX || '-';
 
+      renderUltimoResultado();
       renderMinhasPendencias();
       renderRankings();
       renderRodadas();
@@ -655,6 +726,56 @@
       if (state.user.perfil === 'admin') renderAdminFormRodada();
     } catch (err) {
       alert('Erro ao carregar dados: ' + err.message);
+    }
+  }
+
+  function renderUltimoResultado() {
+    const el = document.getElementById('conteudoUltimoResultado');
+    if (!state.resultados || state.resultados.length === 0) {
+      el.innerHTML = `<span class="muted">Nenhum resultado buscado ainda. ${state.user.perfil === 'admin' ? 'Clique em "🔄 Buscar Agora" para carregar o último sorteio.' : ''}</span>`;
+      return;
+    }
+
+    const ult = state.resultados[0];
+    const bolinhas = ult.dezenas.map(d => `<span class="ball">${d}</span>`).join('');
+    const badgeStatus = ult.acumulou
+      ? `<span class="badge badge-amber">ACUMULOU!</span>`
+      : `<span class="badge badge-green">TEVE GANHADOR NA SENA!</span>`;
+    const proxInfo = ult.valor_estimado_proximo > 0
+      ? ` • Próximo (${ult.data_proximo || 'em breve'}): <strong>${formatBRL(ult.valor_estimado_proximo)}</strong>`
+      : '';
+
+    el.innerHTML = `
+      <div class="row-between">
+        <div><strong>Concurso ${ult.concurso}</strong> <span class="muted">(${ult.data_apuracao || '-'})</span> ${badgeStatus}</div>
+        <div class="muted">${proxInfo}</div>
+      </div>
+      <div class="balls-wrap">${bolinhas}</div>
+    `;
+  }
+
+  async function forcarBuscaResultado() {
+    const btn = document.getElementById('btnBuscarMega');
+    const concursoManual = document.getElementById('inputConcursoManual').value.trim();
+    btn.disabled = true;
+    btn.textContent = 'Buscando...';
+
+    try {
+      const res = await apiPost({
+        action: 'buscarResultadoAgora',
+        adminId: state.user.id_usuario,
+        concurso: concursoManual
+      });
+      alert(res.message || 'Busca concluída.');
+      if (res.success) {
+        document.getElementById('inputConcursoManual').value = '';
+        await carregarDashboard();
+      }
+    } catch (err) {
+      alert('Erro ao buscar resultado: ' + err.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '🔄 Buscar Agora';
     }
   }
 
@@ -1000,8 +1121,78 @@
   }
 
   // =========================================================================
-  // ABA 3: RODADAS (COM ÍCONE 📄 DE COMPROVANTE VISÍVEL PARA TODOS)
+  // ABA 3: RODADAS + CONFERÊNCIA AUTOMÁTICA DOS JOGOS + ÍCONE 📄
   // =========================================================================
+  function montarBlocoJogosConferencia(rodada) {
+    const jogos = Array.isArray(rodada.jogos) ? rodada.jogos : [];
+    if (jogos.length === 0) return '';
+
+    const resultado = rodada.concurso
+      ? state.resultados.find(res => String(res.concurso) === String(rodada.concurso))
+      : null;
+    const setSorteadas = resultado ? new Set(resultado.dezenas) : null;
+
+    let senas = 0, quinas = 0, quadras = 0, maxAcertos = 0;
+
+    const linhasJogos = jogos.map((jogo, idx) => {
+      let acertos = 0;
+      const bolinhasHtml = jogo.map(num => {
+        const acertou = setSorteadas && setSorteadas.has(num);
+        if (acertou) acertos += 1;
+        return `<span class="ball ball-sm ${acertou ? 'ball-hit' : ''}">${num}</span>`;
+      }).join('');
+
+      let badgeAcerto = `<span class="badge badge-blue">Aguardando</span>`;
+      if (setSorteadas) {
+        if (acertos > maxAcertos) maxAcertos = acertos;
+        if (acertos >= 6) {
+          senas += 1;
+          badgeAcerto = `<span class="badge badge-green">🎉 SENA (6)!</span>`;
+        } else if (acertos === 5) {
+          quinas += 1;
+          badgeAcerto = `<span class="badge badge-green">🏆 QUINA (5)!</span>`;
+        } else if (acertos === 4) {
+          quadras += 1;
+          badgeAcerto = `<span class="badge badge-amber">🍀 QUADRA (4)!</span>`;
+        } else {
+          badgeAcerto = `<span class="muted">${acertos} acerto(s)</span>`;
+        }
+      }
+
+      return `
+        <div class="jogo-row">
+          <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+            <span class="muted" style="min-width:52px;">Jogo ${idx + 1}</span>
+            ${bolinhasHtml}
+          </div>
+          <div>${badgeAcerto}</div>
+        </div>
+      `;
+    }).join('');
+
+    let resumoTopo = `🎱 Ver ${jogos.length} jogo(s) apostado(s)`;
+    if (resultado) {
+      if (senas > 0) resumoTopo += ` — 🎉 ${senas} SENA(S)!`;
+      else if (quinas > 0) resumoTopo += ` — 🏆 ${quinas} QUINA(S)!`;
+      else if (quadras > 0) resumoTopo += ` — 🍀 ${quadras} QUADRA(S)!`;
+      else resumoTopo += ` — Conferido (máx. ${maxAcertos} acerto(s))`;
+    } else if (rodada.concurso) {
+      resumoTopo += ` — Aguardando sorteio do concurso ${rodada.concurso}`;
+    }
+
+    const cabecalhoSorteio = resultado
+      ? `<div class="muted" style="margin:8px 0;">Resultado oficial Concurso <strong>${resultado.concurso}</strong> (${resultado.data_apuracao}): <strong>${resultado.dezenas.join(' - ')}</strong></div>`
+      : '';
+
+    return `
+      <details ${resultado ? 'open' : ''} style="margin-top:10px; border-top:1px solid var(--border); padding-top:8px;">
+        <summary>${resumoTopo}</summary>
+        ${cabecalhoSorteio}
+        <div style="margin-top:8px;">${linhasJogos}</div>
+      </details>
+    `;
+  }
+
   function renderRodadas() {
     const container = document.getElementById('listaRodadas');
     if (state.rodadas.length === 0) {
@@ -1040,11 +1231,14 @@
         `;
       }).join('');
 
+      const tagConcurso = r.concurso ? `<span class="badge badge-blue">Concurso ${r.concurso}</span>` : '';
+      const blocoJogos = montarBlocoJogosConferencia(r);
+
       return `
         <div class="list-item">
           <div class="row-between" style="margin-bottom:8px;">
             <div>
-              <strong>${r.descricao}</strong>
+              <strong>${r.descricao}</strong> ${tagConcurso}
               <div class="muted">${r.data_criacao} • Total: ${formatBRL(r.valor_total)} • ${r.total_cotas} cota(s) de ${formatBRL(r.valor_cota)}</div>
             </div>
           </div>
@@ -1054,6 +1248,7 @@
               <tbody>${linhas}</tbody>
             </table>
           </div>
+          ${blocoJogos}
         </div>
       `;
     }).join('');
@@ -1182,7 +1377,7 @@
   }
 
   // =========================================================================
-  // ABA 5: ADMIN — NOVA RODADA COM TRAVA DE COTAS INTEIRAS
+  // ABA 5: ADMIN — NOVA RODADA COM TRAVA DE COTAS INTEIRAS + JOGOS
   // =========================================================================
   function renderAdminFormRodada() {
     const container = document.getElementById('listaParticipantesAdmin');
@@ -1232,7 +1427,16 @@
 
   async function criarNovaRodada() {
     const descricao = document.getElementById('rodadaDescricao').value.trim();
+    const concurso = document.getElementById('rodadaConcurso').value.trim();
     const valorTotal = parseFloat(document.getElementById('rodadaValorTotal').value);
+    const jogosTexto = document.getElementById('rodadaJogosTexto').value.trim();
+    const { jogosValidos, erros } = parsearJogosTexto(jogosTexto);
+
+    if (jogosTexto && erros.length > 0) {
+      showMsg('adminRodadaFeedback', 'Corrija as linhas de jogos antes de salvar: ' + erros.join(' | '), 'err');
+      return;
+    }
+
     const selects = [...document.querySelectorAll('.select-cota-admin')];
     const participantes = selects
       .map(s => ({ id_usuario: s.dataset.uid, nome_usuario: s.dataset.nome, fracao_cota: parseFloat(s.value) }))
@@ -1253,12 +1457,17 @@
         adminId: state.user.id_usuario,
         descricao,
         valorTotal,
+        concurso,
+        jogos: jogosValidos,
         participantes
       });
       showMsg('adminRodadaFeedback', res.message, res.success ? 'ok' : 'err');
       if (res.success) {
         document.getElementById('rodadaDescricao').value = '';
+        document.getElementById('rodadaConcurso').value = '';
         document.getElementById('rodadaValorTotal').value = '';
+        document.getElementById('rodadaJogosTexto').value = '';
+        atualizarPreviewJogos();
         await carregarDashboard();
       }
     } catch (err) {
