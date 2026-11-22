@@ -30,6 +30,7 @@
       --border: #263859;
       --primary: #10b981;
       --primary-hover: #059669;
+      --bolao-accent: #10b981;
       --warning: #f59e0b;
       --danger: #ef4444;
       --text: #f1f5f9;
@@ -53,18 +54,32 @@
     header {
       background: linear-gradient(135deg, #064e3b, #0f172a);
       border-bottom: 1px solid var(--border);
-      padding: 14px 16px;
+      padding: 12px 16px;
       position: sticky;
       top: 0;
       z-index: 20;
+      transition: background 0.25s ease, border-color 0.25s ease;
     }
     .header-inner {
       max-width: 960px; margin: 0 auto;
       display: flex; flex-wrap: wrap; gap: 10px;
       align-items: center; justify-content: space-between;
     }
-    .brand { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 1.1rem; }
+    .brand { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 1.05rem; flex-wrap: wrap; }
     .header-actions { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+
+    .bolao-switcher-select {
+      width: auto;
+      max-width: 210px;
+      padding: 6px 10px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      border-radius: 8px;
+      background: rgba(15, 23, 42, 0.82);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: var(--text);
+      cursor: pointer;
+    }
 
     .badge {
       display: inline-block; padding: 3px 8px; border-radius: 999px;
@@ -84,7 +99,7 @@
       padding: 18px;
       margin-bottom: 16px;
     }
-    .card h2 { font-size: 1.08rem; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+    .card h2 { font-size: 1.08rem; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
     .card h3 { font-size: 0.95rem; margin-bottom: 8px; color: var(--muted); }
 
     label { display: block; font-size: 0.85rem; color: var(--muted); margin-bottom: 6px; margin-top: 10px; }
@@ -108,6 +123,43 @@
     .btn-danger { background: rgba(239, 68, 68, 0.2); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.35); }
     .btn-warning { background: rgba(245, 158, 11, 0.2); color: #fde68a; border: 1px solid rgba(245, 158, 11, 0.35); }
     .btn-sm { padding: 6px 10px; font-size: 0.8rem; }
+
+    /* Lobby Meus Bolões */
+    .lobby-wrap { max-width: 760px; margin: 26px auto; }
+    .lobby-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 14px;
+      margin-top: 14px;
+    }
+    .bolao-card {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-left: 5px solid var(--bolao-accent);
+      border-radius: 12px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 12px;
+      transition: transform 0.14s ease, border-color 0.15s ease;
+    }
+    .bolao-card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(255, 255, 255, 0.28);
+    }
+    .bolao-card-title {
+      font-size: 1.04rem;
+      font-weight: 800;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+    .bolao-card-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
 
     .doc-link {
       display: inline-flex; align-items: center; justify-content: center;
@@ -239,7 +291,7 @@
     .row-between { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
 
     .pix-box {
-      background: var(--surface-2); border: 1px dashed var(--primary);
+      background: var(--surface-2); border: 1px dashed var(--bolao-accent);
       border-radius: 10px; padding: 12px; margin-bottom: 14px;
       display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
     }
@@ -581,11 +633,12 @@
     }
 
     @media (max-width: 520px) {
-      header { padding: 12px; }
-      .brand { font-size: 1rem; }
+      header { padding: 10px 12px; }
+      .brand { font-size: 0.96rem; }
       .container { padding: 12px; }
       .card { padding: 14px; }
       #userNameTop { display: none; }
+      .bolao-switcher-select { max-width: 150px; font-size: 0.76rem; }
       .bottom-nav-btn { font-size: 0.6rem; }
       .bottom-nav-btn svg { width: 19px; height: 19px; }
     }
@@ -596,33 +649,57 @@
 <header id="appHeader" class="hidden">
   <div class="header-inner">
     <div class="brand">
-      🍀 Bolão do Ameba
+      <span>🍀 <span id="bolaoNomeHeader">Bolão do Ameba</span></span>
+      <span id="bolaoTipoBadge" class="badge badge-blue hidden"></span>
       <span id="userRoleBadge" class="badge badge-green"></span>
     </div>
     <div class="header-actions">
+      <select id="headerBolaoSelect" class="bolao-switcher-select hidden" onchange="aoTrocarSelectBolao(this.value)" title="Alternar bolão"></select>
+      <button id="btnLobbyTop" class="btn-secondary btn-sm hidden" onclick="abrirLobby()" title="Ver todos os meus bolões">⇄ Bolões</button>
       <span id="userNameTop" class="muted"></span>
       <button id="btnPush" class="btn-warning btn-sm" onclick="ativarNotificacoesPush()">🔔 Push</button>
-      <button class="btn-secondary btn-sm" onclick="carregarDashboard()">↻</button>
+      <button class="btn-secondary btn-sm" onclick="carregarDashboard()" title="Atualizar">↻</button>
       <button class="btn-danger btn-sm" onclick="fazerLogout()">Sair</button>
     </div>
   </div>
 </header>
 
 <div class="container">
-  <!-- TELA DE LOGIN -->
+  <!-- TELA DE LOGIN ÚNICO -->
   <section id="loginSection" class="card login-box">
-    <h2>🍀 Bolão do Ameba</h2>
-    <label for="loginTelefone">Telefone</label>
+    <h2>🍀 Portal de Bolões</h2>
+    <p class="muted" style="margin-bottom:8px;">Entre com seu telefone e senha para acessar seus bolões.</p>
+
+    <label for="loginTelefone">Telefone (com DDD)</label>
     <input id="loginTelefone" type="tel" placeholder="12999999999" />
 
     <label for="loginSenha">Senha</label>
-    <input id="loginSenha" type="password" placeholder="••••••" />
+    <input id="loginSenha" type="password" placeholder="••••••" onkeydown="if(event.key==='Enter') fazerLogin()" />
 
     <button id="btnLogin" class="btn-primary" style="width:100%; margin-top:16px;" onclick="fazerLogin()">Entrar</button>
     <div id="loginFeedback"></div>
   </section>
 
-  <!-- APP PRINCIPAL -->
+  <!-- LOBBY: MEUS BOLÕES (SELEÇÃO DE SESSÃO) -->
+  <section id="lobbySection" class="lobby-wrap hidden">
+    <div class="card">
+      <div class="row-between" style="margin-bottom:8px;">
+        <div>
+          <h2 style="margin-bottom:4px;">🍀 Meus Bolões</h2>
+          <p class="muted">Olá, <strong id="lobbyUserName">-</strong>. Escolha qual bolão deseja acessar.</p>
+        </div>
+        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+          <button class="btn-secondary btn-sm" onclick="atualizarListaBoloesLobby()">↻ Atualizar</button>
+          <button class="btn-danger btn-sm" onclick="fazerLogout()">Sair</button>
+        </div>
+      </div>
+
+      <div id="lobbyFeedback"></div>
+      <div id="lobbyGrid" class="lobby-grid"></div>
+    </div>
+  </section>
+
+  <!-- APP PRINCIPAL (ISOLADO POR BOLÃO ATIVO) -->
   <main id="mainApp" class="hidden">
     <!-- CARD ÚLTIMO RESULTADO DA MEGA-SENA -->
     <section id="cardUltimoResultado" class="card mega-banner">
@@ -639,13 +716,13 @@
     <!-- ABA 1: PAGAR E LEITOR DE COMPROVANTE -->
     <section id="tabPagar" class="tab-content">
       <div class="card">
-        <h2>💸 Pix</h2>
+        <h2>💸 Pix <span id="pixBolaoBadge" class="badge badge-green"></span></h2>
         <div id="pixBoxArea" class="pix-box">
           <div>
-            <div class="muted">Recebedor</div>
+            <div class="muted">Recebedor deste bolão</div>
             <strong id="pixRecebedor">-</strong>
             <div class="muted" style="margin-top:4px;">Chave Pix</div>
-            <strong id="pixChave" style="color:var(--primary); word-break:break-all;">-</strong>
+            <strong id="pixChave" style="color:var(--bolao-accent); word-break:break-all;">-</strong>
           </div>
           <button class="btn-primary btn-sm" onclick="copiarPix()">Copiar Pix</button>
         </div>
@@ -815,7 +892,7 @@
       <div class="card tour-hero">
         <h2>🧭 Tour & Guia do App</h2>
         <p>
-          Faça um passeio interativo pelas telas do Bolão do Ameba com destaque em cada funcionalidade, ou consulte abaixo o manual completo de uso.
+          Faça um passeio interativo pelas telas do bolão com destaque em cada funcionalidade, ou consulte abaixo o manual completo de uso.
         </p>
         <button class="btn-primary" onclick="iniciarTour(0)" style="padding:12px 22px; font-size:0.95rem;">
           ▶ Iniciar Tour Interativo
@@ -848,7 +925,7 @@
           <div class="tour-guide-card">
             <div>
               <h3>💸 Pix & Leitor de Comprovantes</h3>
-              <p>Copie a chave Pix, faça o pagamento e toque em <strong>Anexar Comprovante</strong> (PDF ou print até 10 MB). A validação roda 100% no seu aparelho sem IA, conferindo valor exato, recebedor e ID único antifraude — e salva uma cópia automática no Google Drive.</p>
+              <p>Copie a chave Pix específica deste bolão, faça o pagamento e toque em <strong>Anexar Comprovante</strong> (PDF ou print até 10 MB). A validação roda 100% no seu aparelho sem IA, conferindo valor exato, recebedor e ID único antifraude — e salva uma cópia automática no Google Drive.</p>
             </div>
             <button class="btn-secondary btn-sm" onclick="iniciarTourNoPasso('pagar')">Destacar no app</button>
           </div>
@@ -856,7 +933,7 @@
           <div class="tour-guide-card">
             <div>
               <h3>🎟️ Jogos por Concurso</h3>
-              <p>Exibe todos os jogos apostados linha a linha agrupados e ordenados pelo número do concurso. Clique em cada concurso para expandir ou retrair. A conferência é feita estritamente contra o sorteio do respectivo concurso, acendendo em verde os acertos e destacando <strong>Quadra</strong>, <strong>Quina</strong> e <strong>Sena</strong>.</p>
+              <p>Exibe todos os jogos apostados neste bolão agrupados e ordenados pelo número do concurso. Clique em cada concurso para expandir ou retrair. A conferência acende em verde os acertos e destaca <strong>Quadra</strong>, <strong>Quina</strong> e <strong>Sena</strong>.</p>
             </div>
             <button class="btn-secondary btn-sm" onclick="iniciarTourNoPasso('jogos')">Destacar no app</button>
           </div>
@@ -888,7 +965,7 @@
           <div id="tourAdminGuideCard" class="tour-guide-card hidden">
             <div>
               <h3>⚙️ Painel Admin (Câmera OCR, Rodadas & Pix)</h3>
-              <p>Crie rodadas fechando <strong>cotas inteiras</strong> (0,5 precisa de par 0,5), use a <strong>Câmera do celular</strong> para ler jogos impressos do bilhete via OCR automático, use o botão <strong>Cancelar</strong> caso desista do cadastro e altere diretamente no site o <strong>Nome do Recebedor</strong> e a <strong>Chave Pix</strong>.</p>
+              <p>Crie rodadas fechando <strong>cotas inteiras</strong> (0,5 precisa de par 0,5), use a <strong>Câmera do celular</strong> para ler jogos impressos do bilhete via OCR automático, use o botão <strong>Cancelar</strong> caso desista do cadastro e altere diretamente no site o <strong>Nome do Recebedor</strong> e a <strong>Chave Pix</strong> deste bolão.</p>
             </div>
             <button class="btn-secondary btn-sm" onclick="iniciarTourNoPasso('admin')">Destacar no app</button>
           </div>
@@ -937,7 +1014,7 @@
         <textarea id="rodadaJogosTexto" placeholder="04 12 23 35 48 59&#10;02 09 17 31 44 55" oninput="atualizarPreviewJogos()"></textarea>
         <div id="previewJogosInfo" class="muted" style="margin-top:4px;">0 jogos</div>
 
-        <h3 style="margin-top:16px;">Participantes</h3>
+        <h3 style="margin-top:16px;">Participantes deste bolão</h3>
         <div id="listaParticipantesAdmin"></div>
 
         <div class="summary-strip" id="previewRodadaBox">
@@ -958,9 +1035,9 @@
         <div id="adminRodadaFeedback"></div>
       </div>
 
-      <!-- CARD ADMIN: ALTERAR NOME DO RECEBEDOR E CHAVE PIX -->
+      <!-- CARD ADMIN: ALTERAR NOME DO RECEBEDOR E CHAVE PIX DESTE BOLÃO -->
       <div id="cardConfigPix" class="card">
-        <h2>💸 Configurar Pix</h2>
+        <h2>💸 Configurar Pix <span id="cfgPixBolaoTag" class="badge badge-blue"></span></h2>
 
         <label for="cfgNomeRecebedor">Nome do Recebedor</label>
         <input id="cfgNomeRecebedor" type="text" placeholder="NOME COMPLETO DO RECEBEDOR" />
@@ -1058,6 +1135,12 @@
   const GAS_API_URL = (window.BOLAO_CONFIG && window.BOLAO_CONFIG.GAS_API_URL) || '';
   const ONESIGNAL_APP_ID = (window.BOLAO_CONFIG && window.BOLAO_CONFIG.ONESIGNAL_APP_ID) || '';
 
+  const STORAGE_KEYS = {
+    USER: 'bolao_ameba_user',
+    BOLOES: 'bolao_ameba_boloes',
+    BOLAO_ID: 'bolao_ameba_bolao_id'
+  };
+
   if (window.pdfjsLib) {
     pdfjsLib.GlobalWorkerOptions.workerSrc =
       'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -1065,6 +1148,9 @@
 
   let state = {
     user: null,
+    boloes: [],
+    bolaoId: '',
+    bolaoAtual: null,
     configPix: { NOME_RECEBEDOR: '', CHAVE_PIX: '', URL_PORTAL: '' },
     usuarios: [],
     rodadas: [],
@@ -1165,8 +1251,30 @@
   }
 
   // =========================================================================
-  // UTILITÁRIOS DE FORMATAÇÃO, DATAS, PARSER DE JOGOS E SIMILARIDADE (SEM IA)
+  // UTILITÁRIOS DE FORMATAÇÃO, TEMA, URL E SIMILARIDADE (SEM IA)
   // =========================================================================
+  function obterParamUrl(chave) {
+    try {
+      return new URLSearchParams(window.location.search).get(chave) || '';
+    } catch (_) {
+      return '';
+    }
+  }
+
+  function hexParaRgba(hex, alpha) {
+    const clean = String(hex || '').replace('#', '').trim();
+    if (!/^[0-9a-fA-F]{3}$|^[0-9a-fA-F]{6}$/.test(clean)) {
+      return `rgba(16, 185, 129, ${alpha})`;
+    }
+    const full = clean.length === 3
+      ? clean.split('').map(c => c + c).join('')
+      : clean;
+    const r = parseInt(full.substring(0, 2), 16);
+    const g = parseInt(full.substring(2, 4), 16);
+    const b = parseInt(full.substring(4, 6), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  }
+
   function formatBRL(v) {
     return (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   }
@@ -1188,7 +1296,6 @@
       'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
     ];
 
-    // Formato dd/MM/yyyy ou dd/MM/yyyy HH:mm
     const mBR = raw.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
     if (mBR) {
       const mes = parseInt(mBR[2], 10);
@@ -1201,7 +1308,6 @@
       }
     }
 
-    // Formato ISO yyyy-MM-dd
     const mISO = raw.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
     if (mISO) {
       const ano = mISO[1];
@@ -1214,7 +1320,6 @@
       }
     }
 
-    // Fallback via Date
     const d = new Date(raw);
     if (!isNaN(d.getTime())) {
       const mes = d.getMonth() + 1;
@@ -1326,19 +1431,108 @@
 
   function showMsg(elId, msg, tipo = 'ok') {
     const cls = tipo === 'err' ? 'alert-err' : tipo === 'warn' ? 'alert-warn' : 'alert-ok';
-    document.getElementById(elId).innerHTML = `<div class="alert ${cls}">${msg}</div>`;
+    const el = document.getElementById(elId);
+    if (el) el.innerHTML = `<div class="alert ${cls}">${msg}</div>`;
+  }
+
+  // =========================================================================
+  // IDENTIDADE VISUAL, PERMISSÕES E PIX DINÂMICO POR BOLÃO (FASE 2)
+  // =========================================================================
+  function aplicarTemaEIdentidadeBolao() {
+    const bolao = state.bolaoAtual || {
+      bolao_id: state.bolaoId || 'bolao_principal',
+      nome: 'Bolão do Ameba',
+      tipo: 'FREQUENTE',
+      cor_tema: '#10b981'
+    };
+
+    const cor = bolao.cor_tema || '#10b981';
+    document.documentElement.style.setProperty('--bolao-accent', cor);
+
+    const header = document.getElementById('appHeader');
+    if (header) {
+      header.style.background = `linear-gradient(135deg, ${hexParaRgba(cor, 0.38)}, #0f172a 72%)`;
+      header.style.borderBottomColor = hexParaRgba(cor, 0.45);
+    }
+
+    document.title = bolao.nome || 'Portal de Bolões';
+    const elNomeHeader = document.getElementById('bolaoNomeHeader');
+    if (elNomeHeader) elNomeHeader.textContent = bolao.nome || 'Bolão';
+
+    const elTipo = document.getElementById('bolaoTipoBadge');
+    if (elTipo) {
+      const tipoUp = String(bolao.tipo || '').toUpperCase();
+      if (tipoUp) {
+        elTipo.classList.remove('hidden');
+        elTipo.textContent = tipoUp;
+        elTipo.className = tipoUp === 'COMEMORATIVO' ? 'badge badge-gold' : 'badge badge-blue';
+      } else {
+        elTipo.classList.add('hidden');
+      }
+    }
+
+    const elPixTag = document.getElementById('pixBolaoBadge');
+    if (elPixTag) {
+      elPixTag.textContent = bolao.nome || '';
+      elPixTag.style.background = hexParaRgba(cor, 0.2);
+      elPixTag.style.color = cor;
+    }
+
+    const elCfgTag = document.getElementById('cfgPixBolaoTag');
+    if (elCfgTag) elCfgTag.textContent = bolao.nome || '';
+
+    atualizarPermissoesInterface();
+    atualizarSeletorBolaoHeader();
+  }
+
+  function atualizarPermissoesInterface() {
+    if (!state.user) return;
+    const isAdmin = state.user.perfil === 'admin';
+    const isSuper = Boolean(state.user.super_admin);
+
+    document.getElementById('userNameTop').textContent = state.user.nome;
+    const roleBadge = document.getElementById('userRoleBadge');
+    if (isSuper) {
+      roleBadge.textContent = 'SUPER ADMIN';
+      roleBadge.className = 'badge badge-gold';
+    } else if (isAdmin) {
+      roleBadge.textContent = 'ADMIN';
+      roleBadge.className = 'badge badge-amber';
+    } else {
+      roleBadge.textContent = 'MEMBRO';
+      roleBadge.className = 'badge badge-green';
+    }
+
+    document.getElementById('tabAdminBtn').classList.toggle('hidden', !isAdmin);
+    document.getElementById('adminBuscaResultadoWrap').classList.toggle('hidden', !isAdmin);
+    document.getElementById('tourAdminGuideCard').classList.toggle('hidden', !isAdmin);
+
+    if (!isAdmin && state.abaAtual === 'tabAdmin') {
+      trocarAba('tabPagar');
+    }
+  }
+
+  function atualizarSeletorBolaoHeader() {
+    const sel = document.getElementById('headerBolaoSelect');
+    const btnLobby = document.getElementById('btnLobbyTop');
+    const aprovados = (state.boloes || []).filter(b => b.status_membro === 'APROVADO');
+    const mostrarControles = aprovados.length > 1 || (state.boloes || []).length > 1;
+
+    if (sel) {
+      sel.classList.toggle('hidden', aprovados.length <= 1);
+      if (aprovados.length > 1) {
+        sel.innerHTML = aprovados.map(b =>
+          `<option value="${escapeHtml(b.bolao_id)}" ${b.bolao_id === state.bolaoId ? 'selected' : ''}>${escapeHtml(b.nome)}</option>`
+        ).join('');
+      }
+    }
+
+    if (btnLobby) {
+      btnLobby.classList.toggle('hidden', !mostrarControles);
+    }
   }
 
   function aplicarConfigPixNaInterface() {
-    try {
-      const overrideRaw = localStorage.getItem('bolao_ameba_pix_override');
-      if (overrideRaw) {
-        const ov = JSON.parse(overrideRaw);
-        if (ov && ov.NOME_RECEBEDOR) state.configPix.NOME_RECEBEDOR = ov.NOME_RECEBEDOR;
-        if (ov && ov.CHAVE_PIX) state.configPix.CHAVE_PIX = ov.CHAVE_PIX;
-      }
-    } catch (_) {}
-
     document.getElementById('pixRecebedor').textContent = state.configPix.NOME_RECEBEDOR || '-';
     document.getElementById('pixChave').textContent = state.configPix.CHAVE_PIX || '-';
 
@@ -1349,19 +1543,65 @@
   }
 
   // =========================================================================
-  // AUTENTICAÇÃO E SESSÃO
+  // AUTENTICAÇÃO ÚNICA, LOBBY "MEUS BOLÕES" E TROCA DE SESSÃO (FASE 2)
   // =========================================================================
+  function salvarSessaoLocal() {
+    if (state.user) localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(state.user));
+    localStorage.setItem(STORAGE_KEYS.BOLOES, JSON.stringify(state.boloes || []));
+    if (state.bolaoId) localStorage.setItem(STORAGE_KEYS.BOLAO_ID, state.bolaoId);
+    else localStorage.removeItem(STORAGE_KEYS.BOLAO_ID);
+  }
+
   window.addEventListener('DOMContentLoaded', () => {
-    const saved = localStorage.getItem('bolao_ameba_user');
-    if (saved) {
-      try {
-        state.user = JSON.parse(saved);
-        entrarNoApp();
-      } catch (_) {
-        localStorage.removeItem('bolao_ameba_user');
-      }
+    const savedUser = localStorage.getItem(STORAGE_KEYS.USER);
+    if (!savedUser) return;
+
+    try {
+      state.user = JSON.parse(savedUser);
+      const savedBoloes = localStorage.getItem(STORAGE_KEYS.BOLOES);
+      state.boloes = savedBoloes ? JSON.parse(savedBoloes) : [];
+      state.bolaoId = localStorage.getItem(STORAGE_KEYS.BOLAO_ID) || '';
+      restaurarSessaoSalva();
+    } catch (_) {
+      fazerLogout();
     }
   });
+
+  async function restaurarSessaoSalva() {
+    const bolaoUrl = obterParamUrl('bolao').trim();
+
+    // Atualiza lista de bolões no servidor sem pedir senha novamente
+    try {
+      const res = await apiPost({
+        action: 'listarMeusBoloes',
+        id_usuario: state.user.id_usuario
+      });
+      if (res.success && Array.isArray(res.boloes)) {
+        state.boloes = res.boloes;
+        state.user.super_admin = Boolean(res.super_admin);
+        salvarSessaoLocal();
+      }
+    } catch (_) {
+      // Segue com a lista salva localmente em caso de oscilação
+    }
+
+    const aprovados = state.boloes.filter(b => b.status_membro === 'APROVADO');
+
+    if (bolaoUrl) {
+      const matchUrl = aprovados.find(b => b.bolao_id === bolaoUrl);
+      if (matchUrl) {
+        selecionarBolao(matchUrl.bolao_id);
+        return;
+      }
+    }
+
+    if (state.bolaoId && aprovados.some(b => b.bolao_id === state.bolaoId)) {
+      selecionarBolao(state.bolaoId);
+      return;
+    }
+
+    decidirEntradaAposLogin('');
+  }
 
   async function fazerLogin() {
     const telefone = document.getElementById('loginTelefone').value.trim();
@@ -1376,15 +1616,34 @@
     btn.textContent = 'Entrando...';
     document.getElementById('loginFeedback').innerHTML = '';
 
+    const bolaoUrl = obterParamUrl('bolao').trim();
+
     try {
-      const res = await apiPost({ action: 'login', telefone, senha });
+      const res = await apiPost({ action: 'login', telefone, senha, bolao_id: bolaoUrl });
       if (!res.success) {
         showMsg('loginFeedback', res.message || 'Falha no login.', 'err');
       } else {
         state.user = res.user;
+        state.boloes = Array.isArray(res.boloes) ? res.boloes : [];
         state.configPix = res.configPix || state.configPix;
-        localStorage.setItem('bolao_ameba_user', JSON.stringify(res.user));
-        entrarNoApp();
+
+        // Compatibilidade caso a lista venha vazia antes da migração
+        if (state.boloes.length === 0 && res.bolaoAtual) {
+          state.boloes = [{
+            ...res.bolaoAtual,
+            papel: res.user.perfil === 'admin' ? 'admin_bolao' : 'participante',
+            status_membro: 'APROVADO'
+          }];
+        }
+
+        if (ONESIGNAL_APP_ID && !ONESIGNAL_APP_ID.includes('COLE_AQUI')) {
+          window.OneSignalDeferred.push(async function(OneSignal) {
+            try { await OneSignal.login('mega_' + state.user.id_usuario); } catch (_) {}
+          });
+        }
+
+        salvarSessaoLocal();
+        decidirEntradaAposLogin(bolaoUrl);
       }
     } catch (err) {
       showMsg('loginFeedback', err.message, 'err');
@@ -1394,32 +1653,206 @@
     }
   }
 
-  function fazerLogout() {
+  function decidirEntradaAposLogin(bolaoPreferidoId) {
+    const aprovados = (state.boloes || []).filter(b => b.status_membro === 'APROVADO');
+    const aprovadosAtivos = aprovados.filter(b => String(b.status || 'ATIVO').toUpperCase() === 'ATIVO');
+
+    if (bolaoPreferidoId) {
+      const alvo = aprovados.find(b => b.bolao_id === bolaoPreferidoId);
+      if (alvo) {
+        selecionarBolao(alvo.bolao_id);
+        return;
+      }
+    }
+
+    // Se participa de apenas 1 bolão (e não há outros pendentes/encerrados), entra direto
+    if (aprovadosAtivos.length === 1 && state.boloes.length === 1) {
+      selecionarBolao(aprovadosAtivos[0].bolao_id);
+      return;
+    }
+
+    // 2+ bolões ou nenhum aprovado ainda -> abre o Lobby "Meus Bolões"
+    abrirLobby();
+  }
+
+  function abrirLobby() {
     encerrarTour();
     fecharCameraAoVivo();
-    localStorage.removeItem('bolao_ameba_user');
-    state.user = null;
+    fecharLeitor();
+
+    document.getElementById('loginSection').classList.add('hidden');
     document.getElementById('appHeader').classList.add('hidden');
     document.getElementById('mainApp').classList.add('hidden');
     document.getElementById('bottomNav').classList.add('hidden');
+    document.getElementById('lobbySection').classList.remove('hidden');
+
+    document.title = 'Meus Bolões';
+    document.getElementById('lobbyUserName').textContent = state.user ? state.user.nome : '-';
+    document.getElementById('lobbyFeedback').innerHTML = '';
+
+    renderLobbyCards();
+  }
+
+  async function atualizarListaBoloesLobby() {
+    if (!state.user) return;
+    showMsg('lobbyFeedback', 'Atualizando seus bolões...', 'ok');
+    try {
+      const res = await apiPost({
+        action: 'listarMeusBoloes',
+        id_usuario: state.user.id_usuario
+      });
+      if (res.success) {
+        state.boloes = res.boloes || [];
+        state.user.super_admin = Boolean(res.super_admin);
+        salvarSessaoLocal();
+        document.getElementById('lobbyFeedback').innerHTML = '';
+        renderLobbyCards();
+      } else {
+        showMsg('lobbyFeedback', res.message || 'Não foi possível atualizar.', 'err');
+      }
+    } catch (err) {
+      showMsg('lobbyFeedback', err.message, 'err');
+    }
+  }
+
+  function renderLobbyCards() {
+    const grid = document.getElementById('lobbyGrid');
+    const lista = state.boloes || [];
+
+    if (lista.length === 0) {
+      grid.innerHTML = `
+        <div class="alert alert-warn" style="grid-column: 1 / -1;">
+          Você ainda não está vinculado a nenhum bolão. Peça o link de convite ao organizador.
+        </div>
+      `;
+      return;
+    }
+
+    grid.innerHTML = lista.map(b => {
+      const cor = b.cor_tema || '#10b981';
+      const statusMembro = String(b.status_membro || 'APROVADO').toUpperCase();
+      const statusBolao = String(b.status || 'ATIVO').toUpperCase();
+      const tipo = String(b.tipo || 'FREQUENTE').toUpperCase();
+      const ehAdmin = Boolean(state.user && state.user.super_admin) || b.papel === 'admin_bolao';
+
+      const badgeTipo = tipo === 'COMEMORATIVO'
+        ? `<span class="badge badge-gold">⭐ ${escapeHtml(tipo)}</span>`
+        : `<span class="badge badge-blue">🔁 ${escapeHtml(tipo)}</span>`;
+
+      const badgeStatusBolao = statusBolao === 'ATIVO'
+        ? `<span class="badge badge-green">ATIVO</span>`
+        : `<span class="badge badge-red">${escapeHtml(statusBolao)}</span>`;
+
+      const badgePapel = ehAdmin
+        ? `<span class="badge badge-amber">ADMIN</span>`
+        : `<span class="badge badge-blue">MEMBRO</span>`;
+
+      let rodapeHtml = '';
+      if (statusMembro === 'APROVADO') {
+        rodapeHtml = `
+          <div class="muted" style="font-size:0.8rem;">Recebedor Pix: <strong style="color:var(--text);">${escapeHtml(b.recebedor_nome || '-')}</strong></div>
+          <button class="btn-primary" style="width:100%; background:${escapeHtml(cor)}; color:#052e16;" onclick="selecionarBolao('${escapeHtml(b.bolao_id)}')">
+            Entrar neste bolão →
+          </button>
+        `;
+      } else if (statusMembro === 'PENDENTE') {
+        rodapeHtml = `
+          <div class="alert alert-warn" style="margin-top:0; padding:8px 10px; font-size:0.8rem;">
+            ⏳ Aguardando aprovação do administrador deste bolão.
+          </div>
+        `;
+      } else {
+        rodapeHtml = `
+          <div class="alert alert-err" style="margin-top:0; padding:8px 10px; font-size:0.8rem;">
+            ❌ Solicitação não aprovada.
+          </div>
+        `;
+      }
+
+      return `
+        <div class="bolao-card" style="border-left-color:${escapeHtml(cor)};">
+          <div>
+            <div class="bolao-card-title">${escapeHtml(b.nome)}</div>
+            <div class="bolao-card-badges">
+              ${badgeTipo}
+              ${badgeStatusBolao}
+              ${statusMembro === 'APROVADO' ? badgePapel : `<span class="badge badge-amber">${escapeHtml(statusMembro)}</span>`}
+            </div>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            ${rodapeHtml}
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function aoTrocarSelectBolao(novoBolaoId) {
+    if (!novoBolaoId || novoBolaoId === state.bolaoId) return;
+    selecionarBolao(novoBolaoId);
+  }
+
+  function selecionarBolao(bolaoId) {
+    const alvo = (state.boloes || []).find(b => b.bolao_id === bolaoId && b.status_membro === 'APROVADO');
+    if (!alvo) {
+      abrirLobby();
+      return;
+    }
+
+    encerrarTour();
+    fecharCameraAoVivo();
+    fecharLeitor();
+
+    state.bolaoId = alvo.bolao_id;
+    state.bolaoAtual = alvo;
+    state.configPix = {
+      NOME_RECEBEDOR: alvo.recebedor_nome || '',
+      CHAVE_PIX: alvo.chave_pix || '',
+      URL_PORTAL: state.configPix.URL_PORTAL || ''
+    };
+
+    const ehAdminAqui = Boolean(state.user.super_admin) || alvo.papel === 'admin_bolao';
+    state.user.perfil = ehAdminAqui ? 'admin' : 'user';
+    salvarSessaoLocal();
+
+    // Limpa feedbacks da sessão anterior
+    ['adminRodadaFeedback', 'configPixFeedback', 'cadFeedback', 'bilheteOcrFeedback'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = '';
+    });
+
+    entrarNoApp();
+  }
+
+  function fazerLogout() {
+    encerrarTour();
+    fecharCameraAoVivo();
+    fecharLeitor();
+    localStorage.removeItem(STORAGE_KEYS.USER);
+    localStorage.removeItem(STORAGE_KEYS.BOLOES);
+    localStorage.removeItem(STORAGE_KEYS.BOLAO_ID);
+    state.user = null;
+    state.boloes = [];
+    state.bolaoId = '';
+    state.bolaoAtual = null;
+
+    document.getElementById('appHeader').classList.add('hidden');
+    document.getElementById('mainApp').classList.add('hidden');
+    document.getElementById('bottomNav').classList.add('hidden');
+    document.getElementById('lobbySection').classList.add('hidden');
     document.getElementById('loginSection').classList.remove('hidden');
+    document.title = 'Portal de Bolões';
   }
 
   function entrarNoApp() {
     document.getElementById('loginSection').classList.add('hidden');
+    document.getElementById('lobbySection').classList.add('hidden');
     document.getElementById('appHeader').classList.remove('hidden');
     document.getElementById('mainApp').classList.remove('hidden');
     document.getElementById('bottomNav').classList.remove('hidden');
 
-    document.getElementById('userNameTop').textContent = state.user.nome;
-    const roleBadge = document.getElementById('userRoleBadge');
-    const isAdmin = state.user.perfil === 'admin';
-    roleBadge.textContent = isAdmin ? 'ADMIN' : 'MEMBRO';
-    roleBadge.className = isAdmin ? 'badge badge-amber' : 'badge badge-green';
-
-    document.getElementById('tabAdminBtn').classList.toggle('hidden', !isAdmin);
-    document.getElementById('adminBuscaResultadoWrap').classList.toggle('hidden', !isAdmin);
-    document.getElementById('tourAdminGuideCard').classList.toggle('hidden', !isAdmin);
+    aplicarTemaEIdentidadeBolao();
+    aplicarConfigPixNaInterface();
 
     if (ONESIGNAL_APP_ID && !ONESIGNAL_APP_ID.includes('COLE_AQUI')) {
       window.OneSignalDeferred.push(async function(OneSignal) {
@@ -1455,12 +1888,39 @@
   }
 
   // =========================================================================
-  // CARREGAMENTO DO DASHBOARD E ÚLTIMO RESULTADO DA MEGA-SENA
+  // CARREGAMENTO DO DASHBOARD (FILTRADO POR bolao_id)
   // =========================================================================
   async function carregarDashboard() {
+    if (!state.user) return;
     try {
-      const res = await apiPost({ action: 'getDashboard' });
-      if (!res.success) return;
+      const res = await apiPost({
+        action: 'getDashboard',
+        bolao_id: state.bolaoId,
+        id_usuario: state.user.id_usuario
+      });
+
+      if (!res.success) {
+        if (res.acesso_negado) {
+          alert(res.message || 'Sem acesso a este bolão.');
+          abrirLobby();
+          atualizarListaBoloesLobby();
+        }
+        return;
+      }
+
+      if (res.bolaoAtual) {
+        state.bolaoAtual = {
+          ...(state.bolaoAtual || {}),
+          ...res.bolaoAtual
+        };
+        state.bolaoId = res.bolaoAtual.bolao_id || state.bolaoId;
+      }
+      if (Array.isArray(res.meus_boloes)) {
+        state.boloes = res.meus_boloes;
+      }
+      if (res.meu_perfil_bolao) {
+        state.user.perfil = res.meu_perfil_bolao;
+      }
 
       state.usuarios = res.usuarios || [];
       state.rodadas = res.rodadas || [];
@@ -1473,9 +1933,10 @@
       const eu = state.usuarios.find(u => u.id_usuario === state.user.id_usuario);
       if (eu) {
         state.user.nome_comprovante = eu.nome_comprovante || eu.nome;
-        localStorage.setItem('bolao_ameba_user', JSON.stringify(state.user));
       }
+      salvarSessaoLocal();
 
+      aplicarTemaEIdentidadeBolao();
       aplicarConfigPixNaInterface();
 
       renderUltimoResultado();
@@ -1528,6 +1989,7 @@
       const res = await apiPost({
         action: 'buscarResultadoAgora',
         adminId: state.user.id_usuario,
+        bolao_id: state.bolaoId,
         concurso: concursoManual
       });
       alert(res.message || 'Busca concluída.');
@@ -1546,7 +2008,8 @@
   function copiarPix() {
     if (!state.configPix.CHAVE_PIX) return;
     navigator.clipboard.writeText(state.configPix.CHAVE_PIX).then(() => {
-      alert('Chave Pix copiada!');
+      const nomeBolao = state.bolaoAtual ? state.bolaoAtual.nome : 'deste bolão';
+      alert(`Chave Pix de "${nomeBolao}" copiada!\nRecebedor: ${state.configPix.NOME_RECEBEDOR}`);
     });
   }
 
@@ -1561,7 +2024,7 @@
     );
 
     if (minhas.length === 0) {
-      container.innerHTML = `<div class="alert alert-ok">Tudo em dia! 🎉</div>`;
+      container.innerHTML = `<div class="alert alert-ok">Tudo em dia neste bolão! 🎉</div>`;
       return;
     }
 
@@ -1597,7 +2060,7 @@
     state.pendenciaSelecionada = { ...p, saldo };
     state.arquivoAtual = null;
     document.getElementById('leitorResumo').innerHTML =
-      `<strong>${rodada ? escapeHtml(rodada.descricao) : p.id_rodada}</strong> • ${formatBRL(saldo)} • ${escapeHtml(state.user.nome_comprovante || state.user.nome)}`;
+      `<strong>${rodada ? escapeHtml(rodada.descricao) : p.id_rodada}</strong> • ${formatBRL(saldo)} • Recebedor esperado: <strong>${escapeHtml(state.configPix.NOME_RECEBEDOR)}</strong>`;
     document.getElementById('arquivoComprovante').value = '';
     document.getElementById('leitorResultado').innerHTML = '';
     document.getElementById('boxSugestaoPosUpload').classList.add('hidden');
@@ -1607,7 +2070,8 @@
   }
 
   function fecharLeitor() {
-    document.getElementById('boxLeitor').classList.add('hidden');
+    const box = document.getElementById('boxLeitor');
+    if (box) box.classList.add('hidden');
     state.pendenciaSelecionada = null;
     state.arquivoAtual = null;
   }
@@ -1748,1509 +2212,4 @@
     const chaveNorm = normalizarTexto(state.configPix.CHAVE_PIX);
     const recebedorBateu =
       (recebedorTokens.length > 0 && tokensEncontrados.length >= Math.min(2, recebedorTokens.length)) ||
-      (chaveNorm.length >= 6 && textoNorm.includes(chaveNorm));
-
-    const textoSemQuebras = textoBruto.replace(/[\r\n]+/g, ' ');
-    let idTransacao = '';
-    const matchE2E = textoSemQuebras.match(/\bE[0-9A-Za-z]{20,35}\b/);
-    if (matchE2E) {
-      idTransacao = matchE2E[0].toUpperCase();
-    } else {
-      const matchAlt = textoSemQuebras.match(/(?:ID DA TRANSACAO|ID TRANSACAO|AUTENTICACAO|PROTOCOLO|CODIGO DA TRANSACAO)\s*[:#-]?\s*([A-Za-z0-9-]{10,40})/i);
-      if (matchAlt) idTransacao = matchAlt[1].toUpperCase();
-    }
-
-    const nomeCompAtual = state.user.nome_comprovante || state.user.nome;
-    const { candidato, score } = extrairCandidatoNomePagador(textoBruto, nomeCompAtual);
-
-    if (candidato && score >= 0.45 && normalizarTexto(nomeCompAtual) !== candidato) {
-      const boxSug = document.getElementById('boxSugestaoPosUpload');
-      boxSug.classList.remove('hidden');
-      boxSug.innerHTML = `
-        <strong>💡 Nome detectado:</strong> <strong>"${escapeHtml(candidato)}"</strong> (${Math.round(score * 100)}%)
-        <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">
-          <input id="inputSugestaoPosUpload" type="text" value="${escapeHtml(candidato)}" style="flex:1; min-width:200px;" />
-          <button class="btn-primary btn-sm" onclick="aceitarSugestaoPosUpload()">Atualizar Nome</button>
-        </div>
-      `;
-    }
-
-    const erros = [];
-    if (ehAgendamento) erros.push('Documento indica agendamento.');
-    if (!valorBateu) erros.push(`Valor esperado (${formatBRL(valorEsperado)}) não encontrado. Lidos: ${valoresEncontrados.length ? valoresEncontrados.map(formatBRL).join(', ') : 'nenhum'}.`);
-    if (!recebedorBateu) erros.push(`Recebedor (${escapeHtml(state.configPix.NOME_RECEBEDOR)}) ou Chave Pix não identificado.`);
-    if (!idTransacao) erros.push('ID da transação (E2E/Autenticação) não identificado.');
-
-    if (erros.length > 0) {
-      showMsg(
-        'leitorResultado',
-        `<strong>Não aprovado:</strong><ul style="margin-left:18px; margin-top:6px;">${erros.map(e => `<li>${e}</li>`).join('')}</ul>`,
-        'err'
-      );
-      return;
-    }
-
-    showMsg('leitorResultado', `Validado (${formatBRL(valorEsperado)}) • Salvando no Drive...`, 'ok');
-
-    try {
-      let arquivoBase64 = '';
-      let arquivoNome = '';
-      let arquivoMime = '';
-
-      if (state.arquivoAtual) {
-        arquivoBase64 = await arquivoParaBase64(state.arquivoAtual);
-        arquivoNome = state.arquivoAtual.name || 'comprovante';
-        arquivoMime = state.arquivoAtual.type || 'application/octet-stream';
-      }
-
-      const res = await apiPost({
-        action: 'registrarPagamento',
-        id_participacao: pend.id_participacao,
-        id_usuario: state.user.id_usuario,
-        id_transacao: idTransacao,
-        valor_pago: valorEsperado,
-        metodo,
-        arquivo_base64: arquivoBase64,
-        arquivo_nome: arquivoNome,
-        arquivo_mime: arquivoMime
-      });
-
-      if (res.success) {
-        const linkHtml = res.link_comprovante
-          ? ` • <a href="${res.link_comprovante}" target="_blank" rel="noopener noreferrer" title="Ver comprovante" class="doc-link" style="vertical-align:middle;">📄</a>`
-          : '';
-        showMsg('leitorResultado', `✅ ${res.message} (ID: ${idTransacao})${linkHtml}`, 'ok');
-        await carregarDashboard();
-      } else {
-        showMsg('leitorResultado', `❌ ${res.message}`, 'err');
-      }
-    } catch (err) {
-      showMsg('leitorResultado', 'Erro ao registrar baixa: ' + err.message, 'err');
-    }
-  }
-
-  async function aceitarSugestaoPosUpload() {
-    const novoNome = document.getElementById('inputSugestaoPosUpload').value.trim();
-    if (!novoNome) return;
-
-    try {
-      const res = await apiPost({
-        action: 'atualizarNomeComprovante',
-        atorId: state.user.id_usuario,
-        id_usuario: state.user.id_usuario,
-        novo_nome_comprovante: novoNome
-      });
-      if (res.success) {
-        state.user.nome_comprovante = novoNome;
-        localStorage.setItem('bolao_ameba_user', JSON.stringify(state.user));
-        document.getElementById('boxSugestaoPosUpload').innerHTML = `✅ ${res.message}`;
-        document.getElementById('boxSugestaoPosUpload').className = 'alert alert-ok';
-        await carregarDashboard();
-      } else {
-        alert(res.message);
-      }
-    } catch (err) {
-      alert('Erro ao atualizar nome: ' + err.message);
-    }
-  }
-
-  // =========================================================================
-  // ABA 2: JOGOS LINHA A LINHA ORDENADOS POR CONCURSO (EXPANDIR / RETRAIR)
-  // =========================================================================
-  function alternarOrdemConcursos() {
-    state.ordemConcursosDesc = !state.ordemConcursosDesc;
-    document.getElementById('btnOrdemConcursos').textContent =
-      state.ordemConcursosDesc ? '⇅ Maior → Menor' : '⇅ Menor → Maior';
-    renderJogosPorConcurso();
-  }
-
-  function toggleTodosConcursos(expandir) {
-    document.querySelectorAll('#listaJogosPorConcurso details.concurso-accordion').forEach(d => {
-      d.open = expandir;
-    });
-  }
-
-  function renderJogosPorConcurso() {
-    const container = document.getElementById('listaJogosPorConcurso');
-    if (!container) return;
-
-    // Agrupa todos os jogos por número do concurso
-    const grupos = {};
-    state.rodadas.forEach(r => {
-      const jogos = Array.isArray(r.jogos) ? r.jogos : [];
-      if (jogos.length === 0) return;
-
-      const conc = r.concurso ? String(r.concurso).trim() : '__SEM_CONCURSO__';
-      if (!grupos[conc]) {
-        grupos[conc] = {
-          concurso: conc,
-          num: conc === '__SEM_CONCURSO__' ? -1 : parseInt(conc, 10) || 0,
-          itens: []
-        };
-      }
-      jogos.forEach(dezenas => {
-        grupos[conc].itens.push({
-          rodadaDescricao: r.descricao,
-          dataCriacao: r.data_criacao,
-          dezenas: dezenas.map(n => String(n).padStart(2, '0'))
-        });
-      });
-    });
-
-    const listaGrupos = Object.values(grupos);
-    if (listaGrupos.length === 0) {
-      container.innerHTML = `<p class="muted">Nenhum jogo cadastrado.</p>`;
-      return;
-    }
-
-    // Ordena rigorosamente pelo número do concurso (mantendo "Sem concurso" por último)
-    listaGrupos.sort((a, b) => {
-      if (a.concurso === '__SEM_CONCURSO__') return 1;
-      if (b.concurso === '__SEM_CONCURSO__') return -1;
-      return state.ordemConcursosDesc ? (b.num - a.num) : (a.num - b.num);
-    });
-
-    container.innerHTML = listaGrupos.map((g, gIdx) => {
-      const ehConcursoValido = g.concurso !== '__SEM_CONCURSO__';
-      // Comparação EXCLUSIVA com o concurso respectivo
-      const resultado = ehConcursoValido
-        ? state.resultados.find(res => String(res.concurso).trim() === g.concurso)
-        : null;
-      const setSorteadas = resultado ? new Set(resultado.dezenas.map(d => String(d).padStart(2, '0'))) : null;
-
-      let senas = 0, quinas = 0, quadras = 0, maxAcertos = 0;
-
-      const linhasHtml = g.itens.map((item, idx) => {
-        let acertos = 0;
-        const bolinhas = item.dezenas.map(num => {
-          const acertou = Boolean(setSorteadas && setSorteadas.has(num));
-          if (acertou) acertos += 1;
-          return `<span class="ball ball-sm ${acertou ? 'ball-hit' : ''}">${num}</span>`;
-        }).join('');
-
-        let rowClass = '';
-        let badgeStatus = `<span class="badge badge-blue">Aguardando</span>`;
-
-        if (setSorteadas) {
-          if (acertos > maxAcertos) maxAcertos = acertos;
-          if (acertos >= 6) {
-            senas += 1;
-            rowClass = 'jogo-row-sena';
-            badgeStatus = `<span class="badge badge-gold">🎉 SENA (6)</span>`;
-          } else if (acertos === 5) {
-            quinas += 1;
-            rowClass = 'jogo-row-quina';
-            badgeStatus = `<span class="badge badge-green">🏆 QUINA (5)</span>`;
-          } else if (acertos === 4) {
-            quadras += 1;
-            rowClass = 'jogo-row-quadra';
-            badgeStatus = `<span class="badge badge-amber">🍀 QUADRA (4)</span>`;
-          } else {
-            badgeStatus = `<span class="muted">${acertos} acerto(s)</span>`;
-          }
-        } else if (!ehConcursoValido) {
-          badgeStatus = `<span class="muted">Sem concurso</span>`;
-        }
-
-        return `
-          <div class="jogo-row ${rowClass}">
-            <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
-              <span class="muted" style="min-width:56px; font-weight:700;">#${idx + 1}</span>
-              ${bolinhas}
-            </div>
-            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-              <span class="muted" style="font-size:0.75rem;">${escapeHtml(item.rodadaDescricao)}</span>
-              ${badgeStatus}
-            </div>
-          </div>
-        `;
-      }).join('');
-
-      const badgesPremio = [];
-      if (senas > 0) badgesPremio.push(`<span class="badge badge-gold">🎉 ${senas} SENA</span>`);
-      if (quinas > 0) badgesPremio.push(`<span class="badge badge-green">🏆 ${quinas} QUINA</span>`);
-      if (quadras > 0) badgesPremio.push(`<span class="badge badge-amber">🍀 ${quadras} QUADRA</span>`);
-      if (setSorteadas && badgesPremio.length === 0) {
-        badgesPremio.push(`<span class="badge badge-blue">Máx. ${maxAcertos}</span>`);
-      } else if (!setSorteadas) {
-        badgesPremio.push(`<span class="badge badge-blue">${ehConcursoValido ? 'Aguardando' : 'Sem nº'}</span>`);
-      }
-
-      const tituloConcurso = ehConcursoValido ? `Concurso ${g.concurso}` : 'Sem concurso definido';
-      const subResultado = resultado
-        ? `
-          <div style="margin:10px 0;">
-            <div class="muted" style="margin-bottom:6px;">Sorteio ${resultado.concurso} (${resultado.data_apuracao || '-'})</div>
-            <div class="balls-wrap" style="margin:0;">
-              ${resultado.dezenas.map(d => `<span class="ball" style="width:32px; height:32px; font-size:0.84rem;">${d}</span>`).join('')}
-            </div>
-          </div>
-        `
-        : `<div class="muted" style="margin:10px 0;">${ehConcursoValido ? `Aguardando resultado oficial do concurso ${g.concurso}.` : 'Sem número de concurso vinculado.'}</div>`;
-
-      return `
-        <details class="concurso-accordion" ${gIdx === 0 ? 'open' : ''}>
-          <summary>
-            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-              <span class="concurso-chevron">▸</span>
-              <strong>${tituloConcurso}</strong>
-              <span class="muted">(${g.itens.length} jogo${g.itens.length > 1 ? 's' : ''})</span>
-            </div>
-            <div style="display:flex; gap:6px; flex-wrap:wrap;">
-              ${badgesPremio.join('')}
-            </div>
-          </summary>
-          <div class="concurso-body">
-            ${subResultado}
-            ${linhasHtml}
-          </div>
-        </details>
-      `;
-    }).join('');
-  }
-
-  // =========================================================================
-  // ABA 3: RODADAS + CONFERÊNCIA AUTOMÁTICA DOS JOGOS + ÍCONE 📄
-  // =========================================================================
-  function montarBlocoJogosConferencia(rodada) {
-    const jogos = Array.isArray(rodada.jogos) ? rodada.jogos : [];
-    if (jogos.length === 0) return '';
-
-    const resultado = rodada.concurso
-      ? state.resultados.find(res => String(res.concurso).trim() === String(rodada.concurso).trim())
-      : null;
-    const setSorteadas = resultado ? new Set(resultado.dezenas) : null;
-
-    let senas = 0, quinas = 0, quadras = 0, maxAcertos = 0;
-
-    const linhasJogos = jogos.map((jogo, idx) => {
-      let acertos = 0;
-      const bolinhasHtml = jogo.map(num => {
-        const acertou = setSorteadas && setSorteadas.has(num);
-        if (acertou) acertos += 1;
-        return `<span class="ball ball-sm ${acertou ? 'ball-hit' : ''}">${num}</span>`;
-      }).join('');
-
-      let rowClass = '';
-      let badgeAcerto = `<span class="badge badge-blue">Aguardando</span>`;
-      if (setSorteadas) {
-        if (acertos > maxAcertos) maxAcertos = acertos;
-        if (acertos >= 6) {
-          senas += 1;
-          rowClass = 'jogo-row-sena';
-          badgeAcerto = `<span class="badge badge-gold">🎉 SENA (6)!</span>`;
-        } else if (acertos === 5) {
-          quinas += 1;
-          rowClass = 'jogo-row-quina';
-          badgeAcerto = `<span class="badge badge-green">🏆 QUINA (5)!</span>`;
-        } else if (acertos === 4) {
-          quadras += 1;
-          rowClass = 'jogo-row-quadra';
-          badgeAcerto = `<span class="badge badge-amber">🍀 QUADRA (4)!</span>`;
-        } else {
-          badgeAcerto = `<span class="muted">${acertos} acerto(s)</span>`;
-        }
-      }
-
-      return `
-        <div class="jogo-row ${rowClass}">
-          <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
-            <span class="muted" style="min-width:52px;">Jogo ${idx + 1}</span>
-            ${bolinhasHtml}
-          </div>
-          <div>${badgeAcerto}</div>
-        </div>
-      `;
-    }).join('');
-
-    let resumoTopo = `🎱 ${jogos.length} jogo(s)`;
-    if (resultado) {
-      if (senas > 0) resumoTopo += ` — 🎉 ${senas} SENA(S)`;
-      else if (quinas > 0) resumoTopo += ` — 🏆 ${quinas} QUINA(S)`;
-      else if (quadras > 0) resumoTopo += ` — 🍀 ${quadras} QUADRA(S)`;
-      else resumoTopo += ` — Máx. ${maxAcertos} acerto(s)`;
-    } else if (rodada.concurso) {
-      resumoTopo += ` — Aguardando ${rodada.concurso}`;
-    }
-
-    const cabecalhoSorteio = resultado
-      ? `<div class="muted" style="margin:8px 0;">Concurso <strong>${resultado.concurso}</strong> (${resultado.data_apuracao}): <strong>${resultado.dezenas.join(' - ')}</strong></div>`
-      : '';
-
-    return `
-      <details ${resultado ? 'open' : ''} style="margin-top:10px; border-top:1px solid var(--border); padding-top:8px;">
-        <summary>${resumoTopo}</summary>
-        ${cabecalhoSorteio}
-        <div style="margin-top:8px;">${linhasJogos}</div>
-      </details>
-    `;
-  }
-
-  function renderRodadas() {
-    const container = document.getElementById('listaRodadas');
-    if (state.rodadas.length === 0) {
-      container.innerHTML = `<p class="muted">Nenhuma rodada.</p>`;
-      return;
-    }
-
-    container.innerHTML = state.rodadas.map(r => {
-      const parts = state.participacoes.filter(p => p.id_rodada === r.id_rodada);
-      const linhas = parts.map(p => {
-        const saldo = Number((Number(p.valor_devido) - Number(p.valor_pago || 0)).toFixed(2));
-        const badge = saldo <= 0
-          ? `<span class="badge badge-green">PAGO</span>`
-          : `<span class="badge badge-red">FALTA ${formatBRL(saldo)}</span>`;
-
-        const links = Array.isArray(p.links_comprovantes) ? p.links_comprovantes : [];
-        const celulaComp = links.length > 0
-          ? links.map(url =>
-              `<a href="${url}" target="_blank" rel="noopener noreferrer" title="Ver comprovante" aria-label="Ver comprovante" class="doc-link">📄</a>`
-            ).join('')
-          : `<span class="muted">-</span>`;
-
-        const btnManual = (state.user.perfil === 'admin' && saldo > 0)
-          ? `<button class="btn-warning btn-sm" onclick="baixaManualAdmin('${p.id_participacao}','${p.id_usuario}',${saldo})">Baixa</button>`
-          : '';
-
-        return `
-          <tr>
-            <td>${escapeHtml(p.nome_usuario)}</td>
-            <td>${p.fracao_cota}</td>
-            <td>${formatBRL(p.valor_devido)}</td>
-            <td>${badge}</td>
-            <td>${celulaComp}</td>
-            <td>${btnManual}</td>
-          </tr>
-        `;
-      }).join('');
-
-      const tagConcurso = r.concurso ? `<span class="badge badge-blue">Concurso ${r.concurso}</span>` : '';
-      const blocoJogos = montarBlocoJogosConferencia(r);
-
-      return `
-        <div class="list-item">
-          <div class="row-between" style="margin-bottom:8px;">
-            <div>
-              <strong>${escapeHtml(r.descricao)}</strong> ${tagConcurso}
-              <div class="muted">${r.data_criacao} • ${formatBRL(r.valor_total)} • ${r.total_cotas} cota(s) (${formatBRL(r.valor_cota)})</div>
-            </div>
-          </div>
-          <div class="table-wrap">
-            <table>
-              <thead><tr><th>Amigo</th><th>Cota</th><th>Valor</th><th>Status</th><th>Doc</th><th></th></tr></thead>
-              <tbody>${linhas}</tbody>
-            </table>
-          </div>
-          ${blocoJogos}
-        </div>
-      `;
-    }).join('');
-  }
-
-  async function baixaManualAdmin(idParticipacao, idUsuario, saldo) {
-    if (!confirm(`Confirmar baixa manual de ${formatBRL(saldo)}?`)) return;
-    try {
-      const res = await apiPost({
-        action: 'registrarPagamento',
-        id_participacao: idParticipacao,
-        id_usuario: idUsuario,
-        id_transacao: '',
-        valor_pago: saldo,
-        metodo: 'MANUAL'
-      });
-      alert(res.message);
-      if (res.success) await carregarDashboard();
-    } catch (err) {
-      alert('Erro na baixa manual: ' + err.message);
-    }
-  }
-
-  // =========================================================================
-  // ABA 4: RESUMO MENSAL, SITUAÇÃO ATUAL & RANKINGS
-  // =========================================================================
-  function calcularDadosResumoMensal() {
-    const mapaRodadaMes = {};
-    const mesesMap = {};
-
-    state.rodadas.forEach(r => {
-      const infoMes = extrairChaveMes(r.data_criacao);
-      mapaRodadaMes[r.id_rodada] = infoMes;
-      mesesMap[infoMes.key] = infoMes.label;
-    });
-
-    // Situação atual (todos os usuários ativos)
-    const atualPorUsuario = {};
-    state.usuarios.forEach(u => {
-      atualPorUsuario[u.id_usuario] = {
-        id_usuario: u.id_usuario,
-        nome: u.nome,
-        consumo: 0,
-        pago: 0,
-        deve: 0
-      };
-    });
-
-    // Agrupamento por mês
-    const porMes = {};
-    Object.keys(mesesMap).forEach(k => {
-      porMes[k] = { key: k, label: mesesMap[k], usuarios: {} };
-    });
-
-    state.participacoes.forEach(p => {
-      const uid = p.id_usuario;
-      const nome = p.nome_usuario || (atualPorUsuario[uid] ? atualPorUsuario[uid].nome : uid);
-      const devido = Number(p.valor_devido) || 0;
-      const pago = Number(p.valor_pago) || 0;
-      const saldo = Math.max(0, Number((devido - pago).toFixed(2)));
-
-      if (!atualPorUsuario[uid]) {
-        atualPorUsuario[uid] = { id_usuario: uid, nome, consumo: 0, pago: 0, deve: 0 };
-      }
-      atualPorUsuario[uid].consumo = Number((atualPorUsuario[uid].consumo + devido).toFixed(2));
-      atualPorUsuario[uid].pago = Number((atualPorUsuario[uid].pago + pago).toFixed(2));
-      atualPorUsuario[uid].deve = Number((atualPorUsuario[uid].deve + saldo).toFixed(2));
-
-      const infoMes = mapaRodadaMes[p.id_rodada] || { key: '0000-00', label: 'Sem data' };
-      if (!porMes[infoMes.key]) {
-        porMes[infoMes.key] = { key: infoMes.key, label: infoMes.label, usuarios: {} };
-      }
-      if (!porMes[infoMes.key].usuarios[uid]) {
-        porMes[infoMes.key].usuarios[uid] = { id_usuario: uid, nome, consumo: 0, pago: 0, deve: 0 };
-      }
-      porMes[infoMes.key].usuarios[uid].consumo = Number((porMes[infoMes.key].usuarios[uid].consumo + devido).toFixed(2));
-      porMes[infoMes.key].usuarios[uid].pago = Number((porMes[infoMes.key].usuarios[uid].pago + pago).toFixed(2));
-      porMes[infoMes.key].usuarios[uid].deve = Number((porMes[infoMes.key].usuarios[uid].deve + saldo).toFixed(2));
-    });
-
-    const mesesOrdenados = Object.values(porMes).sort((a, b) => b.key.localeCompare(a.key));
-    return {
-      atual: Object.values(atualPorUsuario).sort((a, b) => (b.deve - a.deve) || (b.consumo - a.consumo)),
-      meses: mesesOrdenados
-    };
-  }
-
-  function popularFiltroMesesResumo() {
-    const sel = document.getElementById('filtroMesResumo');
-    if (!sel) return;
-    const valorAtual = sel.value || '__TODOS__';
-    const { meses } = calcularDadosResumoMensal();
-
-    let options = `
-      <option value="__TODOS__">Todos (Atual + Meses)</option>
-      <option value="__ATUAL__">Situação Atual</option>
-    `;
-    meses.forEach(m => {
-      options += `<option value="${m.key}">${m.label}</option>`;
-    });
-
-    sel.innerHTML = options;
-    if ([...sel.options].some(o => o.value === valorAtual)) {
-      sel.value = valorAtual;
-    } else {
-      sel.value = '__TODOS__';
-    }
-  }
-
-  function badgeStatusFinanceiro(consumo, pago, deve) {
-    if (deve <= 0) {
-      return consumo > 0
-        ? `<span class="badge badge-green">EM DIA</span>`
-        : `<span class="badge badge-blue">SEM GASTOS</span>`;
-    }
-    if (pago > 0) {
-      return `<span class="badge badge-amber">PARCIAL</span>`;
-    }
-    return `<span class="badge badge-red">PENDENTE</span>`;
-  }
-
-  function renderResumoMensal() {
-    const tbody = document.getElementById('tabelaResumoBody');
-    const kpiEl = document.getElementById('resumoKpiStrip');
-    const sel = document.getElementById('filtroMesResumo');
-    if (!tbody || !kpiEl) return;
-
-    const filtro = sel ? sel.value : '__TODOS__';
-    const { atual, meses } = calcularDadosResumoMensal();
-
-    // Calcula KPIs do filtro selecionado
-    let kpiConsumo = 0, kpiPago = 0, kpiDeve = 0;
-    if (filtro === '__TODOS__' || filtro === '__ATUAL__') {
-      atual.forEach(u => {
-        kpiConsumo += u.consumo;
-        kpiPago += u.pago;
-        kpiDeve += u.deve;
-      });
-    } else {
-      const mesAlvo = meses.find(m => m.key === filtro);
-      if (mesAlvo) {
-        Object.values(mesAlvo.usuarios).forEach(u => {
-          kpiConsumo += u.consumo;
-          kpiPago += u.pago;
-          kpiDeve += u.deve;
-        });
-      }
-    }
-
-    kpiEl.innerHTML = `
-      <div class="kpi-box">
-        <div class="kpi-label">Consumo</div>
-        <div class="kpi-value">${formatBRL(kpiConsumo)}</div>
-      </div>
-      <div class="kpi-box">
-        <div class="kpi-label">Pago</div>
-        <div class="kpi-value" style="color:#34d399;">${formatBRL(kpiPago)}</div>
-      </div>
-      <div class="kpi-box">
-        <div class="kpi-label">Em Aberto</div>
-        <div class="kpi-value" style="color:${kpiDeve > 0 ? '#f87171' : '#34d399'};">${formatBRL(kpiDeve)}</div>
-      </div>
-    `;
-
-    let html = '';
-
-    const montarLinhasGrupo = (titulo, lista) => {
-      const totConsumo = lista.reduce((acc, x) => acc + x.consumo, 0);
-      const totDeve = lista.reduce((acc, x) => acc + x.deve, 0);
-
-      let bloco = `
-        <tr class="group-header-row">
-          <td colspan="2">${titulo}</td>
-          <td colspan="2" style="text-align:right;">Gasto: ${formatBRL(totConsumo)} • Deve: ${formatBRL(totDeve)}</td>
-        </tr>
-      `;
-
-      if (lista.length === 0) {
-        bloco += `<tr><td colspan="4" class="muted">Sem movimentações.</td></tr>`;
-        return bloco;
-      }
-
-      bloco += lista.map(u => `
-        <tr>
-          <td><strong>${escapeHtml(u.nome)}</strong></td>
-          <td>${formatBRL(u.consumo)}</td>
-          <td style="color:${u.deve > 0 ? '#f87171' : '#34d399'}; font-weight:700;">${formatBRL(u.deve)}</td>
-          <td>${badgeStatusFinanceiro(u.consumo, u.pago, u.deve)}</td>
-        </tr>
-      `).join('');
-
-      return bloco;
-    };
-
-    if (filtro === '__TODOS__' || filtro === '__ATUAL__') {
-      html += montarLinhasGrupo('📌 Situação Atual (Geral)', atual);
-    }
-
-    meses.forEach(m => {
-      if (filtro !== '__TODOS__' && filtro !== m.key) return;
-      const listaMes = Object.values(m.usuarios).sort((a, b) => (b.deve - a.deve) || (b.consumo - a.consumo));
-      html += montarLinhasGrupo(`📅 ${m.label}`, listaMes);
-    });
-
-    tbody.innerHTML = html || `<tr><td colspan="4" class="muted">Sem registros.</td></tr>`;
-  }
-
-  function renderRankings() {
-    const elAtual = document.getElementById('rankingAtual');
-    const elHist = document.getElementById('rankingHistorico');
-
-    if (state.devedoresAtuais.length === 0) {
-      elAtual.innerHTML = `<div class="alert alert-ok">Ninguém devendo! 🎉</div>`;
-    } else {
-      elAtual.innerHTML = state.devedoresAtuais.map((d, i) => `
-        <div class="list-item row-between">
-          <div>
-            <strong>#${i + 1} ${escapeHtml(d.nome)}</strong>
-            <div class="muted">${d.rodadas_pendentes} rodada(s)</div>
-          </div>
-          <span class="badge badge-red">${formatBRL(d.divida_atual)}</span>
-        </div>
-      `).join('');
-    }
-
-    if (state.rankingHistorico.length === 0) {
-      elHist.innerHTML = `<p class="muted">Sem registros.</p>`;
-    } else {
-      elHist.innerHTML = state.rankingHistorico.map((d, i) => `
-        <div class="list-item row-between">
-          <div><strong>#${i + 1} ${escapeHtml(d.nome)}</strong></div>
-          <span class="badge badge-blue">${formatBRL(d.historico_dividas_geradas)}</span>
-        </div>
-      `).join('');
-    }
-  }
-
-  // =========================================================================
-  // ABA 5: TELA DO USUÁRIO (MINHAS TRANSFERÊNCIAS, SALDO, STATUS) + PERFIL
-  // =========================================================================
-  function trocarFiltroMinhasTransferencias(filtro, btnEl) {
-    state.filtroMinhasTransferencias = filtro;
-    document.querySelectorAll('#cardMinhasTransferencias .pill-btn').forEach(b => b.classList.remove('active'));
-    if (btnEl) btnEl.classList.add('active');
-    renderMinhasTransferencias();
-  }
-
-  function renderMinhasTransferencias() {
-    const kpiEl = document.getElementById('meuResumoFinanceiro');
-    const tbody = document.getElementById('tabelaMinhasTransferenciasBody');
-    const statusBadge = document.getElementById('meuStatusGeralBadge');
-    if (!kpiEl || !tbody || !state.user) return;
-
-    const todasMinhas = state.participacoes.filter(p => p.id_usuario === state.user.id_usuario);
-
-    let totalDevido = 0;
-    let totalPago = 0;
-    let totalSaldo = 0;
-    let totalDocs = 0;
-
-    todasMinhas.forEach(p => {
-      const dev = Number(p.valor_devido) || 0;
-      const pag = Number(p.valor_pago) || 0;
-      const sal = Math.max(0, Number((dev - pag).toFixed(2)));
-      totalDevido += dev;
-      totalPago += pag;
-      totalSaldo += sal;
-      if (Array.isArray(p.links_comprovantes)) totalDocs += p.links_comprovantes.length;
-    });
-
-    if (totalSaldo <= 0) {
-      statusBadge.className = 'badge badge-green';
-      statusBadge.textContent = 'EM DIA';
-    } else if (totalPago > 0) {
-      statusBadge.className = 'badge badge-amber';
-      statusBadge.textContent = 'PARCIAL';
-    } else {
-      statusBadge.className = 'badge badge-red';
-      statusBadge.textContent = 'PENDENTE';
-    }
-
-    kpiEl.innerHTML = `
-      <div class="kpi-box">
-        <div class="kpi-label">Total Cotas</div>
-        <div class="kpi-value">${formatBRL(totalDevido)}</div>
-      </div>
-      <div class="kpi-box">
-        <div class="kpi-label">Total Pago</div>
-        <div class="kpi-value" style="color:#34d399;">${formatBRL(totalPago)}</div>
-      </div>
-      <div class="kpi-box">
-        <div class="kpi-label">Saldo Devedor</div>
-        <div class="kpi-value" style="color:${totalSaldo > 0 ? '#f87171' : '#34d399'};">${formatBRL(totalSaldo)}</div>
-      </div>
-      <div class="kpi-box">
-        <div class="kpi-label">Comprovantes</div>
-        <div class="kpi-value">${totalDocs}</div>
-      </div>
-    `;
-
-    const filtradas = todasMinhas.filter(p => {
-      const dev = Number(p.valor_devido) || 0;
-      const pag = Number(p.valor_pago) || 0;
-      const sal = Math.max(0, Number((dev - pag).toFixed(2)));
-      if (state.filtroMinhasTransferencias === 'pagas') return pag > 0;
-      if (state.filtroMinhasTransferencias === 'pendentes') return sal > 0;
-      return true;
-    });
-
-    if (filtradas.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="7" class="muted">Nenhuma transferência encontrada.</td></tr>`;
-      return;
-    }
-
-    tbody.innerHTML = filtradas.map(p => {
-      const rodada = state.rodadas.find(r => r.id_rodada === p.id_rodada);
-      const dev = Number(p.valor_devido) || 0;
-      const pag = Number(p.valor_pago) || 0;
-      const sal = Math.max(0, Number((dev - pag).toFixed(2)));
-
-      const badge = sal <= 0
-        ? `<span class="badge badge-green">PAGO</span>`
-        : (pag > 0 ? `<span class="badge badge-amber">PARCIAL</span>` : `<span class="badge badge-red">PENDENTE</span>`);
-
-      const links = Array.isArray(p.links_comprovantes) ? p.links_comprovantes : [];
-      const docsHtml = links.length > 0
-        ? links.map(url => `<a href="${url}" target="_blank" rel="noopener noreferrer" title="Ver comprovante" class="doc-link">📄</a>`).join('')
-        : (sal > 0
-            ? `<button class="btn-primary btn-sm" onclick="irParaPagarParticipacao('${p.id_participacao}')">Pagar</button>`
-            : `<span class="muted">-</span>`);
-
-      const dataExib = p.data_pagamento || (rodada ? rodada.data_criacao : '-');
-      const tituloRodada = rodada
-        ? `${escapeHtml(rodada.descricao)}${rodada.concurso ? ` <span class="muted">(#${rodada.concurso})</span>` : ''}`
-        : p.id_rodada;
-
-      return `
-        <tr>
-          <td><strong>${tituloRodada}</strong></td>
-          <td class="muted">${dataExib}</td>
-          <td>${formatBRL(dev)}</td>
-          <td style="color:#34d399;">${formatBRL(pag)}</td>
-          <td style="color:${sal > 0 ? '#f87171' : '#34d399'}; font-weight:700;">${formatBRL(sal)}</td>
-          <td>${badge}</td>
-          <td>${docsHtml}</td>
-        </tr>
-      `;
-    }).join('');
-  }
-
-  function renderCadastroUsuarios() {
-    const sel = document.getElementById('cadSelectUsuario');
-    const isAdmin = state.user.perfil === 'admin';
-
-    let options = state.usuarios.map(u =>
-      `<option value="${u.id_usuario}">${escapeHtml(u.nome)} (${u.id_usuario})</option>`
-    ).join('');
-
-    if (isAdmin) {
-      options = `<option value="__NOVO__">+ Novo Usuário</option>` + options;
-    }
-
-    sel.innerHTML = options;
-    sel.value = state.user.id_usuario;
-    aoTrocarUsuarioCadastro();
-  }
-
-  function aoTrocarUsuarioCadastro() {
-    const selVal = document.getElementById('cadSelectUsuario').value;
-    const isAdmin = state.user.perfil === 'admin';
-    const ehNovo = selVal === '__NOVO__';
-
-    document.getElementById('camposCredenciaisAdmin').classList.toggle('hidden', !isAdmin);
-    document.getElementById('cadNome').disabled = !isAdmin && !ehNovo;
-
-    if (ehNovo) {
-      document.getElementById('cadNome').value = '';
-      document.getElementById('cadNomeComprovante').value = '';
-      document.getElementById('cadTelefone').value = '';
-      document.getElementById('cadSenha').value = '';
-    } else {
-      const u = state.usuarios.find(x => x.id_usuario === selVal);
-      if (u) {
-        document.getElementById('cadNome').value = u.nome || '';
-        document.getElementById('cadNomeComprovante').value = u.nome_comprovante || u.nome || '';
-        document.getElementById('cadTelefone').value = '';
-        document.getElementById('cadSenha').value = '';
-      }
-    }
-    document.getElementById('cadFeedback').innerHTML = '';
-    atualizarSugestaoCadastro();
-  }
-
-  function atualizarSugestaoCadastro() {
-    const nome = document.getElementById('cadNome').value.trim();
-    const nomeComp = document.getElementById('cadNomeComprovante').value.trim();
-    const box = document.getElementById('boxSugestaoCadastro');
-
-    if (!nome) {
-      box.classList.add('hidden');
-      state.sugestaoCadastroAtual = '';
-      return;
-    }
-
-    const sugerido = normalizarTexto(nome);
-    const sim = calcularSimilaridade(nome, nomeComp || nome);
-    state.sugestaoCadastroAtual = sugerido;
-
-    box.classList.remove('hidden');
-    box.innerHTML = `✨ <code>${escapeHtml(sugerido)}</code> • Similaridade: <strong>${Math.round(sim * 100)}%</strong>`;
-  }
-
-  function aplicarSugestaoCadastro() {
-    if (!state.sugestaoCadastroAtual) return;
-    document.getElementById('cadNomeComprovante').value = state.sugestaoCadastroAtual;
-    atualizarSugestaoCadastro();
-  }
-
-  async function salvarUsuarioCadastro() {
-    const selVal = document.getElementById('cadSelectUsuario').value;
-    const ehNovo = selVal === '__NOVO__';
-    const nome = document.getElementById('cadNome').value.trim();
-    const nomeComprovante = document.getElementById('cadNomeComprovante').value.trim();
-    const telefone = document.getElementById('cadTelefone').value.trim();
-    const senha = document.getElementById('cadSenha').value.trim();
-
-    if (ehNovo && (!nome || !telefone || !senha)) {
-      showMsg('cadFeedback', 'Preencha nome, telefone e senha.', 'err');
-      return;
-    }
-
-    try {
-      const res = await apiPost({
-        action: 'cadastrarUsuario',
-        atorId: state.user.id_usuario,
-        idUsuarioAlvo: ehNovo ? '' : selVal,
-        nome,
-        nomeComprovante: nomeComprovante || normalizarTexto(nome),
-        telefone,
-        senha
-      });
-      showMsg('cadFeedback', res.message, res.success ? 'ok' : 'err');
-      if (res.success) await carregarDashboard();
-    } catch (err) {
-      showMsg('cadFeedback', err.message, 'err');
-    }
-  }
-
-  // =========================================================================
-  // ABA 7: ADMIN — CÂMERA OCR PARA BILHETES IMPRESSOS DA MEGA-SENA
-  // =========================================================================
-  function acionarCameraBilhete() {
-    const inp = document.getElementById('inputCameraBilhete');
-    inp.value = '';
-    inp.click();
-  }
-
-  function acionarGaleriaBilhete() {
-    const inp = document.getElementById('inputGaleriaBilhete');
-    inp.value = '';
-    inp.click();
-  }
-
-  async function abrirCameraAoVivo() {
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      acionarCameraBilhete();
-      return;
-    }
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
-        audio: false
-      });
-      state.cameraStream = stream;
-      const video = document.getElementById('cameraLiveVideo');
-      video.srcObject = stream;
-      document.getElementById('cameraLiveModal').classList.remove('hidden');
-    } catch (err) {
-      // Fallback para câmera nativa do celular caso permissão inline seja recusada
-      acionarCameraBilhete();
-    }
-  }
-
-  function fecharCameraAoVivo() {
-    if (state.cameraStream) {
-      state.cameraStream.getTracks().forEach(t => t.stop());
-      state.cameraStream = null;
-    }
-    const video = document.getElementById('cameraLiveVideo');
-    if (video) video.srcObject = null;
-    const modal = document.getElementById('cameraLiveModal');
-    if (modal) modal.classList.add('hidden');
-  }
-
-  async function capturarFrameCamera() {
-    const video = document.getElementById('cameraLiveVideo');
-    if (!video || !video.videoWidth) return;
-
-    const canvas = document.createElement('canvas');
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-    fecharCameraAoVivo();
-    await executarOcrBilheteDeFonte(canvas);
-  }
-
-  async function lerFotoBilhete(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-    await executarOcrBilheteDeFonte(file);
-  }
-
-  function preProcessarImagemBilhete(fonte) {
-    return new Promise((resolve, reject) => {
-      const processarCanvas = (imgSource, w, h) => {
-        const maxW = 1800;
-        const escala = w > maxW ? (maxW / w) : 1;
-        const canvas = document.createElement('canvas');
-        canvas.width = Math.round(w * escala);
-        canvas.height = Math.round(h * escala);
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(imgSource, 0, 0, canvas.width, canvas.height);
-
-        // Escala de cinza + alto contraste para destacar impressão térmica de lotérica
-        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const d = imgData.data;
-        const contrast = 1.65;
-        const intercept = 128 * (1 - contrast);
-
-        for (let i = 0; i < d.length; i += 4) {
-          let gray = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
-          gray = Math.max(0, Math.min(255, gray * contrast + intercept));
-          d[i] = d[i + 1] = d[i + 2] = gray;
-        }
-        ctx.putImageData(imgData, 0, 0);
-        resolve(canvas);
-      };
-
-      if (fonte instanceof HTMLCanvasElement) {
-        processarCanvas(fonte, fonte.width, fonte.height);
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onload = () => {
-        const img = new Image();
-        img.onload = () => processarCanvas(img, img.width, img.height);
-        img.onerror = () => reject(new Error('Não foi possível abrir a imagem do bilhete.'));
-        img.src = reader.result;
-      };
-      reader.onerror = () => reject(new Error('Falha ao ler o arquivo da câmera.'));
-      reader.readAsDataURL(fonte);
-    });
-  }
-
-  function extrairJogosDeTextoOCR(textoBruto) {
-    const textoLimpo = String(textoBruto || '');
-    const linhas = textoLimpo.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-
-    // Tenta detectar o número do concurso no cabeçalho do bilhete
-    let concursoDetectado = '';
-    const mConc = textoLimpo.match(/CONC(?:URSO)?\s*[:#.-]?\s*(\d{4})/i);
-    if (mConc) concursoDetectado = mConc[1];
-
-    const jogosEncontrados = [];
-    const vistos = new Set();
-
-    linhas.forEach(linha => {
-      // Ignora linhas típicas de cabeçalho/rodapé de bilhete (datas, horários, valores, CNPJ/CPF, códigos longos)
-      if (/\d{2}\/\d{2}\/\d{2,4}/.test(linha)) return;
-      if (/\d{2}:\d{2}/.test(linha)) return;
-      if (/R\$\s*\d/.test(linha)) return;
-      if (/\d{7,}/.test(linha.replace(/\s+/g, ''))) {
-        // Só ignora se a linha for um bloco contínuo de dígitos sem espaços (código de barras/autenticação)
-        if (/\d{7,}/.test(linha)) return;
-      }
-
-      // Remove rótulo inicial da aposta (ex: "A ", "B)", "01:", "JOGO 1 -")
-      let tratada = linha
-        .replace(/^\s*(?:JOGO|APOSTA)?\s*[A-Z]\s*[:.)-]\s*/i, ' ')
-        .replace(/^\s*(?:JOGO|APOSTA)\s*\d+\s*[:.)-]\s*/i, ' ')
-        .replace(/^\s*[A-Z]\s+(?=\d{2}\b)/i, ' ');
-
-      // Corrige confusões comuns de OCR entre dígitos em linhas majoritariamente numéricas
-      const qtdDigitos = (tratada.match(/\d/g) || []).length;
-      if (qtdDigitos >= 8) {
-        tratada = tratada
-          .replace(/(\d|\b)[Oo](?=\d|\b)/g, '$10')
-          .replace(/(\d)[Il|](?=\d)/g, '$11');
-      }
-
-      // Extrai tokens de 1 ou 2 dígitos (evita pegar partes de números maiores, compatível com qualquer Safari)
-      const tokens = (tratada.match(/\d+/g) || []).filter(t => t.length <= 2);
-      const dezenas = tokens
-        .map(t => parseInt(t, 10))
-        .filter(n => n >= 1 && n <= 60);
-
-      const unicos = [...new Set(dezenas)].sort((a, b) => a - b);
-
-      // Valida linha de jogo da Mega-Sena (6 a 20 dezenas únicas)
-      if (unicos.length >= 6 && unicos.length <= 20) {
-        const formatado = unicos.map(n => String(n).padStart(2, '0'));
-        const chave = formatado.join(' ');
-        if (!vistos.has(chave)) {
-          vistos.add(chave);
-          jogosEncontrados.push(formatado);
-        }
-      }
-    });
-
-    return { jogosEncontrados, concursoDetectado };
-  }
-
-  async function executarOcrBilheteDeFonte(fonte) {
-    const progWrap = document.getElementById('bilheteOcrProgressoWrap');
-    const progBar = document.getElementById('bilheteOcrBar');
-    const progTxt = document.getElementById('bilheteOcrStatus');
-    const feedback = document.getElementById('bilheteOcrFeedback');
-
-    progWrap.classList.remove('hidden');
-    progBar.style.width = '12%';
-    progTxt.textContent = 'Ajustando contraste do bilhete...';
-    feedback.innerHTML = '';
-
-    try {
-      const canvasPrep = await preProcessarImagemBilhete(fonte);
-      progBar.style.width = '25%';
-      progTxt.textContent = 'Reconhecendo números (OCR)...';
-
-      const resOcr = await Tesseract.recognize(canvasPrep, 'por', {
-        logger: m => {
-          if (m.status === 'recognizing text') {
-            const pct = Math.round((m.progress || 0) * 100);
-            progBar.style.width = Math.max(25, pct) + '%';
-            progTxt.textContent = `OCR Bilhete: ${pct}%`;
-          }
-        }
-      });
-
-      const textoBruto = (resOcr && resOcr.data && resOcr.data.text) ? resOcr.data.text : '';
-      document.getElementById('textoBilheteBruto').textContent = textoBruto;
-      document.getElementById('detalhesBilheteBruto').classList.remove('hidden');
-
-      const { jogosEncontrados, concursoDetectado } = extrairJogosDeTextoOCR(textoBruto);
-
-      if (concursoDetectado && !document.getElementById('rodadaConcurso').value.trim()) {
-        document.getElementById('rodadaConcurso').value = concursoDetectado;
-      }
-
-      if (jogosEncontrados.length === 0) {
-        showMsg(
-          'bilheteOcrFeedback',
-          'Nenhum jogo completo (6 a 20 dezenas) identificado na foto. Tente tirar mais de perto com boa iluminação ou ajuste manualmente abaixo.',
-          'warn'
-        );
-      } else {
-        const ta = document.getElementById('rodadaJogosTexto');
-        const existentes = ta.value.trim();
-        const novasLinhas = jogosEncontrados.map(j => j.join(' ')).join('\n');
-        ta.value = existentes ? `${existentes}\n${novasLinhas}` : novasLinhas;
-        atualizarPreviewJogos();
-
-        const extraConc = concursoDetectado ? ` • Concurso ${concursoDetectado} detectado` : '';
-        showMsg(
-          'bilheteOcrFeedback',
-          `✅ ${jogosEncontrados.length} jogo(s) reconhecido(s) e adicionado(s)${extraConc}. Confira os números antes de lançar.`,
-          'ok'
-        );
-      }
-    } catch (err) {
-      showMsg('bilheteOcrFeedback', 'Erro na leitura da câmera: ' + err.message, 'err');
-    } finally {
-      progBar.style.width = '100%';
-      setTimeout(() => progWrap.classList.add('hidden'), 600);
-    }
-  }
-
-  // =========================================================================
-  // ABA 7: ADMIN — NOVA RODADA (COM CANCELAR) + CONFIGURAR PIX
-  // =========================================================================
-  function renderAdminFormRodada() {
-    const container = document.getElementById('listaParticipantesAdmin');
-    container.innerHTML = state.usuarios.map(u => `
-      <div class="cota-row">
-        <div><strong>${escapeHtml(u.nome)}</strong></div>
-        <select class="select-cota-admin" data-uid="${u.id_usuario}" data-nome="${escapeHtml(u.nome)}" onchange="recalcularPreviewRodada()">
-          <option value="0">0</option>
-          <option value="0.5">0,5 (Meia)</option>
-          <option value="1">1 (Inteira)</option>
-          <option value="1.5">1,5</option>
-          <option value="2">2</option>
-        </select>
-      </div>
-    `).join('');
-    recalcularPreviewRodada();
-  }
-
-  function recalcularPreviewRodada() {
-    const selects = [...document.querySelectorAll('.select-cota-admin')];
-    const valorTotal = parseFloat(document.getElementById('rodadaValorTotal').value) || 0;
-    const totalCotas = selects.reduce((acc, s) => acc + parseFloat(s.value), 0);
-    const ehInteiro = totalCotas > 0 && (Math.round(totalCotas * 100) % 100 === 0);
-
-    document.getElementById('prevTotalCotas').textContent = totalCotas.toString().replace('.', ',');
-    const statusEl = document.getElementById('prevStatusCotas');
-    const btn = document.getElementById('btnCriarRodada');
-
-    if (totalCotas === 0) {
-      statusEl.className = 'badge badge-red';
-      statusEl.textContent = 'Selecione';
-      btn.disabled = true;
-    } else if (!ehInteiro) {
-      statusEl.className = 'badge badge-amber';
-      statusEl.textContent = 'Meia sem par';
-      btn.disabled = true;
-    } else {
-      statusEl.className = 'badge badge-green';
-      statusEl.textContent = 'OK ✓';
-      btn.disabled = valorTotal <= 0;
-    }
-
-    const valorCota = ehInteiro && valorTotal > 0 ? valorTotal / totalCotas : 0;
-    document.getElementById('prevValorInteira').textContent = formatBRL(valorCota);
-    document.getElementById('prevValorMeia').textContent = formatBRL(valorCota / 2);
-  }
-
-  function cancelarCadastroRodada() {
-    const desc = document.getElementById('rodadaDescricao').value.trim();
-    const conc = document.getElementById('rodadaConcurso').value.trim();
-    const val = document.getElementById('rodadaValorTotal').value.trim();
-    const jogos = document.getElementById('rodadaJogosTexto').value.trim();
-    const temCota = [...document.querySelectorAll('.select-cota-admin')].some(s => parseFloat(s.value) > 0);
-
-    if ((desc || conc || val || jogos || temCota) && !confirm('Cancelar o cadastro desta rodada e limpar os campos preenchidos?')) {
-      return;
-    }
-
-    document.getElementById('rodadaDescricao').value = '';
-    document.getElementById('rodadaConcurso').value = '';
-    document.getElementById('rodadaValorTotal').value = '';
-    document.getElementById('rodadaJogosTexto').value = '';
-    document.getElementById('bilheteOcrFeedback').innerHTML = '';
-    document.getElementById('detalhesBilheteBruto').classList.add('hidden');
-    document.getElementById('adminRodadaFeedback').innerHTML = '';
-
-    document.querySelectorAll('.select-cota-admin').forEach(s => { s.value = '0'; });
-    atualizarPreviewJogos();
-    recalcularPreviewRodada();
-    trocarAba('tabRodadas');
-  }
-
-  async function criarNovaRodada() {
-    const descricao = document.getElementById('rodadaDescricao').value.trim();
-    const concurso = document.getElementById('rodadaConcurso').value.trim();
-    const valorTotal = parseFloat(document.getElementById('rodadaValorTotal').value);
-    const jogosTexto = document.getElementById('rodadaJogosTexto').value.trim();
-    const { jogosValidos, erros } = parsearJogosTexto(jogosTexto);
-
-    if (jogosTexto && erros.length > 0) {
-      showMsg('adminRodadaFeedback', 'Corrija as linhas de jogos: ' + erros.join(' | '), 'err');
-      return;
-    }
-
-    const selects = [...document.querySelectorAll('.select-cota-admin')];
-    const participantes = selects
-      .map(s => ({ id_usuario: s.dataset.uid, nome_usuario: s.dataset.nome, fracao_cota: parseFloat(s.value) }))
-      .filter(p => p.fracao_cota > 0);
-
-    if (!descricao || !valorTotal || participantes.length === 0) {
-      showMsg('adminRodadaFeedback', 'Preencha descrição, valor total e participantes.', 'err');
-      return;
-    }
-
-    const btn = document.getElementById('btnCriarRodada');
-    btn.disabled = true;
-    btn.textContent = 'Salvando...';
-
-    try {
-      const res = await apiPost({
-        action: 'criarRodada',
-        adminId: state.user.id_usuario,
-        descricao,
-        valorTotal,
-        concurso,
-        jogos: jogosValidos,
-        participantes
-      });
-      showMsg('adminRodadaFeedback', res.message, res.success ? 'ok' : 'err');
-      if (res.success) {
-        document.getElementById('rodadaDescricao').value = '';
-        document.getElementById('rodadaConcurso').value = '';
-        document.getElementById('rodadaValorTotal').value = '';
-        document.getElementById('rodadaJogosTexto').value = '';
-        document.getElementById('bilheteOcrFeedback').innerHTML = '';
-        document.getElementById('detalhesBilheteBruto').classList.add('hidden');
-        atualizarPreviewJogos();
-        await carregarDashboard();
-      }
-    } catch (err) {
-      showMsg('adminRodadaFeedback', err.message, 'err');
-    } finally {
-      btn.textContent = 'Lançar Rodada';
-      recalcularPreviewRodada();
-    }
-  }
-
-  async function salvarConfigPix() {
-    const nomeRecebedor = document.getElementById('cfgNomeRecebedor').value.trim();
-    const chavePix = document.getElementById('cfgChavePix').value.trim();
-
-    if (!nomeRecebedor || !chavePix) {
-      showMsg('configPixFeedback', 'Preencha o Nome do Recebedor e a Chave Pix.', 'err');
-      return;
-    }
-
-    const btn = document.getElementById('btnSalvarPix');
-    btn.disabled = true;
-    btn.textContent = 'Salvando...';
-
-    try {
-      const res = await apiPost({
-        action: 'atualizarConfigPix',
-        adminId: state.user.id_usuario,
-        nome_recebedor: nomeRecebedor,
-        chave_pix: chavePix
-      });
-
-      if (res.success) {
-        localStorage.removeItem('bolao_ameba_pix_override');
-        state.configPix.NOME_RECEBEDOR = nomeRecebedor;
-        state.configPix.CHAVE_PIX = chavePix;
-        aplicarConfigPixNaInterface();
-        showMsg('configPixFeedback', `✅ ${res.message || 'Dados Pix salvos para todos os usuários!'}`, 'ok');
-      } else if (String(res.message || '').toLowerCase().includes('inválida')) {
-        // Fallback local caso o BOLAO_DO_AMEBA.gs ainda não tenha recebido a função atualizarConfigPix
-        localStorage.setItem('bolao_ameba_pix_override', JSON.stringify({
-          NOME_RECEBEDOR: nomeRecebedor,
-          CHAVE_PIX: chavePix
-        }));
-        state.configPix.NOME_RECEBEDOR = nomeRecebedor;
-        state.configPix.CHAVE_PIX = chavePix;
-        aplicarConfigPixNaInterface();
-        showMsg(
-          'configPixFeedback',
-          '⚠️ Atualizado neste dispositivo. Para refletir para todos os participantes, adicione a ação <code>atualizarConfigPix</code> no BOLAO_DO_AMEBA.gs.',
-          'warn'
-        );
-      } else {
-        showMsg('configPixFeedback', `❌ ${res.message}`, 'err');
-      }
-    } catch (err) {
-      showMsg('configPixFeedback', 'Erro ao salvar Pix: ' + err.message, 'err');
-    } finally {
-      btn.disabled = false;
-      btn.textContent = 'Salvar Pix';
-    }
-  }
-
-  // =========================================================================
-  // MOTOR DE TOUR INTERATIVO COM SPOTLIGHT (USER GUIDE)
-  // =========================================================================
-  let tourState = {
-    ativo: false,
-    passos: [],
-    indice: 0,
-    abaAnterior: 'tabTour'
-  };
-
-  function obterPassosTour() {
-    const isAdmin = state.user && state.user.perfil === 'admin';
-    const passos = [
-      {
-        id: 'nav',
-        tab: 'tabPagar',
-        selector: '#bottomNav',
-        titulo: '📱 Navegação por Ícones',
-        texto: 'Use esta barra fixa na parte de baixo para navegar entre todas as telas: Pagar, Jogos, Rodadas, Resumo, Perfil e Tour.'
-      },
-      {
-        id: 'resultado',
-        tab: 'tabPagar',
-        selector: '#cardUltimoResultado',
-        titulo: '🎱 Último Resultado da Mega-Sena',
-        texto: 'Aqui aparecem automaticamente as 6 dezenas do último sorteio oficial, se o prêmio acumulou e a estimativa do próximo concurso.'
-      },
-      {
-        id: 'push',
-        tab: 'tabPagar',
-        selector: '#btnPush',
-        titulo: '🔔 Notificações Push no Celular',
-        texto: 'Ative aqui para receber alertas diários quando houver cota em aberto e aviso automático assim que sair resultado novo. No iPhone, adicione o site à Tela de Início pelo Safari antes de ativar; no Android, abra pelo Chrome.'
-      },
-      {
-        id: 'pagar',
-        tab: 'tabPagar',
-        selector: '#pixBoxArea',
-        titulo: '💸 Chave Pix do Bolão',
-        texto: 'Confira o nome do recebedor e toque em "Copiar Pix" para fazer a transferência da sua cota sem erro de digitação.'
-      },
-      {
-        id: 'pendencias',
-        tab: 'tabPagar',
-        selector: '#pendenciasArea',
-        titulo: '🧾 Pendências & Validação de Comprovante',
-        texto: 'Suas cotas em aberto ficam listadas aqui. Toque em "Anexar Comprovante" e envie o PDF ou print do banco (até 10 MB). A leitura é local (sem IA), confere valor exato, recebedor e ID único antifraude, dá baixa na hora e salva o arquivo no Google Drive.'
-      },
-      {
-        id: 'jogos',
-        tab: 'tabJogos',
-        selector: '#cardJogosConcursos',
-        titulo: '🎟️ Jogos por Concurso',
-        texto: 'Todos os jogos apostados ficam organizados linha a linha por número do concurso. Clique em um concurso para expandir ou retrair. Os números acertados naquele respectivo concurso acendem em verde, sinalizando Quadra, Quina e Sena.'
-      },
-      {
-        id: 'rodadas',
-        tab: 'tabRodadas',
-        selector: '#cardRodadas',
-        titulo: '📄 Rodadas & Comprovantes',
-        texto: 'Veja o rateio completo de cada rodada e clique no ícone 📄 para visualizar o comprovante salvo no Google Drive.'
-      },
-      {
-        id: 'resumo',
-        tab: 'tabResumo',
-        selector: '#cardResumoMensal',
-        titulo: '📊 Resumo Mensal & Situação Atual',
-        texto: 'Acompanhe nesta tabela com rolagem vertical o consumo, o quanto cada participante deve e o status, agrupados por Situação Atual e por Mês. Logo abaixo estão os rankings de Devedores Atuais e Histórico.'
-      },
-      {
-        id: 'conta',
-        tab: 'tabCadastro',
-        selector: '#cardMinhasTransferencias',
-        titulo: '💳 Minha Conta & Transferências',
-        texto: 'Consulte seu saldo total, status geral de pagamentos e a tabela completa com todas as suas transferências e links para seus comprovantes (📄).'
-      },
-      {
-        id: 'perfil',
-        tab: 'tabCadastro',
-        selector: '#cardCadastro',
-        titulo: '👤 Perfil & Nome no Comprovante',
-        texto: 'Ajuste o campo "Nome no comprovante" para ficar igual ao nome impresso pelo seu banco no Pix — isso aumenta a precisão da leitura automática. Use "✨ Sugestão" para padronizar rapidamente.'
-      }
-    ];
-
-    if (isAdmin) {
-      passos.push(
-        {
-          id: 'admin_busca',
-          tab: 'tabPagar',
-          selector: '#adminBuscaResultadoWrap',
-          titulo: '🔄 Admin: Buscar Resultado Agora',
-          texto: 'Como administrador, você pode puxar imediatamente o último concurso (deixando o campo vazio) ou digitar o número de um concurso específico e tocar em Buscar.'
-        },
-        {
-          id: 'admin',
-          tab: 'tabAdmin',
-          selector: '#cardAdminRodada',
-          titulo: '⚙️ Admin: Nova Rodada, Câmera OCR & Cancelar',
-          texto: 'Cadastre novas rodadas fechando cotas inteiras (0,5 precisa de par 0,5). Use "📷 Ler Bilhete" ou "🎥 Câmera ao Vivo" para reconhecer jogos impressos direto pela câmera do celular, e use "Cancelar" se quiser descartar o cadastro.'
-        },
-        {
-          id: 'admin_pix',
-          tab: 'tabAdmin',
-          selector: '#cardConfigPix',
-          titulo: '💸 Admin: Alterar Recebedor e Chave Pix',
-          texto: 'Altere o Nome do Recebedor e a Chave Pix diretamente por aqui sem precisar editar código.'
-        }
-      );
-    }
-
-    return passos;
-  }
-
-  function iniciarTour(indiceInicial = 0) {
-    if (!state.user) return;
-    tourState.passos = obterPassosTour();
-    if (tourState.passos.length === 0) return;
-
-    tourState.abaAnterior = state.abaAtual || 'tabTour';
-    tourState.ativo = true;
-    tourState.indice = Math.max(0, Math.min(indiceInicial, tourState.passos.length - 1));
-
-    document.getElementById('tourBlocker').classList.remove('hidden');
-    document.getElementById('tourSpotlight').classList.remove('hidden');
-    document.getElementById('tourTooltip').classList.remove('hidden');
-
-    renderPassoTour();
-  }
-
-  function iniciarTourNoPasso(idPasso) {
-    const passos = obterPassosTour();
-    const idx = passos.findIndex(p => p.id === idPasso);
-    iniciarTour(idx >= 0 ? idx : 0);
-  }
-
-  function proximoPassoTour() {
-    if (!tourState.ativo) return;
-    if (tourState.indice < tourState.passos.length - 1) {
-      tourState.indice += 1;
-      renderPassoTour();
-    } else {
-      encerrarTour();
-    }
-  }
-
-  function anteriorPassoTour() {
-    if (!tourState.ativo || tourState.indice <= 0) return;
-    tourState.indice -= 1;
-    renderPassoTour();
-  }
-
-  function encerrarTour() {
-    if (!tourState.ativo) return;
-    tourState.ativo = false;
-    document.getElementById('tourBlocker').classList.add('hidden');
-    document.getElementById('tourSpotlight').classList.add('hidden');
-    document.getElementById('tourTooltip').classList.add('hidden');
-    if (state.user && tourState.abaAnterior) {
-      trocarAba(tourState.abaAnterior);
-    }
-  }
-
-  function renderPassoTour() {
-    const passo = tourState.passos[tourState.indice];
-    if (!passo) return;
-
-    if (passo.tab && state.abaAtual !== passo.tab) {
-      trocarAba(passo.tab);
-    }
-
-    const total = tourState.passos.length;
-    const atual = tourState.indice + 1;
-    document.getElementById('tourStepCounter').textContent = `Passo ${atual} de ${total}`;
-    document.getElementById('tourProgressFill').style.width = `${Math.round((atual / total) * 100)}%`;
-    document.getElementById('tourTitle').textContent = passo.titulo;
-    document.getElementById('tourText').textContent = passo.texto;
-    document.getElementById('tourPrevBtn').disabled = tourState.indice === 0;
-    document.getElementById('tourNextBtn').textContent =
-      tourState.indice === total - 1 ? 'Concluir ✓' : 'Próximo →';
-
-    const el = document.querySelector(passo.selector);
-    if (el) {
-      const style = window.getComputedStyle(el);
-      if (style.position !== 'fixed') {
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-      setTimeout(() => posicionarSpotlightETooltip(el), 60);
-      setTimeout(() => posicionarSpotlightETooltip(el), 320);
-    }
-  }
-
-  function posicionarSpotlightETooltip(el) {
-    if (!tourState.ativo || !el) return;
-    const spot = document.getElementById('tourSpotlight');
-    const tip = document.getElementById('tourTooltip');
-    const rect = el.getBoundingClientRect();
-
-    const pad = 6;
-    const top = Math.max(4, rect.top - pad);
-    const left = Math.max(4, rect.left - pad);
-    const width = Math.min(window.innerWidth - 8, rect.width + pad * 2);
-    const height = Math.min(window.innerHeight - 8, rect.height + pad * 2);
-
-    spot.style.top = `${top}px`;
-    spot.style.left = `${left}px`;
-    spot.style.width = `${width}px`;
-    spot.style.height = `${height}px`;
-
-    const tipRect = tip.getBoundingClientRect();
-    const tipW = tipRect.width || Math.min(360, window.innerWidth - 24);
-    const tipH = tipRect.height || 200;
-    const margin = 12;
-
-    const spaceBelow = window.innerHeight - (top + height);
-    const spaceAbove = top;
-
-    let tipTop;
-    if (spaceBelow >= tipH + margin + 10) {
-      tipTop = top + height + margin;
-    } else if (spaceAbove >= tipH + margin + 10) {
-      tipTop = top - tipH - margin;
-    } else {
-      tipTop = Math.max(margin, Math.min(window.innerHeight - tipH - margin, (window.innerHeight - tipH) / 2));
-    }
-
-    let tipLeft = left + (width / 2) - (tipW / 2);
-    tipLeft = Math.max(margin, Math.min(window.innerWidth - tipW - margin, tipLeft));
-
-    tip.style.top = `${tipTop}px`;
-    tip.style.left = `${tipLeft}px`;
-  }
-
-  function atualizarPosicaoTourAtual() {
-    if (!tourState.ativo) return;
-    const passo = tourState.passos[tourState.indice];
-    if (!passo) return;
-    const el = document.querySelector(passo.selector);
-    if (el) posicionarSpotlightETooltip(el);
-  }
-
-  window.addEventListener('resize', atualizarPosicaoTourAtual);
-  window.addEventListener('scroll', atualizarPosicaoTourAtual, { passive: true });
-  window.addEventListener('keydown', e => {
-    if (!tourState.ativo) return;
-    if (e.key === 'Escape') encerrarTour();
-    else if (e.key === 'ArrowRight') proximoPassoTour();
-    else if (e.key === 'ArrowLeft') anteriorPassoTour();
-  });
-</script>
-</body>
-</html>
+      (chaveNorm.length >= 6
