@@ -805,9 +805,103 @@
     .bolao-selector { width:auto; max-width:220px; padding:7px 9px; font-size:.78rem; }
     .bolao-active-name { color:#e2e8f0; font-size:.76rem; font-weight:800; max-width:190px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     @media (max-width:520px) { .bolao-selector { max-width:145px; } .bolao-active-name { max-width:120px; } }
+
+
+    /* AJUSTES DE USO: orientação horizontal, rolagem lateral bloqueada e ajuda contextual */
+    html, body {
+      width: 100%;
+      max-width: 100%;
+      overflow-x: hidden;
+    }
+    body { touch-action: pan-y; overscroll-behavior-x: none; }
+    .container, header, main, section { max-width: 100%; }
+    .info-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex: 0 0 23px;
+      width: 23px;
+      height: 23px;
+      min-width: 23px;
+      padding: 0;
+      margin-left: 4px;
+      border-radius: 50%;
+      border: 1px solid rgba(148,163,184,.65);
+      background: rgba(148,163,184,.12);
+      color: #cbd5e1;
+      font-size: .78rem;
+      font-weight: 900;
+      line-height: 1;
+    }
+    .info-btn:hover { background: rgba(148,163,184,.24); color: #fff; }
+    .info-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 1200;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      background: rgba(2,6,23,.82);
+      backdrop-filter: blur(5px);
+    }
+    .info-modal.hidden { display: none !important; }
+    .info-modal-card {
+      width: min(520px, 100%);
+      max-height: min(78vh, 680px);
+      overflow-y: auto;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 24px 70px rgba(0,0,0,.55);
+    }
+    .info-modal-head { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; }
+    .info-modal-head h2 { margin:0; font-size:1.08rem; }
+    .info-modal-body { color:#cbd5e1; font-size:.9rem; line-height:1.6; }
+    .info-modal-body ul { margin:8px 0 0 20px; }
+    .orientation-lock {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 2000;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      text-align: center;
+      background: #0b1320;
+    }
+    .orientation-lock-card { width:min(360px,100%); }
+    .orientation-lock-icon { font-size:3.2rem; margin-bottom:14px; }
+    .orientation-lock h2 { margin-bottom:8px; }
+    .orientation-lock p { color:var(--muted); font-size:.88rem; line-height:1.5; margin-bottom:16px; }
+    .admin-section-note { display:none !important; }
+    .ticket-meta-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
+    .ticket-meta-grid > div { min-width:0; }
+    .ticket-meta-grid input { min-width:0; }
+    .ticket-detected-summary { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:8px; }
+    @media (max-width: 680px) {
+      .ticket-meta-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+      .ticket-meta-grid > div:first-child { grid-column:1 / -1; }
+    }
+    @media (max-width: 900px) and (orientation: portrait) {
+      .orientation-lock { display:flex; }
+      body { overflow:hidden; }
+    }
+
   </style>
 </head>
 <body>
+
+<div id="orientationLock" class="orientation-lock" role="dialog" aria-modal="true" aria-label="Orientação horizontal">
+  <div class="orientation-lock-card">
+    <div class="orientation-lock-icon">📱 ↻</div>
+    <h2>Gire o celular</h2>
+    <p>Use o portal na posição horizontal.</p>
+    <button class="btn-primary" type="button" onclick="solicitarModoPaisagem()">Tentar fixar horizontal</button>
+    <div id="orientationLockFeedback" class="muted" style="margin-top:10px;"></div>
+  </div>
+</div>
 
 <header id="appHeader" class="hidden">
   <div class="header-inner">
@@ -829,7 +923,7 @@
 <div class="container">
   <!-- TELA DE LOGIN -->
   <section id="loginSection" class="card login-box">
-    <h2>🍀 Bolão do Ameba</h2>
+    <h2>🍀 Bolão do Ameba <button type="button" class="info-btn" onclick="abrirInfo('cadastroConvite')" aria-label="Informações">i</button></h2>
     <label for="loginTelefone">Telefone</label>
     <input id="loginTelefone" type="tel" placeholder="12999999999" />
 
@@ -839,7 +933,8 @@
     <button id="btnLogin" class="btn-primary" style="width:100%; margin-top:16px;" onclick="fazerLogin()">Entrar</button>
     <div id="loginFeedback"></div>
     <div id="rootAccessNotice" class="root-access-notice">
-      O cadastro não é aberto nesta página. Para criar uma conta, acesse o link de convite enviado pelo administrador de um bolão.
+      Cadastro por convite.
+      <button type="button" class="info-btn" onclick="abrirInfo('cadastroConvite')" aria-label="Informações sobre cadastro">i</button>
     </div>
   </section>
 
@@ -860,7 +955,7 @@
     <!-- CARD ÚLTIMO RESULTADO DA MEGA-SENA -->
     <section id="cardUltimoResultado" class="card mega-banner">
       <div class="row-between">
-        <h2>🎱 Mega-Sena</h2>
+        <h2>🎱 Mega-Sena <button type="button" class="info-btn" onclick="abrirInfo('resultado')" aria-label="Informações sobre resultado">i</button></h2>
         <div id="adminBuscaResultadoWrap" class="hidden" style="display:flex; gap:6px; align-items:center;">
           <input id="inputConcursoManual" type="number" placeholder="Concurso" style="width:120px; padding:6px 8px; font-size:0.8rem;" />
           <button id="btnBuscarMega" class="btn-primary btn-sm" onclick="forcarBuscaResultado()">🔄 Buscar</button>
@@ -872,7 +967,7 @@
     <!-- ABA 1: PAGAR E LEITOR DE COMPROVANTE -->
     <section id="tabPagar" class="tab-content">
       <div class="card">
-        <h2>💸 Pix</h2>
+        <h2>💸 Pix <button type="button" class="info-btn" onclick="abrirInfo('pagamentos')" aria-label="Informações sobre Pix">i</button></h2>
         <div id="pixBoxArea" class="pix-box">
           <div>
             <div class="muted">Recebedor</div>
@@ -884,7 +979,7 @@
         </div>
 
         <div id="pendenciasArea">
-          <h3>Pendências</h3>
+          <h3>Pendências <button type="button" class="info-btn" onclick="abrirInfo('pendencias')" aria-label="Informações sobre pendências">i</button></h3>
           <div id="listaMinhasPendencias"></div>
         </div>
       </div>
@@ -920,7 +1015,7 @@
     <section id="tabJogos" class="tab-content hidden">
       <div id="cardJogosConcursos" class="card">
         <div class="row-between" style="margin-bottom:12px;">
-          <h2 style="margin-bottom:0;">🎟️ Jogos por Concurso</h2>
+          <h2 style="margin-bottom:0;">🎟️ Jogos por Concurso <button type="button" class="info-btn" onclick="abrirInfo('jogos')" aria-label="Informações sobre jogos">i</button></h2>
           <div style="display:flex; gap:6px; flex-wrap:wrap;">
             <button id="btnOrdemConcursos" class="btn-secondary btn-sm" onclick="alternarOrdemConcursos()">⇅ Maior → Menor</button>
             <button class="btn-secondary btn-sm" onclick="toggleTodosConcursos(true)">Expandir</button>
@@ -934,7 +1029,7 @@
     <!-- ABA 3: RODADAS E RATEIOS -->
     <section id="tabRodadas" class="tab-content hidden">
       <div id="cardRodadas" class="card">
-        <h2>🎱 Rodadas</h2>
+        <h2>🎱 Rodadas <button type="button" class="info-btn" onclick="abrirInfo('rodadas')" aria-label="Informações sobre rodadas">i</button></h2>
         <div id="listaRodadas"></div>
       </div>
     </section>
@@ -943,7 +1038,7 @@
     <section id="tabResumo" class="tab-content hidden">
       <div id="cardResumoMensal" class="card">
         <div class="row-between" style="margin-bottom:12px;">
-          <h2 style="margin-bottom:0;">📊 Resumo & Mensal</h2>
+          <h2 style="margin-bottom:0;">📊 Resumo & Mensal <button type="button" class="info-btn" onclick="abrirInfo('resumo')" aria-label="Informações sobre resumo">i</button></h2>
           <select id="filtroMesResumo" onchange="renderResumoMensal()" style="width:auto; min-width:190px; padding:7px 10px; font-size:0.84rem;"></select>
         </div>
 
@@ -966,12 +1061,12 @@
 
       <div class="grid-2">
         <div id="cardRankingAtual" class="card">
-          <h2>🚨 Devedores Atuais</h2>
+          <h2>🚨 Devedores Atuais <button type="button" class="info-btn" onclick="abrirInfo('devedores')" aria-label="Informações sobre devedores">i</button></h2>
           <div id="rankingAtual"></div>
         </div>
 
         <div id="cardRankingHistorico" class="card">
-          <h2>📜 Ranking Histórico</h2>
+          <h2>📜 Ranking Histórico <button type="button" class="info-btn" onclick="abrirInfo('historico')" aria-label="Informações sobre ranking histórico">i</button></h2>
           <div id="rankingHistorico"></div>
         </div>
       </div>
@@ -981,7 +1076,7 @@
     <section id="tabCadastro" class="tab-content hidden">
       <div id="cardMinhasTransferencias" class="card">
         <div class="row-between" style="margin-bottom:10px;">
-          <h2 style="margin-bottom:0;">💳 Minha Conta</h2>
+          <h2 style="margin-bottom:0;">💳 Minha Conta <button type="button" class="info-btn" onclick="abrirInfo('conta')" aria-label="Informações sobre minha conta">i</button></h2>
           <span id="meuStatusGeralBadge" class="badge badge-green">EM DIA</span>
         </div>
 
@@ -1012,7 +1107,7 @@
       </div>
 
       <div id="cardCadastro" class="card">
-        <h2>👤 Perfil</h2>
+        <h2>👤 Perfil <button type="button" class="info-btn" onclick="abrirInfo('perfil')" aria-label="Informações sobre perfil">i</button></h2>
 
         <label for="cadSelectUsuario">Usuário</label>
         <select id="cadSelectUsuario" onchange="aoTrocarUsuarioCadastro()"></select>
@@ -1046,82 +1141,67 @@
     <!-- ABA 6: TOUR / USER GUIDE -->
     <section id="tabTour" class="tab-content hidden">
       <div class="card tour-hero">
-        <h2>🧭 Tour & Guia do App</h2>
-        <p>
-          Faça um passeio interativo pelas telas do Bolão do Ameba com destaque em cada funcionalidade, ou consulte abaixo o manual completo de uso.
-        </p>
+        <h2>🧭 Ajuda <button type="button" class="info-btn" onclick="abrirInfo('ajuda')" aria-label="Informações sobre ajuda">i</button></h2>
         <button class="btn-primary" onclick="iniciarTour(0)" style="padding:12px 22px; font-size:0.95rem;">
           ▶ Iniciar Tour Interativo
         </button>
       </div>
 
       <div class="card">
-        <h2>📖 Guia por Funcionalidade</h2>
+        <h2>📖 Funcionalidades</h2>
         <div class="tour-guide-grid">
           <div class="tour-guide-card">
             <div>
-              <h3>🎱 Resultado da Mega-Sena</h3>
-              <p>O banner verde no topo busca automaticamente os sorteios oficiais, exibe as 6 dezenas, informa se acumulou e mostra o prêmio estimado do próximo concurso.</p>
+              <h3>🎱 Resultado da Mega-Sena <button type="button" class="info-btn" onclick="abrirInfo('resultado')" aria-label="Informações">i</button></h3>
             </div>
             <button class="btn-secondary btn-sm" onclick="iniciarTourNoPasso('resultado')">Destacar no app</button>
           </div>
 
           <div class="tour-guide-card">
             <div>
-              <h3>🔔 Notificações Push no Celular</h3>
-              <p>Receba alertas diários se tiver cota em aberto e aviso automático assim que sair resultado novo da Mega-Sena.</p>
-              <ul class="tour-guide-list">
-                <li><strong>iPhone (Safari):</strong> abra no Safari → Compartilhar → <em>Adicionar à Tela de Início</em> → abra pelo ícone e toque em <strong>🔔 Push</strong>.</li>
-                <li><strong>Android (Chrome):</strong> abra no Chrome (fora do WhatsApp), toque em <strong>🔔 Push</strong> e clique em Permitir.</li>
-              </ul>
+              <h3>🔔 Notificações Push no Celular <button type="button" class="info-btn" onclick="abrirInfo('push')" aria-label="Informações">i</button></h3>
             </div>
             <button class="btn-secondary btn-sm" onclick="iniciarTourNoPasso('push')">Destacar no app</button>
           </div>
 
           <div class="tour-guide-card">
             <div>
-              <h3>💸 Pix & Leitor de Comprovantes</h3>
-              <p>Copie a chave Pix, faça o pagamento e toque em <strong>Anexar Comprovante</strong> (PDF ou print até 10 MB). A validação roda 100% no seu aparelho sem IA, conferindo valor exato, recebedor e ID único antifraude — e salva uma cópia automática no Google Drive.</p>
+              <h3>💸 Pix & Leitor de Comprovantes <button type="button" class="info-btn" onclick="abrirInfo('pagamentos')" aria-label="Informações">i</button></h3>
             </div>
             <button class="btn-secondary btn-sm" onclick="iniciarTourNoPasso('pagar')">Destacar no app</button>
           </div>
 
           <div class="tour-guide-card">
             <div>
-              <h3>🎟️ Jogos por Concurso</h3>
-              <p>Exibe todos os jogos apostados linha a linha agrupados e ordenados pelo número do concurso. Clique em cada concurso para expandir ou retrair. A conferência é feita estritamente contra o sorteio do respectivo concurso, acendendo em verde os acertos e destacando <strong>Quadra</strong>, <strong>Quina</strong> e <strong>Sena</strong>.</p>
+              <h3>🎟️ Jogos por Concurso <button type="button" class="info-btn" onclick="abrirInfo('jogos')" aria-label="Informações">i</button></h3>
             </div>
             <button class="btn-secondary btn-sm" onclick="iniciarTourNoPasso('jogos')">Destacar no app</button>
           </div>
 
           <div class="tour-guide-card">
             <div>
-              <h3>📄 Rodadas & Rateios</h3>
-              <p>Acompanhe o rateio de cada rodada, clique no ícone <strong>📄</strong> para abrir o comprovante salvo no Google Drive e confira os bilhetes vinculados.</p>
+              <h3>📄 Rodadas & Rateios <button type="button" class="info-btn" onclick="abrirInfo('rodadas')" aria-label="Informações">i</button></h3>
             </div>
             <button class="btn-secondary btn-sm" onclick="iniciarTourNoPasso('rodadas')">Destacar no app</button>
           </div>
 
           <div class="tour-guide-card">
             <div>
-              <h3>📊 Resumo Mensal & Rankings</h3>
-              <p>Tabela com rolagem vertical agrupando os gastos por <strong>Situação Atual</strong> e por <strong>Mês</strong>, mostrando o consumo do mês, quanto cada participante deve e o status. Logo abaixo ficam os rankings de <strong>Devedores Atuais</strong> e <strong>Histórico</strong>.</p>
+              <h3>📊 Resumo Mensal & Rankings <button type="button" class="info-btn" onclick="abrirInfo('resumo')" aria-label="Informações">i</button></h3>
             </div>
             <button class="btn-secondary btn-sm" onclick="iniciarTourNoPasso('resumo')">Destacar no app</button>
           </div>
 
           <div class="tour-guide-card">
             <div>
-              <h3>💳 Minha Conta & Perfil</h3>
-              <p>Veja o seu saldo geral, status de pagamentos e a tabela completa com todas as suas transferências e comprovantes (<strong>📄</strong>). Abaixo, ajuste o <strong>Nome no comprovante</strong> para ficar idêntico ao impresso pelo seu banco no Pix.</p>
+              <h3>💳 Minha Conta & Perfil <button type="button" class="info-btn" onclick="abrirInfo('perfil')" aria-label="Informações">i</button></h3>
             </div>
             <button class="btn-secondary btn-sm" onclick="iniciarTourNoPasso('conta')">Destacar no app</button>
           </div>
 
           <div id="tourAdminGuideCard" class="tour-guide-card hidden">
             <div>
-              <h3>⚙️ Painel Admin (Câmera OCR, Rodadas & Pix)</h3>
-              <p>Crie rodadas fechando <strong>cotas inteiras</strong> (0,5 precisa de par 0,5), use a <strong>Câmera do celular</strong> para ler jogos impressos do bilhete via OCR automático, use o botão <strong>Cancelar</strong> caso desista do cadastro e altere diretamente no site o <strong>Nome do Recebedor</strong> e a <strong>Chave Pix</strong>.</p>
+              <h3>⚙️ Painel Admin (Câmera OCR, Rodadas & Pix) <button type="button" class="info-btn" onclick="abrirInfo('administracao')" aria-label="Informações">i</button></h3>
             </div>
             <button class="btn-secondary btn-sm" onclick="iniciarTourNoPasso('admin')">Destacar no app</button>
           </div>
@@ -1133,17 +1213,15 @@
     <section id="tabAdmin" class="tab-content hidden">
       <div id="cardSolicitacoesPendentes" class="card">
         <div class="row-between">
-          <h2>👥 Solicitações Pendentes <span id="pendentesAdminBadge" class="badge badge-amber">0</span></h2>
+          <h2>👥 Solicitações Pendentes <button type="button" class="info-btn" onclick="abrirInfo('solicitacoes')" aria-label="Informações sobre solicitações">i</button> <span id="pendentesAdminBadge" class="badge badge-amber">0</span></h2>
           <button class="btn-secondary btn-sm" onclick="carregarSolicitacoesPendentes()">↻ Atualizar</button>
         </div>
-        <p class="admin-section-note">Pedidos de entrada neste bolão. Ao aprovar ou recusar, a decisão fica registrada no histórico do vínculo.</p>
         <div id="listaSolicitacoesPendentes" class="admin-list"><div class="muted">Carregando solicitações...</div></div>
         <div id="feedbackSolicitacoesAdmin"></div>
       </div>
 
       <div id="cardConvitesBolao" class="card">
-        <h2>🔗 Convite deste Bolão</h2>
-        <p class="admin-section-note">Compartilhe o link para novos participantes. O ingresso sempre depende da aprovação do administrador.</p>
+        <h2>🔗 Convite deste Bolão <button type="button" class="info-btn" onclick="abrirInfo('convites')" aria-label="Informações sobre convites">i</button></h2>
         <div class="admin-item">
           <div class="muted">Código atual</div>
           <strong id="codigoConviteAdmin" class="admin-code">—</strong>
@@ -1164,17 +1242,15 @@
 
       <div id="cardMembrosBolao" class="card">
         <div class="row-between">
-          <h2>🧑‍🤝‍🧑 Gerenciar Membros</h2>
+          <h2>🧑‍🤝‍🧑 Gerenciar Membros <button type="button" class="info-btn" onclick="abrirInfo('membros')" aria-label="Informações sobre membros">i</button></h2>
           <button class="btn-secondary btn-sm" onclick="carregarMembrosBolaoAdmin()">↻ Atualizar</button>
         </div>
-        <p class="admin-section-note">Altere o papel entre participante e administrador deste bolão ou remova o vínculo sem apagar o cadastro global.</p>
         <div id="listaMembrosBolaoAdmin" class="admin-list"><div class="muted">Carregando membros...</div></div>
         <div id="feedbackMembrosAdmin"></div>
       </div>
 
       <div id="cardGerenciarBoloes" class="card hidden">
-        <h2>🛠️ Gerenciar Bolões <span class="badge badge-gold">SUPER ADMIN</span></h2>
-        <p class="admin-section-note">Crie bolões comemorativos ou frequentes, defina o administrador inicial e edite ou arquive sessões existentes.</p>
+        <h2>🛠️ Gerenciar Bolões <button type="button" class="info-btn" onclick="abrirInfo('boloes')" aria-label="Informações sobre gerenciamento de bolões">i</button> <span class="badge badge-gold">SUPER ADMIN</span></h2>
         <div class="admin-form-grid">
           <div><label for="novoBolaoNome">Nome do bolão</label><input id="novoBolaoNome" type="text" placeholder="Ex.: Mega da Virada 2026" /></div>
           <div><label for="novoBolaoTipo">Tipo</label><select id="novoBolaoTipo"><option value="COMEMORATIVO">Comemorativo</option><option value="FREQUENTE">Frequente</option></select></div>
@@ -1193,23 +1269,39 @@
       </div>
 
       <div id="cardAdminRodada" class="card">
-        <h2>⚙️ Nova Rodada</h2>
+        <h2>⚙️ Nova Rodada <button type="button" class="info-btn" onclick="abrirInfo('novaRodada')" aria-label="Informações sobre nova rodada">i</button></h2>
 
         <div class="grid-2">
           <div>
             <label for="rodadaDescricao">Descrição</label>
-            <input id="rodadaDescricao" type="text" placeholder="Ex: Mega-Sena Acumulada" />
+            <input id="rodadaDescricao" type="text" placeholder="Mega-Sena" />
           </div>
           <div>
-            <label for="rodadaConcurso">Nº do Concurso</label>
-            <input id="rodadaConcurso" type="number" min="1" placeholder="Ex: 2945" />
+            <label for="rodadaDataBilhete">Data do bilhete</label>
+            <input id="rodadaDataBilhete" type="date" onchange="atualizarPreviewConcursosManual()" />
           </div>
         </div>
 
-        <label for="rodadaValorTotal">Valor Total (R$)</label>
-        <input id="rodadaValorTotal" type="number" step="0.01" min="0" placeholder="350.00" oninput="recalcularPreviewRodada()" />
+        <div class="ticket-meta-grid">
+          <div>
+            <label for="rodadaConcurso">Concurso inicial</label>
+            <input id="rodadaConcurso" type="number" min="1" inputmode="numeric" placeholder="3087" oninput="atualizarPreviewConcursosManual()" />
+          </div>
+          <div>
+            <label for="rodadaConcursoFim">Concurso final</label>
+            <input id="rodadaConcursoFim" type="number" min="1" inputmode="numeric" placeholder="3090" oninput="atualizarPreviewConcursosManual()" />
+          </div>
+          <div>
+            <label for="rodadaValorTotal">Valor total (R$)</label>
+            <input id="rodadaValorTotal" type="number" step="0.01" min="0" inputmode="decimal" placeholder="72.00" oninput="recalcularPreviewRodada(); atualizarPreviewConcursosManual()" />
+          </div>
+        </div>
+        <div id="previewConcursosInfo" class="ticket-detected-summary muted"></div>
 
-        <label for="rodadaJogosTexto">Jogos (1 por linha)</label>
+        <label for="rodadaJogosTexto">Jogos</label>
+        <div class="row-between" style="margin-top:4px;">
+          <h3 style="margin:0;">Leitura do bilhete <button type="button" class="info-btn" onclick="abrirInfo('ocr')" aria-label="Informações sobre OCR">i</button></h3>
+        </div>
         <div id="scannerBilheteArea" class="scanner-toolbar">
           <button type="button" class="btn-primary btn-sm" onclick="acionarCameraBilhete()">📷 Ler Bilhete (Câmera)</button>
           <button type="button" class="btn-secondary btn-sm" onclick="abrirCameraAoVivo()">🎥 Câmera ao Vivo</button>
@@ -1231,7 +1323,7 @@
         <textarea id="rodadaJogosTexto" placeholder="04 12 23 35 48 59&#10;02 09 17 31 44 55" oninput="atualizarPreviewJogos()"></textarea>
         <div id="previewJogosInfo" class="muted" style="margin-top:4px;">0 jogos</div>
 
-        <h3 style="margin-top:16px;">Participantes</h3>
+        <h3 style="margin-top:16px;">Participantes <button type="button" class="info-btn" onclick="abrirInfo('participantes')" aria-label="Informações sobre participantes">i</button></h3>
         <div id="listaParticipantesAdmin"></div>
 
         <div class="summary-strip" id="previewRodadaBox">
@@ -1254,7 +1346,7 @@
 
       <!-- CARD ADMIN: ALTERAR NOME DO RECEBEDOR E CHAVE PIX -->
       <div id="cardConfigPix" class="card">
-        <h2>💸 Configurar Pix</h2>
+        <h2>💸 Configurar Pix <button type="button" class="info-btn" onclick="abrirInfo('pixAdmin')" aria-label="Informações sobre configuração do Pix">i</button></h2>
 
         <label for="cfgNomeRecebedor">Nome do Recebedor</label>
         <input id="cfgNomeRecebedor" type="text" placeholder="NOME COMPLETO DO RECEBEDOR" />
@@ -1269,6 +1361,17 @@
       </div>
     </section>
   </main>
+</div>
+
+<!-- MODAL DE INFORMAÇÃO CONTEXTUAL -->
+<div id="infoModal" class="info-modal hidden" role="dialog" aria-modal="true" aria-labelledby="infoModalTitle" onclick="if(event.target===this) fecharInfo()">
+  <div class="info-modal-card">
+    <div class="info-modal-head">
+      <h2 id="infoModalTitle">Informações</h2>
+      <button type="button" class="btn-secondary btn-sm" onclick="fecharInfo()" aria-label="Fechar informações">✕</button>
+    </div>
+    <div id="infoModalBody" class="info-modal-body"></div>
+  </div>
 </div>
 
 <!-- MODAL DE CÂMERA AO VIVO PARA LEITURA DE BILHETE IMPRESSO -->
@@ -1455,6 +1558,135 @@
       }
     });
   }
+
+  // =========================================================================
+  // AJUDA CONTEXTUAL E ORIENTAÇÃO DO PORTAL
+  // =========================================================================
+  const CONTEUDO_INFO = {
+    cadastroConvite: {
+      titulo: 'Cadastro por convite',
+      html: 'Novas contas são criadas por um link de convite de um bolão. O telefone identifica a conta global; a entrada em cada bolão depende de aprovação.'
+    },
+    ajuda: {
+      titulo: 'Ajuda do portal',
+      html: 'Use os botões <strong>i</strong> ao lado das áreas do portal para consultar a explicação específica de cada funcionalidade.'
+    },
+    resultado: {
+      titulo: 'Resultado da Mega-Sena',
+      html: 'Mostra o resultado oficial mais recente disponível e compara as dezenas sorteadas com os jogos registrados para os concursos correspondentes.'
+    },
+    push: {
+      titulo: 'Notificações',
+      html: 'Ative as notificações neste aparelho para receber avisos do portal. O navegador ou sistema operacional pode solicitar autorização.'
+    },
+    pagamentos: {
+      titulo: 'Pix e comprovantes',
+      html: 'Confira o recebedor e a chave Pix do bolão ativo. Depois do pagamento, envie o comprovante para validação e registro.'
+    },
+    pendencias: {
+      titulo: 'Pendências',
+      html: 'Exibe os valores que ainda faltam pagar nas suas cotas. Selecione uma pendência para abrir o envio de comprovante.'
+    },
+    jogos: {
+      titulo: 'Jogos por concurso',
+      html: 'Os jogos são agrupados por concurso. Quando um bilhete vale para vários concursos, as mesmas dezenas aparecem em cada concurso do intervalo e são conferidas separadamente com cada resultado.'
+    },
+    rodadas: {
+      titulo: 'Rodadas e rateios',
+      html: 'Cada rodada reúne os jogos, o valor total, os concursos abrangidos e a divisão das cotas entre os participantes. A data do bilhete é armazenada separadamente da data de criação da rodada.'
+    },
+    resumo: {
+      titulo: 'Resumo mensal',
+      html: 'Apresenta os valores devidos e pagos por participante, organizados por período, além dos indicadores e rankings financeiros.'
+    },
+    devedores: {
+      titulo: 'Devedores atuais',
+      html: 'Ordena os participantes com saldo em aberto no bolão ativo, mostrando os valores pendentes.'
+    },
+    historico: {
+      titulo: 'Ranking histórico',
+      html: 'Compara o total de valores gerados ao longo das rodadas registradas no bolão ativo.'
+    },
+    conta: {
+      titulo: 'Minha conta',
+      html: 'Mostra seu histórico de cotas, pagamentos, saldos e comprovantes associados à sua conta neste bolão.'
+    },
+    perfil: {
+      titulo: 'Perfil',
+      html: 'O nome no comprovante deve corresponder ao nome que aparece no comprovante Pix. A conta e o telefone são globais e podem participar de mais de um bolão.'
+    },
+    administracao: {
+      titulo: 'Painel administrativo',
+      html: 'As opções administrativas dependem do seu papel no bolão ativo. Administradores gerenciam solicitações, membros, convites, rodadas e Pix; super_admin também gerencia sessões.'
+    },
+    solicitacoes: {
+      titulo: 'Solicitações pendentes',
+      html: 'Mostra os pedidos de entrada no bolão ativo. Aprovar libera o acesso aos dados daquela sessão; recusar mantém o vínculo sem acesso. A decisão é registrada no histórico.'
+    },
+    convites: {
+      titulo: 'Convite do bolão',
+      html: 'Compartilhe o link com novos participantes. É possível pausar novas inscrições ou gerar outro código; ao regenerar, o link antigo deixa de funcionar.'
+    },
+    membros: {
+      titulo: 'Gerenciar membros',
+      html: 'Altere o papel de um membro aprovado ou remova apenas o vínculo com este bolão. A conta global e os vínculos com outros bolões permanecem separados.'
+    },
+    boloes: {
+      titulo: 'Gerenciar bolões',
+      html: 'Área exclusiva do super_admin para criar, editar e arquivar sessões. Cada bolão mantém sua própria identidade visual, recebedor, chave Pix e pasta de comprovantes.'
+    },
+    novaRodada: {
+      titulo: 'Nova rodada',
+      html: 'Informe descrição, intervalo de concursos, data do bilhete, valor total, jogos e participantes. A soma das cotas precisa fechar em um número inteiro.'
+    },
+    ocr: {
+      titulo: 'Leitura OCR do bilhete',
+      html: 'Fotografe o bilhete inteiro, com boa iluminação e sem cortar cabeçalho ou rodapé. A leitura tenta identificar as dezenas, concurso inicial e final, valor total e data. Confira os campos antes de lançar a rodada.'
+    },
+    participantes: {
+      titulo: 'Participantes e cotas',
+      html: 'Selecione a fração de cota de cada participante. O total de cotas deve fechar em número inteiro; por exemplo, duas meias cotas formam uma cota inteira.'
+    },
+    pixAdmin: {
+      titulo: 'Configuração do Pix',
+      html: 'O recebedor e a chave Pix definidos aqui pertencem somente ao bolão ativo. Confira os dados antes de salvar.'
+    }
+  };
+
+  function abrirInfo(chave) {
+    const item = CONTEUDO_INFO[chave] || CONTEUDO_INFO.ajuda;
+    document.getElementById('infoModalTitle').textContent = item.titulo;
+    document.getElementById('infoModalBody').innerHTML = item.html;
+    document.getElementById('infoModal').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function fecharInfo() {
+    const modal = document.getElementById('infoModal');
+    if (modal) modal.classList.add('hidden');
+    document.body.style.overflow = '';
+  }
+
+  async function solicitarModoPaisagem() {
+    const feedback = document.getElementById('orientationLockFeedback');
+    try {
+      if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+        await document.documentElement.requestFullscreen();
+      }
+      if (screen.orientation && typeof screen.orientation.lock === 'function') {
+        await screen.orientation.lock('landscape');
+        if (feedback) feedback.textContent = 'Orientação horizontal solicitada.';
+      } else if (feedback) {
+        feedback.textContent = 'Gire o aparelho manualmente para continuar.';
+      }
+    } catch (_) {
+      if (feedback) feedback.textContent = 'Gire o aparelho manualmente para continuar.';
+    }
+  }
+
+  window.addEventListener('keydown', event => {
+    if (event.key === 'Escape') fecharInfo();
+  });
 
   // =========================================================================
   // COMUNICAÇÃO COM GOOGLE APPS SCRIPT (CORS-SAFE COM text/plain)
@@ -3063,20 +3295,31 @@
     state.rodadas.forEach(r => {
       const jogos = Array.isArray(r.jogos) ? r.jogos : [];
       if (jogos.length === 0) return;
-
-      const conc = r.concurso ? String(r.concurso).trim() : '__SEM_CONCURSO__';
-      if (!grupos[conc]) {
-        grupos[conc] = {
-          concurso: conc,
-          num: conc === '__SEM_CONCURSO__' ? -1 : parseInt(conc, 10) || 0,
-          itens: []
-        };
+      let concursos = Array.isArray(r.concursos) ? r.concursos.map(c => String(c).trim()).filter(Boolean) : [];
+      if (!concursos.length && r.concurso) {
+        const ini = parseInt(String(r.concurso).replace(/\D/g, ''), 10);
+        const fim = parseInt(String(r.concurso_fim || r.concurso).replace(/\D/g, ''), 10);
+        if (ini > 0 && fim >= ini && fim - ini <= 50) {
+          for (let c = ini; c <= fim; c++) concursos.push(String(c));
+        } else concursos = [String(r.concurso).trim()];
       }
-      jogos.forEach(dezenas => {
-        grupos[conc].itens.push({
-          rodadaDescricao: r.descricao,
-          dataCriacao: r.data_criacao,
-          dezenas: dezenas.map(n => String(n).padStart(2, '0'))
+      if (!concursos.length) concursos = ['__SEM_CONCURSO__'];
+
+      concursos.forEach(conc => {
+        if (!grupos[conc]) {
+          grupos[conc] = {
+            concurso: conc,
+            num: conc === '__SEM_CONCURSO__' ? -1 : parseInt(conc, 10) || 0,
+            itens: []
+          };
+        }
+        jogos.forEach(dezenas => {
+          grupos[conc].itens.push({
+            rodadaDescricao: r.descricao,
+            dataCriacao: r.data_criacao,
+            dataBilhete: r.data_bilhete || '',
+            dezenas: dezenas.map(n => String(n).padStart(2, '0'))
+          });
         });
       });
     });
@@ -3199,154 +3442,58 @@
   function montarBlocoJogosConferencia(rodada) {
     const jogos = Array.isArray(rodada.jogos) ? rodada.jogos : [];
     if (jogos.length === 0) return '';
+    let concursos = Array.isArray(rodada.concursos) ? rodada.concursos.map(c => String(c).trim()).filter(Boolean) : [];
+    if (!concursos.length && rodada.concurso) {
+      const ini = parseInt(String(rodada.concurso).replace(/\D/g, ''), 10);
+      const fim = parseInt(String(rodada.concurso_fim || rodada.concurso).replace(/\D/g, ''), 10);
+      if (ini > 0 && fim >= ini && fim - ini <= 50) {
+        for (let c = ini; c <= fim; c++) concursos.push(String(c));
+      } else concursos = [String(rodada.concurso)];
+    }
+    const concursosValidos = concursos.length ? concursos : [''];
+    const tituloConcursos = rodada.concurso_display || (concursos.length > 1
+      ? `${concursos[0]} a ${concursos[concursos.length - 1]}` : (concursos[0] || 'Sem concurso'));
 
-    const resultado = rodada.concurso
-      ? state.resultados.find(res => String(res.concurso).trim() === String(rodada.concurso).trim())
-      : null;
-    const setSorteadas = resultado ? new Set(resultado.dezenas) : null;
-
-    let senas = 0, quinas = 0, quadras = 0, maxAcertos = 0;
-
-    const linhasJogos = jogos.map((jogo, idx) => {
-      let acertos = 0;
-      const bolinhasHtml = jogo.map(num => {
-        const acertou = setSorteadas && setSorteadas.has(num);
-        if (acertou) acertos += 1;
-        return `<span class="ball ball-sm ${acertou ? 'ball-hit' : ''}">${num}</span>`;
-      }).join('');
-
-      let rowClass = '';
-      let badgeAcerto = `<span class="badge badge-blue">Aguardando</span>`;
-      if (setSorteadas) {
-        if (acertos > maxAcertos) maxAcertos = acertos;
-        if (acertos >= 6) {
-          senas += 1;
-          rowClass = 'jogo-row-sena';
-          badgeAcerto = `<span class="badge badge-gold">🎉 SENA (6)!</span>`;
-        } else if (acertos === 5) {
-          quinas += 1;
-          rowClass = 'jogo-row-quina';
-          badgeAcerto = `<span class="badge badge-green">🏆 QUINA (5)!</span>`;
-        } else if (acertos === 4) {
-          quadras += 1;
-          rowClass = 'jogo-row-quadra';
-          badgeAcerto = `<span class="badge badge-amber">🍀 QUADRA (4)!</span>`;
-        } else {
-          badgeAcerto = `<span class="muted">${acertos} acerto(s)</span>`;
+    const blocosPorConcurso = concursosValidos.map(concurso => {
+      const resultado = concurso
+        ? state.resultados.find(res => String(res.concurso).trim() === String(concurso).trim())
+        : null;
+      const setSorteadas = resultado ? new Set(resultado.dezenas.map(d => String(d).padStart(2, '0'))) : null;
+      let senas = 0, quinas = 0, quadras = 0, maxAcertos = 0;
+      const linhasJogos = jogos.map((jogo, idx) => {
+        let acertos = 0;
+        const bolinhasHtml = jogo.map(num => {
+          const numero = String(num).padStart(2, '0');
+          const acertou = Boolean(setSorteadas && setSorteadas.has(numero));
+          if (acertou) acertos++;
+          return `<span class="ball ball-sm ${acertou ? 'ball-hit' : ''}">${numero}</span>`;
+        }).join('');
+        let rowClass = '';
+        let badgeAcerto = `<span class="badge badge-blue">Aguardando</span>`;
+        if (setSorteadas) {
+          maxAcertos = Math.max(maxAcertos, acertos);
+          if (acertos >= 6) { senas++; rowClass = 'jogo-row-sena'; badgeAcerto = `<span class="badge badge-gold">🎉 SENA (6)!</span>`; }
+          else if (acertos === 5) { quinas++; rowClass = 'jogo-row-quina'; badgeAcerto = `<span class="badge badge-green">🏆 QUINA (5)!</span>`; }
+          else if (acertos === 4) { quadras++; rowClass = 'jogo-row-quadra'; badgeAcerto = `<span class="badge badge-amber">🍀 QUADRA (4)!</span>`; }
+          else badgeAcerto = `<span class="muted">${acertos} acerto(s)</span>`;
         }
-      }
-
-      return `
-        <div class="jogo-row ${rowClass}">
-          <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
-            <span class="muted" style="min-width:52px;">Jogo ${idx + 1}</span>
-            ${bolinhasHtml}
-          </div>
-          <div>${badgeAcerto}</div>
-        </div>
-      `;
-    }).join('');
-
-    let resumoTopo = `🎱 ${jogos.length} jogo(s)`;
-    if (resultado) {
-      if (senas > 0) resumoTopo += ` — 🎉 ${senas} SENA(S)`;
-      else if (quinas > 0) resumoTopo += ` — 🏆 ${quinas} QUINA(S)`;
-      else if (quadras > 0) resumoTopo += ` — 🍀 ${quadras} QUADRA(S)`;
-      else resumoTopo += ` — Máx. ${maxAcertos} acerto(s)`;
-    } else if (rodada.concurso) {
-      resumoTopo += ` — Aguardando ${rodada.concurso}`;
-    }
-
-    const cabecalhoSorteio = resultado
-      ? `<div class="muted" style="margin:8px 0;">Concurso <strong>${resultado.concurso}</strong> (${resultado.data_apuracao}): <strong>${resultado.dezenas.join(' - ')}</strong></div>`
-      : '';
-
-    return `
-      <details ${resultado ? 'open' : ''} style="margin-top:10px; border-top:1px solid var(--border); padding-top:8px;">
-        <summary>${resumoTopo}</summary>
-        ${cabecalhoSorteio}
-        <div style="margin-top:8px;">${linhasJogos}</div>
-      </details>
-    `;
-  }
-
-  function renderRodadas() {
-    const container = document.getElementById('listaRodadas');
-    if (state.rodadas.length === 0) {
-      container.innerHTML = `<p class="muted">Nenhuma rodada.</p>`;
-      return;
-    }
-
-    container.innerHTML = state.rodadas.map(r => {
-      const parts = state.participacoes.filter(p => p.id_rodada === r.id_rodada);
-      const linhas = parts.map(p => {
-        const saldo = Number((Number(p.valor_devido) - Number(p.valor_pago || 0)).toFixed(2));
-        const badge = saldo <= 0
-          ? `<span class="badge badge-green">PAGO</span>`
-          : `<span class="badge badge-red">FALTA ${formatBRL(saldo)}</span>`;
-
-        const links = Array.isArray(p.links_comprovantes) ? p.links_comprovantes : [];
-        const celulaComp = links.length > 0
-          ? links.map(url =>
-              `<a href="${url}" target="_blank" rel="noopener noreferrer" title="Ver comprovante" aria-label="Ver comprovante" class="doc-link">📄</a>`
-            ).join('')
-          : `<span class="muted">-</span>`;
-
-        const btnManual = (state.user.perfil === 'admin' && saldo > 0)
-          ? `<button class="btn-warning btn-sm" onclick="baixaManualAdmin('${p.id_participacao}','${p.id_usuario}',${saldo})">Baixa</button>`
-          : '';
-
-        return `
-          <tr>
-            <td>${escapeHtml(p.nome_usuario)}</td>
-            <td>${p.fracao_cota}</td>
-            <td>${formatBRL(p.valor_devido)}</td>
-            <td>${badge}</td>
-            <td>${celulaComp}</td>
-            <td>${btnManual}</td>
-          </tr>
-        `;
+        return `<div class="jogo-row ${rowClass}"><div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;"><span class="muted" style="min-width:52px;">Jogo ${idx + 1}</span>${bolinhasHtml}</div><div>${badgeAcerto}</div></div>`;
       }).join('');
 
-      const tagConcurso = r.concurso ? `<span class="badge badge-blue">Concurso ${r.concurso}</span>` : '';
-      const blocoJogos = montarBlocoJogosConferencia(r);
-
-      return `
-        <div class="list-item">
-          <div class="row-between" style="margin-bottom:8px;">
-            <div>
-              <strong>${escapeHtml(r.descricao)}</strong> ${tagConcurso}
-              <div class="muted">${r.data_criacao} • ${formatBRL(r.valor_total)} • ${r.total_cotas} cota(s) (${formatBRL(r.valor_cota)})</div>
-            </div>
-          </div>
-          <div class="table-wrap">
-            <table>
-              <thead><tr><th>Amigo</th><th>Cota</th><th>Valor</th><th>Status</th><th>Doc</th><th></th></tr></thead>
-              <tbody>${linhas}</tbody>
-            </table>
-          </div>
-          ${blocoJogos}
-        </div>
-      `;
+      let resumo = `Concurso ${concurso || 'não informado'} • ${jogos.length} jogo(s)`;
+      if (resultado) {
+        if (senas) resumo += ` • ${senas} SENA(S)`;
+        else if (quinas) resumo += ` • ${quinas} QUINA(S)`;
+        else if (quadras) resumo += ` • ${quadras} QUADRA(S)`;
+        else resumo += ` • Máx. ${maxAcertos} acerto(s)`;
+      } else if (concurso) resumo += ' • Aguardando resultado';
+      const cabecalho = resultado
+        ? `<div class="muted" style="margin:8px 0;">${resultado.data_apuracao ? escapeHtml(resultado.data_apuracao) + ' • ' : ''}<strong>${resultado.dezenas.join(' - ')}</strong></div>`
+        : '';
+      return `<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);"><strong>${escapeHtml(resumo)}</strong>${cabecalho}<div style="margin-top:8px;">${linhasJogos}</div></div>`;
     }).join('');
-  }
 
-  async function baixaManualAdmin(idParticipacao, idUsuario, saldo) {
-    if (!confirm(`Confirmar baixa manual de ${formatBRL(saldo)}?`)) return;
-    try {
-      const res = await apiPost({
-        action: 'registrarPagamento',
-        id_participacao: idParticipacao,
-        id_usuario: idUsuario,
-        id_transacao: '',
-        valor_pago: saldo,
-        metodo: 'MANUAL'
-      });
-      alert(res.message);
-      if (res.success) await carregarDashboard();
-    } catch (err) {
-      alert('Erro na baixa manual: ' + err.message);
-    }
+    return `<details ${concursosValidos.some(c => c && state.resultados.some(res => String(res.concurso) === String(c))) ? 'open' : ''} style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px;"><summary>🎱 ${jogos.length} jogo(s) • Concursos ${escapeHtml(tituloConcursos)}</summary>${blocosPorConcurso}</details>`;
   }
 
   // =========================================================================
@@ -3659,7 +3806,7 @@
 
       const dataExib = p.data_pagamento || (rodada ? rodada.data_criacao : '-');
       const tituloRodada = rodada
-        ? `${escapeHtml(rodada.descricao)}${rodada.concurso ? ` <span class="muted">(#${rodada.concurso})</span>` : ''}`
+        ? `${escapeHtml(rodada.descricao)}${rodada.concurso_display ? ` <span class="muted">(#${escapeHtml(rodada.concurso_display)})</span>` : (rodada.concurso ? ` <span class="muted">(#${escapeHtml(rodada.concurso)})</span>` : '')}`
         : p.id_rodada;
 
       return `
@@ -3840,47 +3987,213 @@
     await executarOcrBilheteDeFonte(file);
   }
 
-  function preProcessarImagemBilhete(fonte) {
+  function gerarVariantesImagemBilhete(fonte) {
     return new Promise((resolve, reject) => {
-      const processarCanvas = (imgSource, w, h) => {
-        const maxW = 1800;
-        const escala = w > maxW ? (maxW / w) : 1;
-        const canvas = document.createElement('canvas');
-        canvas.width = Math.round(w * escala);
-        canvas.height = Math.round(h * escala);
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(imgSource, 0, 0, canvas.width, canvas.height);
+      const preparar = (imgSource, w, h) => {
+        // Mantém resolução suficiente para os dígitos impressos em papel térmico,
+        // sem criar canvases excessivamente grandes em celulares.
+        let escala = Math.min(1.8, 2600 / Math.max(1, w), 3600 / Math.max(1, h));
+        if (w >= 1500 && h >= 1500) escala = Math.min(1, 2600 / w, 3600 / h);
+        const largura = Math.max(1, Math.round(w * escala));
+        const altura = Math.max(1, Math.round(h * escala));
+        const base = document.createElement('canvas');
+        base.width = largura;
+        base.height = altura;
+        const bctx = base.getContext('2d', { willReadFrequently: true });
+        bctx.imageSmoothingEnabled = true;
+        bctx.imageSmoothingQuality = 'high';
+        bctx.drawImage(imgSource, 0, 0, largura, altura);
 
-        // Escala de cinza + alto contraste para destacar impressão térmica de lotérica
-        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const d = imgData.data;
-        const contrast = 1.65;
-        const intercept = 128 * (1 - contrast);
-
-        for (let i = 0; i < d.length; i += 4) {
-          let gray = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
-          gray = Math.max(0, Math.min(255, gray * contrast + intercept));
-          d[i] = d[i + 1] = d[i + 2] = gray;
+        const original = bctx.getImageData(0, 0, largura, altura);
+        const src = original.data;
+        const hist = new Uint32Array(256);
+        const grayValues = new Uint8Array(largura * altura);
+        for (let p = 0, i = 0; i < src.length; i += 4, p++) {
+          const g = Math.max(0, Math.min(255, Math.round(0.299 * src[i] + 0.587 * src[i + 1] + 0.114 * src[i + 2])));
+          grayValues[p] = g;
+          hist[g]++;
         }
-        ctx.putImageData(imgData, 0, 0);
-        resolve(canvas);
+
+        // Estica o contraste usando percentis para lidar com papel amarelado/sombreado.
+        const total = grayValues.length;
+        const percentil = alvo => {
+          const limite = Math.floor(total * alvo);
+          let soma = 0;
+          for (let i = 0; i < 256; i++) {
+            soma += hist[i];
+            if (soma >= limite) return i;
+          }
+          return 255;
+        };
+        const pLow = percentil(0.025);
+        const pHigh = percentil(0.985);
+        const faixa = Math.max(40, pHigh - pLow);
+        const contrastCanvas = document.createElement('canvas');
+        contrastCanvas.width = largura;
+        contrastCanvas.height = altura;
+        const cctx = contrastCanvas.getContext('2d', { willReadFrequently: true });
+        const contrastData = cctx.createImageData(largura, altura);
+        for (let p = 0, i = 0; p < grayValues.length; p++, i += 4) {
+          let g = (grayValues[p] - pLow) * 255 / faixa;
+          g = Math.max(0, Math.min(255, (g - 128) * 1.22 + 128));
+          contrastData.data[i] = contrastData.data[i + 1] = contrastData.data[i + 2] = g;
+          contrastData.data[i + 3] = 255;
+        }
+        cctx.putImageData(contrastData, 0, 0);
+
+        // Segunda variante binarizada por Otsu: costuma recuperar algarismos apagados.
+        let somaTotal = 0;
+        for (let i = 0; i < 256; i++) somaTotal += i * hist[i];
+        let somaFundo = 0, pesoFundo = 0, melhorVar = -1, limiar = 150;
+        for (let i = 0; i < 256; i++) {
+          pesoFundo += hist[i];
+          if (!pesoFundo) continue;
+          const pesoFrente = total - pesoFundo;
+          if (!pesoFrente) break;
+          somaFundo += i * hist[i];
+          const mediaFundo = somaFundo / pesoFundo;
+          const mediaFrente = (somaTotal - somaFundo) / pesoFrente;
+          const variancia = pesoFundo * pesoFrente * Math.pow(mediaFundo - mediaFrente, 2);
+          if (variancia > melhorVar) { melhorVar = variancia; limiar = i; }
+        }
+        const thresholdCanvas = document.createElement('canvas');
+        thresholdCanvas.width = largura;
+        thresholdCanvas.height = altura;
+        const tctx = thresholdCanvas.getContext('2d', { willReadFrequently: true });
+        const thresholdData = tctx.createImageData(largura, altura);
+        const limiarAjustado = Math.max(105, Math.min(205, limiar));
+        for (let p = 0, i = 0; p < grayValues.length; p++, i += 4) {
+          const g = grayValues[p] < limiarAjustado ? 0 : 255;
+          thresholdData.data[i] = thresholdData.data[i + 1] = thresholdData.data[i + 2] = g;
+          thresholdData.data[i + 3] = 255;
+        }
+        tctx.putImageData(thresholdData, 0, 0);
+        resolve({ contraste: contrastCanvas, binarizada: thresholdCanvas });
       };
 
       if (fonte instanceof HTMLCanvasElement) {
-        processarCanvas(fonte, fonte.width, fonte.height);
+        preparar(fonte, fonte.width, fonte.height);
         return;
       }
-
       const reader = new FileReader();
       reader.onload = () => {
         const img = new Image();
-        img.onload = () => processarCanvas(img, img.width, img.height);
+        img.onload = () => preparar(img, img.naturalWidth || img.width, img.naturalHeight || img.height);
         img.onerror = () => reject(new Error('Não foi possível abrir a imagem do bilhete.'));
         img.src = reader.result;
       };
       reader.onerror = () => reject(new Error('Falha ao ler o arquivo da câmera.'));
       reader.readAsDataURL(fonte);
     });
+  }
+
+  function prepararTextoCaixaParaParser(texto) {
+    const linhas = String(texto || '').split(/\r?\n/);
+    const saida = [];
+    linhas.forEach(linha => {
+      saida.push(linha);
+      const norm = linha.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      if (/\b(CONC|CONCURSO|TOTAL|VALOR|R\$|NOV|JAN|FEV|MAR|ABR|MAI|JUN|JUL|AGO|SET|OUT|DEZ)\b/.test(norm)) return;
+      if (/\d{7,}/.test(linha.replace(/\s+/g, ''))) return;
+      const tokens = (linha.replace(/[OQØ]/gi, '0').replace(/[IL|!]/gi, '1').match(/\d{1,2}/g) || [])
+        .map(Number).filter(n => n >= 1 && n <= 60);
+      const unicos = [...new Set(tokens)];
+      // Cada linha horizontal de seis ou mais dezenas é um jogo independente.
+      // O separador evita que duas linhas de jogos sejam concatenadas pelo parser.
+      if (unicos.length >= 6 && unicos.length <= 20) saida.push('----------------');
+    });
+    return saida.join('\n');
+  }
+
+  function converterDataBilheteParaInput(dataRaw) {
+    const raw = String(dataRaw || '').trim();
+    let m = raw.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if (m) return `${m[3]}-${m[2]}-${m[1]}`;
+    m = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    return m ? raw : '';
+  }
+
+  function atualizarPreviewConcursosManual() {
+    const inicio = document.getElementById('rodadaConcurso').value.trim();
+    const fim = document.getElementById('rodadaConcursoFim').value.trim();
+    const data = document.getElementById('rodadaDataBilhete').value.trim();
+    const valor = parseFloat(document.getElementById('rodadaValorTotal').value) || 0;
+    let faixa = '';
+    if (inicio && fim) faixa = inicio === fim ? inicio : `${inicio} a ${fim}`;
+    else faixa = inicio || fim;
+    const partes = [];
+    if (faixa) partes.push(`Concursos ${faixa}`);
+    if (valor > 0) partes.push(formatBRL(valor));
+    if (data) {
+      const m = data.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      partes.push(m ? `Bilhete ${m[3]}/${m[2]}/${m[1]}` : `Bilhete ${data}`);
+    }
+    document.getElementById('previewConcursosInfo').textContent = partes.join(' • ');
+  }
+
+  function pontuarLeituraBilhete(resultado) {
+    if (!resultado || resultado.success === false) return -1;
+    return (Array.isArray(resultado.jogos) ? resultado.jogos.length * 10 : 0) +
+      (resultado.concurso_inicio || resultado.concurso ? 5 : 0) +
+      (resultado.concurso_fim ? 4 : 0) +
+      (Number(resultado.valor_total) > 0 ? 4 : 0) +
+      (resultado.data_bilhete ? 3 : 0);
+  }
+
+  async function interpretarTextoBilheteNoGAS(textoBruto) {
+    const textoPreparado = prepararTextoCaixaParaParser(textoBruto);
+    return await apiPost({ action: 'parsearBilheteOCR', texto_bruto: textoPreparado });
+  }
+
+  function aplicarLeituraBilheteNaRodada(resultado, textoBruto, origem) {
+    const texto = document.getElementById('rodadaJogosTexto');
+    const jogos = Array.isArray(resultado && resultado.jogos) ? resultado.jogos : [];
+    document.getElementById('textoBilheteBruto').textContent = textoBruto || '';
+    document.getElementById('detalhesBilheteBruto').classList.remove('hidden');
+
+    if (jogos.length) {
+      texto.value = jogos.map(j => j.map(n => String(n).padStart(2, '0')).join(' ')).join('\n');
+    }
+    const concursoInicio = String((resultado && (resultado.concurso_inicio || resultado.concurso)) || '').replace(/\D/g, '');
+    const concursoFim = String((resultado && (resultado.concurso_fim || resultado.concurso_inicio || resultado.concurso)) || '').replace(/\D/g, '');
+    if (concursoInicio) document.getElementById('rodadaConcurso').value = concursoInicio;
+    if (concursoFim) document.getElementById('rodadaConcursoFim').value = concursoFim;
+    if (Number(resultado && resultado.valor_total) > 0) {
+      document.getElementById('rodadaValorTotal').value = Number(resultado.valor_total).toFixed(2);
+    }
+    if (resultado && resultado.data_bilhete) {
+      document.getElementById('rodadaDataBilhete').value = converterDataBilheteParaInput(resultado.data_bilhete);
+    }
+    const concursos = resultado && (resultado.concurso_display || (concursoInicio && concursoFim
+      ? (concursoInicio === concursoFim ? concursoInicio : `${concursoInicio} a ${concursoFim}`)
+      : ''));
+    const preview = document.getElementById('previewConcursosInfo');
+    const partes = [];
+    if (concursos) partes.push(`Concursos ${concursos}`);
+    if (Number(resultado && resultado.valor_total) > 0) partes.push(formatBRL(resultado.valor_total));
+    if (resultado && resultado.data_bilhete) partes.push(`Bilhete ${resultado.data_bilhete}`);
+    preview.textContent = partes.join(' • ');
+
+    if (!document.getElementById('rodadaDescricao').value.trim() && jogos.length) {
+      document.getElementById('rodadaDescricao').value = concursos ? `Bilhete Caixa — Concursos ${concursos}` : 'Bilhete Caixa';
+    }
+    atualizarPreviewJogos();
+    recalcularPreviewRodada();
+
+    const avisos = Array.isArray(resultado && resultado.avisos) ? resultado.avisos : [];
+    const resumo = [
+      `${jogos.length} jogo(s)`,
+      concursos ? `concursos ${concursos}` : '',
+      Number(resultado && resultado.valor_total) > 0 ? formatBRL(resultado.valor_total) : '',
+      resultado && resultado.data_bilhete ? resultado.data_bilhete : ''
+    ].filter(Boolean).join(' • ');
+    if (!jogos.length) {
+      showMsg('bilheteOcrFeedback', `Não consegui separar os jogos. Confira a foto e faça o ajuste manual.${avisos.length ? ' ' + avisos.join(' ') : ''}`, 'warn');
+    } else if (avisos.length) {
+      showMsg('bilheteOcrFeedback', `Leitura concluída: ${resumo}. Confira os campos. Avisos: ${avisos.join(' ')}`, 'warn');
+    } else {
+      showMsg('bilheteOcrFeedback', `Leitura concluída: ${resumo}. Confira os campos antes de lançar.`, 'ok');
+    }
   }
 
   function extrairJogosDeTextoOCR(textoBruto) {
@@ -3946,62 +4259,93 @@
     const progBar = document.getElementById('bilheteOcrBar');
     const progTxt = document.getElementById('bilheteOcrStatus');
     const feedback = document.getElementById('bilheteOcrFeedback');
-
     progWrap.classList.remove('hidden');
-    progBar.style.width = '12%';
-    progTxt.textContent = 'Ajustando contraste do bilhete...';
+    progBar.style.width = '5%';
+    progTxt.textContent = 'Preparando imagem do bilhete...';
     feedback.innerHTML = '';
 
     try {
-      const canvasPrep = await preProcessarImagemBilhete(fonte);
-      progBar.style.width = '25%';
-      progTxt.textContent = 'Reconhecendo números (OCR)...';
+      if (!window.Tesseract || typeof Tesseract.recognize !== 'function') {
+        throw new Error('A biblioteca OCR não foi carregada. Atualize a página e tente novamente.');
+      }
+      const variantes = await gerarVariantesImagemBilhete(fonte);
+      const fontes = [
+        { nome: 'contraste', canvas: variantes.contraste },
+        { nome: 'alto contraste', canvas: variantes.binarizada }
+      ];
+      let melhor = null;
+      let melhorTexto = '';
+      let melhorPontuacao = -1;
+      let erroServidor = '';
 
-      const resOcr = await Tesseract.recognize(canvasPrep, 'por', {
-        logger: m => {
-          if (m.status === 'recognizing text') {
-            const pct = Math.round((m.progress || 0) * 100);
-            progBar.style.width = Math.max(25, pct) + '%';
-            progTxt.textContent = `OCR Bilhete: ${pct}%`;
+      for (let i = 0; i < fontes.length; i++) {
+        const etapaBase = i === 0 ? 10 : 52;
+        progBar.style.width = etapaBase + '%';
+        progTxt.textContent = `Lendo bilhete (${fontes[i].nome})...`;
+        const resOcr = await Tesseract.recognize(fontes[i].canvas, 'por', {
+          logger: m => {
+            if (m.status === 'recognizing text') {
+              const pct = Math.round((m.progress || 0) * 100);
+              const totalPct = etapaBase + Math.round(pct * 0.38);
+              progBar.style.width = Math.min(92, totalPct) + '%';
+              progTxt.textContent = `OCR ${fontes[i].nome}: ${pct}%`;
+            }
           }
+        });
+        const textoBruto = resOcr && resOcr.data && resOcr.data.text ? resOcr.data.text : '';
+        if (!textoBruto.trim()) continue;
+
+        progTxt.textContent = 'Interpretando jogos, concursos, valor e data...';
+        progBar.style.width = Math.min(96, etapaBase + 40) + '%';
+        let estruturado;
+        try {
+          estruturado = await interpretarTextoBilheteNoGAS(textoBruto);
+        } catch (err) {
+          erroServidor = err.message || 'Não foi possível consultar o interpretador do GAS.';
+          estruturado = null;
         }
-      });
 
-      const textoBruto = (resOcr && resOcr.data && resOcr.data.text) ? resOcr.data.text : '';
-      document.getElementById('textoBilheteBruto').textContent = textoBruto;
-      document.getElementById('detalhesBilheteBruto').classList.remove('hidden');
+        if (!estruturado || estruturado.success !== true) {
+          const local = extrairJogosDeTextoOCR(textoBruto);
+          estruturado = {
+            success: true,
+            jogos: local.jogosEncontrados,
+            total_jogos: local.jogosEncontrados.length,
+            concurso: local.concursoDetectado,
+            concurso_inicio: local.concursoDetectado,
+            concurso_fim: local.concursoDetectado,
+            concursos: local.concursoDetectado ? [local.concursoDetectado] : [],
+            avisos: ['O interpretador do GAS não respondeu; foram usados apenas os dados reconhecidos localmente.']
+          };
+        }
 
-      const { jogosEncontrados, concursoDetectado } = extrairJogosDeTextoOCR(textoBruto);
-
-      if (concursoDetectado && !document.getElementById('rodadaConcurso').value.trim()) {
-        document.getElementById('rodadaConcurso').value = concursoDetectado;
+        const score = pontuarLeituraBilhete(estruturado);
+        if (score > melhorPontuacao) {
+          melhorPontuacao = score;
+          melhor = estruturado;
+          melhorTexto = textoBruto;
+        }
+        // Se todos os campos principais foram identificados no primeiro passe, não precisa do segundo.
+        const leituraCompleta = Array.isArray(estruturado.jogos) && estruturado.jogos.length > 0 &&
+          Boolean(estruturado.concurso_inicio || estruturado.concurso) &&
+          Boolean(estruturado.concurso_fim || estruturado.concurso_inicio || estruturado.concurso) &&
+          Number(estruturado.valor_total) > 0 && Boolean(estruturado.data_bilhete);
+        if (leituraCompleta) break;
       }
 
-      if (jogosEncontrados.length === 0) {
-        showMsg(
-          'bilheteOcrFeedback',
-          'Nenhum jogo completo (6 a 20 dezenas) identificado na foto. Tente tirar mais de perto com boa iluminação ou ajuste manualmente abaixo.',
-          'warn'
-        );
-      } else {
-        const ta = document.getElementById('rodadaJogosTexto');
-        const existentes = ta.value.trim();
-        const novasLinhas = jogosEncontrados.map(j => j.join(' ')).join('\n');
-        ta.value = existentes ? `${existentes}\n${novasLinhas}` : novasLinhas;
-        atualizarPreviewJogos();
-
-        const extraConc = concursoDetectado ? ` • Concurso ${concursoDetectado} detectado` : '';
-        showMsg(
-          'bilheteOcrFeedback',
-          `✅ ${jogosEncontrados.length} jogo(s) reconhecido(s) e adicionado(s)${extraConc}. Confira os números antes de lançar.`,
-          'ok'
-        );
+      if (!melhor) {
+        throw new Error(erroServidor || 'Não foi possível reconhecer texto no bilhete.');
+      }
+      aplicarLeituraBilheteNaRodada(melhor, melhorTexto, 'OCR');
+      if (erroServidor && melhorPontuacao < 26) {
+        const atual = document.getElementById('bilheteOcrFeedback');
+        atual.innerHTML += `<div class="muted" style="margin-top:6px;">Interpretador do servidor indisponível: ${escapeHtml(erroServidor)}</div>`;
       }
     } catch (err) {
-      showMsg('bilheteOcrFeedback', 'Erro na leitura da câmera: ' + err.message, 'err');
+      showMsg('bilheteOcrFeedback', 'Erro na leitura do bilhete: ' + (err.message || err), 'err');
     } finally {
       progBar.style.width = '100%';
-      setTimeout(() => progWrap.classList.add('hidden'), 600);
+      setTimeout(() => progWrap.classList.add('hidden'), 700);
     }
   }
 
@@ -4057,18 +4401,23 @@
   function cancelarCadastroRodada() {
     const desc = document.getElementById('rodadaDescricao').value.trim();
     const conc = document.getElementById('rodadaConcurso').value.trim();
+    const concFim = document.getElementById('rodadaConcursoFim').value.trim();
+    const dataBilhete = document.getElementById('rodadaDataBilhete').value.trim();
     const val = document.getElementById('rodadaValorTotal').value.trim();
     const jogos = document.getElementById('rodadaJogosTexto').value.trim();
     const temCota = [...document.querySelectorAll('.select-cota-admin')].some(s => parseFloat(s.value) > 0);
 
-    if ((desc || conc || val || jogos || temCota) && !confirm('Cancelar o cadastro desta rodada e limpar os campos preenchidos?')) {
+    if ((desc || conc || concFim || dataBilhete || val || jogos || temCota) && !confirm('Cancelar o cadastro desta rodada e limpar os campos preenchidos?')) {
       return;
     }
 
     document.getElementById('rodadaDescricao').value = '';
     document.getElementById('rodadaConcurso').value = '';
+    document.getElementById('rodadaConcursoFim').value = '';
+    document.getElementById('rodadaDataBilhete').value = '';
     document.getElementById('rodadaValorTotal').value = '';
     document.getElementById('rodadaJogosTexto').value = '';
+    document.getElementById('previewConcursosInfo').textContent = '';
     document.getElementById('bilheteOcrFeedback').innerHTML = '';
     document.getElementById('detalhesBilheteBruto').classList.add('hidden');
     document.getElementById('adminRodadaFeedback').innerHTML = '';
@@ -4082,6 +4431,8 @@
   async function criarNovaRodada() {
     const descricao = document.getElementById('rodadaDescricao').value.trim();
     const concurso = document.getElementById('rodadaConcurso').value.trim();
+    const concursoFim = document.getElementById('rodadaConcursoFim').value.trim();
+    const dataBilhete = document.getElementById('rodadaDataBilhete').value.trim();
     const valorTotal = parseFloat(document.getElementById('rodadaValorTotal').value);
     const jogosTexto = document.getElementById('rodadaJogosTexto').value.trim();
     const { jogosValidos, erros } = parsearJogosTexto(jogosTexto);
@@ -4112,6 +4463,9 @@
         descricao,
         valorTotal,
         concurso,
+        concurso_inicio: concurso,
+        concurso_fim: concursoFim,
+        data_bilhete: dataBilhete,
         jogos: jogosValidos,
         participantes
       });
@@ -4119,8 +4473,11 @@
       if (res.success) {
         document.getElementById('rodadaDescricao').value = '';
         document.getElementById('rodadaConcurso').value = '';
+        document.getElementById('rodadaConcursoFim').value = '';
+        document.getElementById('rodadaDataBilhete').value = '';
         document.getElementById('rodadaValorTotal').value = '';
         document.getElementById('rodadaJogosTexto').value = '';
+        document.getElementById('previewConcursosInfo').textContent = '';
         document.getElementById('bilheteOcrFeedback').innerHTML = '';
         document.getElementById('detalhesBilheteBruto').classList.add('hidden');
         atualizarPreviewJogos();
