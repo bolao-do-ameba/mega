@@ -786,6 +786,25 @@
       .pending-shell { padding: 18px 15px; }
     }
 
+
+    /* =====================================================================
+       FASE 4 — ADMINISTRAÇÃO DE MEMBROS, CONVITES E BOLÕES
+       ===================================================================== */
+    .admin-section-note { color: var(--muted); font-size: .83rem; line-height: 1.45; margin: -4px 0 12px; }
+    .admin-list { display: grid; gap: 10px; }
+    .admin-item { padding: 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-2); }
+    .admin-item-top { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+    .admin-item-meta { color: var(--muted); font-size: .78rem; line-height: 1.45; margin-top: 4px; }
+    .admin-item-actions { display:flex; gap:7px; flex-wrap:wrap; margin-top:10px; }
+    .admin-item-actions button { flex: 1 1 110px; }
+    .admin-inline { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+    .admin-inline input[type="checkbox"] { width:auto; }
+    .admin-code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap:anywhere; color:var(--primary); }
+    .admin-form-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:10px; }
+    .admin-form-grid label { margin-top:4px; }
+    .bolao-selector { width:auto; max-width:220px; padding:7px 9px; font-size:.78rem; }
+    .bolao-active-name { color:#e2e8f0; font-size:.76rem; font-weight:800; max-width:190px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    @media (max-width:520px) { .bolao-selector { max-width:145px; } .bolao-active-name { max-width:120px; } }
   </style>
 </head>
 <body>
@@ -798,6 +817,8 @@
     </div>
     <div class="header-actions">
       <span id="userNameTop" class="muted"></span>
+      <span id="activeBolaoName" class="bolao-active-name"></span>
+      <select id="bolaoSelector" class="bolao-selector hidden" aria-label="Trocar bolão" onchange="trocarBolaoAtivo()"></select>
       <button id="btnPush" class="btn-warning btn-sm" onclick="ativarNotificacoesPush()">🔔 Push</button>
       <button class="btn-secondary btn-sm" onclick="carregarDashboard()">↻</button>
       <button class="btn-danger btn-sm" onclick="fazerLogout()">Sair</button>
@@ -1110,6 +1131,67 @@
 
     <!-- ABA 7: ADMIN - NOVA RODADA (COM CÂMERA OCR E CANCELAR) + CONFIG PIX -->
     <section id="tabAdmin" class="tab-content hidden">
+      <div id="cardSolicitacoesPendentes" class="card">
+        <div class="row-between">
+          <h2>👥 Solicitações Pendentes <span id="pendentesAdminBadge" class="badge badge-amber">0</span></h2>
+          <button class="btn-secondary btn-sm" onclick="carregarSolicitacoesPendentes()">↻ Atualizar</button>
+        </div>
+        <p class="admin-section-note">Pedidos de entrada neste bolão. Ao aprovar ou recusar, a decisão fica registrada no histórico do vínculo.</p>
+        <div id="listaSolicitacoesPendentes" class="admin-list"><div class="muted">Carregando solicitações...</div></div>
+        <div id="feedbackSolicitacoesAdmin"></div>
+      </div>
+
+      <div id="cardConvitesBolao" class="card">
+        <h2>🔗 Convite deste Bolão</h2>
+        <p class="admin-section-note">Compartilhe o link para novos participantes. O ingresso sempre depende da aprovação do administrador.</p>
+        <div class="admin-item">
+          <div class="muted">Código atual</div>
+          <strong id="codigoConviteAdmin" class="admin-code">—</strong>
+          <div class="muted" style="margin-top:8px;">Link de convite</div>
+          <div id="linkConviteAdmin" class="admin-code" style="font-size:.82rem;">Carregando...</div>
+          <div class="admin-item-actions">
+            <button class="btn-primary btn-sm" onclick="copiarLinkConviteAdmin()">📋 Copiar link</button>
+            <button class="btn-secondary btn-sm" onclick="compartilharConviteWhatsApp()">WhatsApp</button>
+            <button class="btn-warning btn-sm" onclick="regenerarCodigoConviteAdmin()">Gerar novo código</button>
+          </div>
+        </div>
+        <label class="admin-inline" style="margin-top:14px;">
+          <input id="conviteAtivoAdmin" type="checkbox" onchange="alterarStatusConviteAdmin(this.checked)" />
+          <strong style="color:var(--text);">Aceitar novos participantes</strong>
+        </label>
+        <div id="feedbackConviteAdmin"></div>
+      </div>
+
+      <div id="cardMembrosBolao" class="card">
+        <div class="row-between">
+          <h2>🧑‍🤝‍🧑 Gerenciar Membros</h2>
+          <button class="btn-secondary btn-sm" onclick="carregarMembrosBolaoAdmin()">↻ Atualizar</button>
+        </div>
+        <p class="admin-section-note">Altere o papel entre participante e administrador deste bolão ou remova o vínculo sem apagar o cadastro global.</p>
+        <div id="listaMembrosBolaoAdmin" class="admin-list"><div class="muted">Carregando membros...</div></div>
+        <div id="feedbackMembrosAdmin"></div>
+      </div>
+
+      <div id="cardGerenciarBoloes" class="card hidden">
+        <h2>🛠️ Gerenciar Bolões <span class="badge badge-gold">SUPER ADMIN</span></h2>
+        <p class="admin-section-note">Crie bolões comemorativos ou frequentes, defina o administrador inicial e edite ou arquive sessões existentes.</p>
+        <div class="admin-form-grid">
+          <div><label for="novoBolaoNome">Nome do bolão</label><input id="novoBolaoNome" type="text" placeholder="Ex.: Mega da Virada 2026" /></div>
+          <div><label for="novoBolaoTipo">Tipo</label><select id="novoBolaoTipo"><option value="COMEMORATIVO">Comemorativo</option><option value="FREQUENTE">Frequente</option></select></div>
+          <div><label for="novoBolaoCor">Cor de identificação</label><input id="novoBolaoCor" type="color" value="#10b981" /></div>
+          <div><label for="novoBolaoAdminTelefone">Telefone do administrador inicial (opcional)</label><input id="novoBolaoAdminTelefone" type="tel" placeholder="Vazio = você" /></div>
+          <div><label for="novoBolaoRecebedor">Recebedor</label><input id="novoBolaoRecebedor" type="text" placeholder="Nome do recebedor" /></div>
+          <div><label for="novoBolaoPix">Chave Pix</label><input id="novoBolaoPix" type="text" placeholder="Chave Pix deste bolão" /></div>
+          <div><label for="novoBolaoPasta">Pasta Drive (opcional)</label><input id="novoBolaoPasta" type="text" placeholder="Criada automaticamente se vazio" /></div>
+        </div>
+        <div class="admin-item-actions"><button class="btn-primary" onclick="criarBolaoAdmin()">＋ Criar bolão</button></div>
+        <div id="feedbackCriarBolaoAdmin"></div>
+        <div class="divider" style="height:1px;background:var(--border);margin:18px 0;"></div>
+        <div class="row-between"><h3 style="color:var(--text);">Bolões cadastrados</h3><button class="btn-secondary btn-sm" onclick="carregarBoloesAdmin()">↻ Atualizar lista</button></div>
+        <div id="listaBoloesAdmin" class="admin-list"><div class="muted">Carregando bolões...</div></div>
+        <div id="feedbackEditarBolaoAdmin"></div>
+      </div>
+
       <div id="cardAdminRodada" class="card">
         <h2>⚙️ Nova Rodada</h2>
 
@@ -1293,6 +1375,9 @@
     cameraStream: null,
     bolaoId: '',
     boloes: [],
+    sessionToken: '',
+    bolaoAdminConfig: null,
+    boloesAdmin: [],
     convite: {
       codigo: '',
       bolao: null,
@@ -1387,9 +1472,11 @@
     ]);
     const requisicao = { ...(payload || {}) };
 
-    // Depois da autenticação, acrescenta o contexto de usuário e bolão às
-    // chamadas protegidas. As rotas públicas do convite não recebem contexto
-    // adicional, evitando depender de uma sessão prévia.
+    // O token é emitido e validado pelo GAS. IDs enviados pelo cliente servem
+    // apenas como contexto de tela; o servidor obtém a identidade pelo token.
+    if (state.sessionToken && !['login', 'validarConvite', 'verificarTelefoneConvite'].includes(requisicao.action)) {
+      requisicao.session_token = state.sessionToken;
+    }
     if (state.user && !acoesPublicas.has(requisicao.action)) {
       if (!requisicao.id_usuario) requisicao.id_usuario = state.user.id_usuario;
       if (!requisicao.bolao_id && state.bolaoId) requisicao.bolao_id = state.bolaoId;
@@ -1613,6 +1700,16 @@
       localStorage.removeItem('bolao_ameba_pending_invite');
     }
 
+    try {
+      state.sessionToken = String(localStorage.getItem('bolao_ameba_session_token') || '');
+    } catch (_) { state.sessionToken = ''; }
+
+    // Sessões antigas não possuem token validável pelo GAS e precisam autenticar novamente.
+    if (usuarioSalvo && !state.sessionToken) {
+      localStorage.removeItem('bolao_ameba_user');
+      usuarioSalvo = null;
+    }
+
     state.user = usuarioSalvo;
     if (usuarioSalvo) {
       state.bolaoId = String(usuarioSalvo.bolao_id || '');
@@ -1638,7 +1735,32 @@
     }
 
     if (usuarioSalvo) {
-      entrarNoApp();
+      try {
+        const meusBoloes = await apiPost({ action: 'getMeusBoloes', id_usuario: usuarioSalvo.id_usuario });
+        if (!meusBoloes || meusBoloes.success !== true || !Array.isArray(meusBoloes.boloes)) {
+          throw new Error((meusBoloes && meusBoloes.message) || 'Não foi possível restaurar seus bolões.');
+        }
+        state.boloes = meusBoloes.boloes;
+        state.user = { ...state.user, ...(meusBoloes.user || {}) };
+        const atuaisAprovados = state.boloes.filter(b => String(b.status_membro || '').toUpperCase() === 'APROVADO');
+        const bolaoSalvoValido = atuaisAprovados.some(b => String(b.bolao_id || '') === String(state.bolaoId || ''));
+        if (!bolaoSalvoValido) {
+          const primeiroAtivo = atuaisAprovados.find(b => String(b.status || '').toUpperCase() === 'ATIVO');
+          state.bolaoId = String((primeiroAtivo || atuaisAprovados[0] || {}).bolao_id || '');
+        }
+        state.user.bolao_id = state.bolaoId;
+        localStorage.setItem('bolao_ameba_user', JSON.stringify(state.user));
+        entrarNoApp();
+      } catch (err) {
+        localStorage.removeItem('bolao_ameba_user');
+        localStorage.removeItem('bolao_ameba_session_token');
+        state.user = null;
+        state.sessionToken = '';
+        state.bolaoId = '';
+        document.getElementById('loginSection').classList.remove('hidden');
+        document.getElementById('rootAccessNotice').classList.remove('hidden');
+        showMsg('loginFeedback', escapeHtml(err.message || 'Sua sessão expirou. Entre novamente.'), 'warn');
+      }
       return;
     }
 
@@ -2068,6 +2190,7 @@
         codigo_convite: state.convite.codigo,
         telefone: normalizarTelefoneConvite(state.user.telefone),
         sessao_ativa: true,
+        session_token: state.sessionToken,
         id_usuario: state.user.id_usuario
       });
       processarRespostaSolicitacaoConvite(resposta);
@@ -2085,6 +2208,10 @@
     const bolao = resposta.bolao || state.convite.bolao || {};
     const bolaoId = String(resposta.bolao_id || bolao.bolao_id || '').trim();
     const usuario = resposta.user || state.user;
+    if (resposta.session_token) {
+      state.sessionToken = String(resposta.session_token);
+      localStorage.setItem('bolao_ameba_session_token', state.sessionToken);
+    }
 
     if (!usuario || !usuario.id_usuario) {
       mostrarErroConvite('O servidor não retornou os dados necessários da conta. Faça login novamente.', 'err');
@@ -2328,6 +2455,9 @@
       if (!res.success) {
         showMsg('loginFeedback', res.message || 'Falha no login.', 'err');
       } else {
+        state.sessionToken = String(res.session_token || '');
+        if (!state.sessionToken) throw new Error('O servidor não retornou um token de sessão. Atualize o GAS antes de entrar.');
+        localStorage.setItem('bolao_ameba_session_token', state.sessionToken);
         state.bolaoId = String(res.bolao_id || (res.bolaoAtual && res.bolaoAtual.bolao_id) || '');
         state.boloes = Array.isArray(res.boloes) ? res.boloes : [];
         state.user = {
@@ -2351,7 +2481,9 @@
     fecharCameraAoVivo();
     localStorage.removeItem('bolao_ameba_user');
     localStorage.removeItem('bolao_ameba_pending_invite');
+    localStorage.removeItem('bolao_ameba_session_token');
     state.user = null;
+    state.sessionToken = '';
     state.bolaoId = '';
     state.convitePendente = null;
     document.getElementById('appHeader').classList.add('hidden');
@@ -2362,7 +2494,81 @@
     document.getElementById('loginSection').classList.remove('hidden');
   }
 
+  function obterBolaoAtivoLocal() {
+    return (state.boloes || []).find(b => String(b.bolao_id || '') === String(state.bolaoId || '')) || null;
+  }
+
+  function usuarioEhAdminNoBolao() {
+    const bolao = obterBolaoAtivoLocal();
+    return Boolean(state.user && (state.user.super_admin === true ||
+      String(state.user.super_admin || '').toUpperCase() === 'SIM' ||
+      String(bolao && bolao.papel || '').toLowerCase() === 'admin_bolao'));
+  }
+
+  function atualizarIdentidadeBolao() {
+    const bolao = obterBolaoAtivoLocal();
+    const seletor = document.getElementById('bolaoSelector');
+    const nome = document.getElementById('activeBolaoName');
+    if (nome) nome.textContent = bolao ? bolao.nome : '';
+    if (seletor) {
+      const aprovados = (state.boloes || []).filter(b => String(b.status_membro || '').toUpperCase() === 'APROVADO');
+      seletor.innerHTML = aprovados.map(b => `<option value="${escapeHtml(b.bolao_id)}">${escapeHtml(b.nome)}${String(b.status || '').toUpperCase() === 'ENCERRADO' ? ' (encerrado)' : ''}</option>`).join('');
+      seletor.value = state.bolaoId || '';
+      seletor.classList.toggle('hidden', aprovados.length <= 1);
+    }
+    if (bolao && bolao.cor_tema && /^#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?$/.test(String(bolao.cor_tema))) {
+      document.documentElement.style.setProperty('--primary', bolao.cor_tema);
+    }
+  }
+
+  async function trocarBolaoAtivo() {
+    const seletor = document.getElementById('bolaoSelector');
+    const novoId = String(seletor && seletor.value || '').trim();
+    const alvo = (state.boloes || []).find(b => String(b.bolao_id || '') === novoId && String(b.status_membro || '').toUpperCase() === 'APROVADO');
+    if (!alvo) return;
+    state.bolaoId = novoId;
+    state.user.bolao_id = novoId;
+    state.user.perfil = (state.user.super_admin || String(alvo.papel || '').toLowerCase() === 'admin_bolao') ? 'admin' : 'user';
+    localStorage.setItem('bolao_ameba_user', JSON.stringify(state.user));
+    atualizarIdentidadeBolao();
+    const isAdmin = usuarioEhAdminNoBolao();
+    document.getElementById('tabAdminBtn').classList.toggle('hidden', !isAdmin);
+    document.getElementById('adminBuscaResultadoWrap').classList.toggle('hidden', !isAdmin);
+    document.getElementById('tourAdminGuideCard').classList.toggle('hidden', !isAdmin);
+    const ehSuper = state.user && (state.user.super_admin === true || String(state.user.super_admin || '').toUpperCase() === 'SIM');
+    document.getElementById('cardGerenciarBoloes').classList.toggle('hidden', !ehSuper);
+    // Ao trocar de sessão, fecha a aba anterior para não deixar conteúdo
+    // administrativo de outro bolão visível ao participante.
+    trocarAba('tabPagar');
+    await carregarDashboard();
+  }
+
   function entrarNoApp() {
+    if (!state.user || !state.sessionToken) {
+      fazerLogout();
+      return;
+    }
+    const aprovados = (state.boloes || []).filter(b => String(b.status_membro || '').toUpperCase() === 'APROVADO');
+    const bolaoSelecionadoValido = aprovados.some(b => String(b.bolao_id || '') === String(state.bolaoId || ''));
+    if (!bolaoSelecionadoValido && aprovados.length) {
+      const primeiroAtivo = aprovados.find(b => String(b.status || '').toUpperCase() === 'ATIVO');
+      state.bolaoId = String((primeiroAtivo || aprovados[0]).bolao_id || '');
+    }
+    if (!state.bolaoId && state.boloes.length && state.boloes.some(b => String(b.status_membro || '').toUpperCase() === 'PENDENTE')) {
+      const pend = state.boloes.find(b => String(b.status_membro || '').toUpperCase() === 'PENDENTE');
+      state.convitePendente = state.convitePendente || {
+        bolao_id: pend.bolao_id, nome: pend.nome, cor_tema: pend.cor_tema,
+        status_membro: 'PENDENTE', bolao_anterior_id: ''
+      };
+      exibirTelaPendente();
+      return;
+    }
+
+    const bolao = obterBolaoAtivoLocal();
+    state.user.bolao_id = state.bolaoId;
+    state.user.perfil = (state.user.super_admin || String(bolao && bolao.papel || '').toLowerCase() === 'admin_bolao') ? 'admin' : 'user';
+    localStorage.setItem('bolao_ameba_user', JSON.stringify(state.user));
+
     document.getElementById('loginSection').classList.add('hidden');
     document.getElementById('inviteSection').classList.add('hidden');
     document.getElementById('pendingSection').classList.add('hidden');
@@ -2372,22 +2578,22 @@
 
     document.getElementById('userNameTop').textContent = state.user.nome;
     const roleBadge = document.getElementById('userRoleBadge');
-    const isAdmin = state.user.perfil === 'admin';
-    roleBadge.textContent = isAdmin ? 'ADMIN' : 'MEMBRO';
+    const isAdmin = usuarioEhAdminNoBolao();
+    const ehSuper = state.user.super_admin === true || String(state.user.super_admin || '').toUpperCase() === 'SIM';
+    roleBadge.textContent = ehSuper ? 'SUPER ADMIN' : (isAdmin ? 'ADMIN DO BOLÃO' : 'MEMBRO');
     roleBadge.className = isAdmin ? 'badge badge-amber' : 'badge badge-green';
 
+    atualizarIdentidadeBolao();
     document.getElementById('tabAdminBtn').classList.toggle('hidden', !isAdmin);
     document.getElementById('adminBuscaResultadoWrap').classList.toggle('hidden', !isAdmin);
     document.getElementById('tourAdminGuideCard').classList.toggle('hidden', !isAdmin);
+    document.getElementById('cardGerenciarBoloes').classList.toggle('hidden', !ehSuper);
 
     if (ONESIGNAL_APP_ID && !ONESIGNAL_APP_ID.includes('COLE_AQUI')) {
       window.OneSignalDeferred.push(async function(OneSignal) {
-        try {
-          await OneSignal.login('mega_' + state.user.id_usuario);
-        } catch (_) {}
+        try { await OneSignal.login('mega_' + state.user.id_usuario); } catch (_) {}
       });
     }
-
     trocarAba('tabPagar');
     carregarDashboard();
   }
@@ -2419,7 +2625,23 @@
   async function carregarDashboard() {
     try {
       const res = await apiPost({ action: 'getDashboard' });
-      if (!res.success) return;
+      if (!res.success) {
+        if (res.code === 'UNAUTHORIZED') {
+          const mensagem = res.message || 'Sua sessão expirou. Entre novamente.';
+          localStorage.removeItem('bolao_ameba_user');
+          localStorage.removeItem('bolao_ameba_session_token');
+          localStorage.removeItem('bolao_ameba_pending_invite');
+          state.user = null;
+          state.sessionToken = '';
+          state.bolaoId = '';
+          document.getElementById('appHeader').classList.add('hidden');
+          document.getElementById('mainApp').classList.add('hidden');
+          document.getElementById('bottomNav').classList.add('hidden');
+          document.getElementById('loginSection').classList.remove('hidden');
+          showMsg('loginFeedback', escapeHtml(mensagem), 'warn');
+        }
+        return;
+      }
 
       state.usuarios = res.usuarios || [];
       state.rodadas = res.rodadas || [];
@@ -2446,7 +2668,10 @@
       renderRankings();
       renderMinhasTransferencias();
       renderCadastroUsuarios();
-      if (state.user.perfil === 'admin') renderAdminFormRodada();
+      if (usuarioEhAdminNoBolao()) {
+        renderAdminFormRodada();
+        carregarPainelFase4();
+      }
     } catch (err) {
       alert('Erro ao carregar dados: ' + err.message);
     }
@@ -3970,6 +4195,332 @@
     indice: 0,
     abaAnterior: 'tabTour'
   };
+
+
+  // =========================================================================
+  // FASE 4 — PAINEL ADMINISTRATIVO
+  // =========================================================================
+
+  async function carregarPainelFase4() {
+    if (!usuarioEhAdminNoBolao() || !state.bolaoId) return;
+    const superAdmin = state.user && (state.user.super_admin === true || String(state.user.super_admin || '').toUpperCase() === 'SIM');
+    document.getElementById('cardGerenciarBoloes').classList.toggle('hidden', !superAdmin);
+    await Promise.all([
+      carregarSolicitacoesPendentes(),
+      carregarConfigConviteAdmin(),
+      carregarMembrosBolaoAdmin(),
+      superAdmin ? carregarBoloesAdmin() : Promise.resolve()
+    ]);
+  }
+
+  async function carregarSolicitacoesPendentes() {
+    const alvo = document.getElementById('listaSolicitacoesPendentes');
+    if (!state.bolaoId || !usuarioEhAdminNoBolao()) return;
+    if (alvo) alvo.innerHTML = '<div class="muted">Carregando...</div>';
+    try {
+      const res = await apiPost({ action: 'listarPendentes', bolao_id: state.bolaoId });
+      if (!res.success) throw new Error(res.message || 'Não foi possível listar solicitações.');
+      renderSolicitacoesPendentes(res.pendentes || []);
+    } catch (err) {
+      if (alvo) alvo.innerHTML = `<div class="alert alert-err">${escapeHtml(err.message || err)}</div>`;
+    }
+  }
+
+  function renderSolicitacoesPendentes(lista) {
+    const alvo = document.getElementById('listaSolicitacoesPendentes');
+    const badge = document.getElementById('pendentesAdminBadge');
+    if (badge) badge.textContent = String(lista.length);
+    if (!alvo) return;
+    if (!lista.length) {
+      alvo.innerHTML = '<div class="muted">Não há solicitações pendentes neste bolão.</div>';
+      return;
+    }
+    alvo.innerHTML = lista.map(item => {
+      const vinculo = encodeURIComponent(String(item.id_vinculo || ''));
+      return `<div class="admin-item">
+        <div class="admin-item-top"><div><strong>${escapeHtml(item.nome || 'Participante')}</strong>
+          <div class="admin-item-meta">Telefone: ${escapeHtml(item.telefone || '—')}<br>Solicitado em: ${escapeHtml(item.data_solicitacao || '—')}</div></div>
+          <span class="badge badge-amber">PENDENTE</span></div>
+        <div class="admin-item-actions">
+          <button class="btn-primary btn-sm" onclick="decidirSolicitacaoAdmin('${vinculo}','APROVADO')">✓ Aprovar</button>
+          <button class="btn-danger btn-sm" onclick="decidirSolicitacaoAdmin('${vinculo}','RECUSADO')">✕ Recusar</button>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  async function decidirSolicitacaoAdmin(idEncoded, decisao) {
+    const idVinculo = decodeURIComponent(String(idEncoded || ''));
+    if (decisao === 'RECUSADO' && !confirm('Confirma a recusa desta solicitação?')) return;
+    const notificar = confirm('Deseja tentar enviar uma notificação Push ao participante?');
+    try {
+      const res = await apiPost({
+        action: 'decidirSolicitacao', bolao_id: state.bolaoId,
+        id_vinculo: idVinculo, decisao, notificar
+      });
+      if (!res.success) throw new Error(res.message || 'Não foi possível processar a solicitação.');
+      showMsg('feedbackSolicitacoesAdmin', res.message || 'Solicitação atualizada.', 'ok');
+      await carregarSolicitacoesPendentes();
+      await carregarMembrosBolaoAdmin();
+    } catch (err) {
+      showMsg('feedbackSolicitacoesAdmin', err.message || String(err), 'err');
+    }
+  }
+
+  async function carregarConfigConviteAdmin() {
+    try {
+      const res = await apiPost({ action: 'obterConfigAdminBolao', bolao_id: state.bolaoId });
+      if (!res.success) throw new Error(res.message || 'Não foi possível carregar o convite.');
+      state.bolaoAdminConfig = res.bolao;
+      renderConfigConviteAdmin();
+    } catch (err) {
+      showMsg('feedbackConviteAdmin', err.message || String(err), 'err');
+    }
+  }
+
+  function montarLinkConviteAdmin() {
+    const codigo = state.bolaoAdminConfig && state.bolaoAdminConfig.codigo_convite;
+    if (!codigo) return '';
+    const url = new URL(window.location.href);
+    url.search = '';
+    url.hash = '';
+    url.searchParams.set('convite', codigo);
+    return url.toString();
+  }
+
+  function renderConfigConviteAdmin() {
+    const b = state.bolaoAdminConfig;
+    if (!b) return;
+    document.getElementById('codigoConviteAdmin').textContent = b.codigo_convite || 'Não gerado';
+    document.getElementById('linkConviteAdmin').textContent = montarLinkConviteAdmin() || 'Link indisponível';
+    document.getElementById('conviteAtivoAdmin').checked = Boolean(b.convite_ativo);
+  }
+
+  async function copiarLinkConviteAdmin() {
+    const link = montarLinkConviteAdmin();
+    if (!link) return showMsg('feedbackConviteAdmin', 'Código de convite não disponível.', 'err');
+    try {
+      await navigator.clipboard.writeText(link);
+      showMsg('feedbackConviteAdmin', 'Link copiado para a área de transferência.', 'ok');
+    } catch (_) {
+      window.prompt('Copie o link do convite:', link);
+    }
+  }
+
+  function compartilharConviteWhatsApp() {
+    const link = montarLinkConviteAdmin();
+    if (!link) return showMsg('feedbackConviteAdmin', 'Código de convite não disponível.', 'err');
+    const nome = (state.bolaoAdminConfig && state.bolaoAdminConfig.nome) || 'este bolão';
+    const texto = `Você está convidado para participar de ${nome}! Acesse o link e solicite sua entrada. O acesso será liberado após aprovação do administrador: ${link}`;
+    window.open('https://wa.me/?text=' + encodeURIComponent(texto), '_blank', 'noopener');
+  }
+
+  async function salvarConfigConviteAdmin(payload, mensagem) {
+    try {
+      const res = await apiPost({ action: 'atualizarConviteBolao', bolao_id: state.bolaoId, ...payload });
+      if (!res.success) throw new Error(res.message || 'Não foi possível atualizar o convite.');
+      state.bolaoAdminConfig = { ...(state.bolaoAdminConfig || {}), ...(res.bolao || {}) };
+      renderConfigConviteAdmin();
+      showMsg('feedbackConviteAdmin', mensagem || res.message || 'Convite atualizado.', 'ok');
+    } catch (err) {
+      showMsg('feedbackConviteAdmin', err.message || String(err), 'err');
+      await carregarConfigConviteAdmin();
+    }
+  }
+
+  async function alterarStatusConviteAdmin(ativo) {
+    await salvarConfigConviteAdmin({ convite_ativo: Boolean(ativo) }, ativo ? 'Convite reativado.' : 'Novas solicitações pausadas.');
+  }
+
+  async function regenerarCodigoConviteAdmin() {
+    if (!confirm('Gerar um novo código? O link antigo deixará de funcionar.')) return;
+    await salvarConfigConviteAdmin({ regenerar_codigo: true }, 'Novo código gerado. Compartilhe o novo link.');
+  }
+
+  async function carregarMembrosBolaoAdmin() {
+    const alvo = document.getElementById('listaMembrosBolaoAdmin');
+    if (!state.bolaoId || !usuarioEhAdminNoBolao()) return;
+    if (alvo) alvo.innerHTML = '<div class="muted">Carregando membros...</div>';
+    try {
+      const res = await apiPost({ action: 'listarMembrosBolao', bolao_id: state.bolaoId });
+      if (!res.success) throw new Error(res.message || 'Não foi possível listar membros.');
+      renderMembrosBolaoAdmin(res.membros || []);
+    } catch (err) {
+      if (alvo) alvo.innerHTML = `<div class="alert alert-err">${escapeHtml(err.message || err)}</div>`;
+    }
+  }
+
+  function renderMembrosBolaoAdmin(lista) {
+    const alvo = document.getElementById('listaMembrosBolaoAdmin');
+    if (!alvo) return;
+    if (!lista.length) {
+      alvo.innerHTML = '<div class="muted">Nenhum membro cadastrado neste bolão.</div>';
+      return;
+    }
+    alvo.innerHTML = lista.map(m => {
+      const id = encodeURIComponent(String(m.id_usuario || ''));
+      const status = String(m.status_membro || '').toUpperCase();
+      const aprovado = status === 'APROVADO';
+      const papel = String(m.papel || 'participante').toLowerCase();
+      const podeEditar = aprovado && status !== 'REMOVIDO';
+      return `<div class="admin-item">
+        <div class="admin-item-top"><div><strong>${escapeHtml(m.nome || 'Participante')}</strong>
+          <div class="admin-item-meta">${escapeHtml(m.telefone || '—')} · Pedido: ${escapeHtml(m.data_solicitacao || '—')}</div></div>
+          <span class="badge ${aprovado ? 'badge-green' : (status === 'PENDENTE' ? 'badge-amber' : 'badge-red')}">${escapeHtml(status)}</span></div>
+        ${podeEditar ? `<label for="papelMembro_${id}">Papel neste bolão</label>
+          <select id="papelMembro_${id}" onchange="alterarPapelMembroAdmin('${id}',this.value)">
+            <option value="participante" ${papel === 'participante' ? 'selected' : ''}>Participante</option>
+            <option value="admin_bolao" ${papel === 'admin_bolao' ? 'selected' : ''}>Administrador do bolão</option>
+          </select>
+          <div class="admin-item-actions"><button class="btn-danger btn-sm" onclick="removerMembroBolaoAdmin('${id}')">Remover deste bolão</button></div>` : ''}
+      </div>`;
+    }).join('');
+  }
+
+  async function alterarPapelMembroAdmin(idEncoded, papel) {
+    await executarGerenciamentoMembroAdmin(idEncoded, 'papel', papel);
+  }
+
+  async function removerMembroBolaoAdmin(idEncoded) {
+    if (!confirm('Remover esta pessoa somente deste bolão? O cadastro global e os demais vínculos serão preservados.')) return;
+    await executarGerenciamentoMembroAdmin(idEncoded, 'remover');
+  }
+
+  async function executarGerenciamentoMembroAdmin(idEncoded, acao, papel) {
+    try {
+      const res = await apiPost({
+        action: 'gerenciarMembroBolao', bolao_id: state.bolaoId,
+        id_usuario_alvo: decodeURIComponent(String(idEncoded || '')),
+        acao, papel
+      });
+      if (!res.success) throw new Error(res.message || 'Não foi possível atualizar o membro.');
+      showMsg('feedbackMembrosAdmin', res.message || 'Membro atualizado.', 'ok');
+      await carregarMembrosBolaoAdmin();
+    } catch (err) {
+      showMsg('feedbackMembrosAdmin', err.message || String(err), 'err');
+      await carregarMembrosBolaoAdmin();
+    }
+  }
+
+  async function criarBolaoAdmin() {
+    const payload = {
+      action: 'criarBolao',
+      nome: document.getElementById('novoBolaoNome').value.trim(),
+      tipo: document.getElementById('novoBolaoTipo').value,
+      cor_tema: document.getElementById('novoBolaoCor').value,
+      admin_telefone: document.getElementById('novoBolaoAdminTelefone').value.trim(),
+      recebedor_nome: document.getElementById('novoBolaoRecebedor').value.trim(),
+      chave_pix: document.getElementById('novoBolaoPix').value.trim(),
+      pasta_drive: document.getElementById('novoBolaoPasta').value.trim()
+    };
+    try {
+      const res = await apiPost(payload);
+      if (!res.success) throw new Error(res.message || 'Não foi possível criar o bolão.');
+      showMsg('feedbackCriarBolaoAdmin', `${escapeHtml(res.message || 'Bolão criado.')} Código de convite: <strong>${escapeHtml(res.bolao && res.bolao.codigo_convite || '')}</strong>`, 'ok');
+      ['novoBolaoNome','novoBolaoAdminTelefone','novoBolaoRecebedor','novoBolaoPix','novoBolaoPasta'].forEach(id => document.getElementById(id).value = '');
+      await atualizarListaBoloesUsuario();
+      await carregarBoloesAdmin();
+      atualizarIdentidadeBolao();
+    } catch (err) {
+      showMsg('feedbackCriarBolaoAdmin', err.message || String(err), 'err');
+    }
+  }
+
+  async function atualizarListaBoloesUsuario() {
+    const res = await apiPost({ action: 'getMeusBoloes' });
+    if (res && res.success && Array.isArray(res.boloes)) {
+      state.boloes = res.boloes;
+      atualizarIdentidadeBolao();
+    }
+  }
+
+  async function carregarBoloesAdmin() {
+    const alvo = document.getElementById('listaBoloesAdmin');
+    if (!state.user || !(state.user.super_admin === true || String(state.user.super_admin || '').toUpperCase() === 'SIM')) return;
+    if (alvo) alvo.innerHTML = '<div class="muted">Carregando bolões...</div>';
+    try {
+      const res = await apiPost({ action: 'listarBoloesAdmin' });
+      if (!res.success) throw new Error(res.message || 'Não foi possível listar bolões.');
+      state.boloesAdmin = res.boloes || [];
+      renderBoloesAdmin();
+    } catch (err) {
+      if (alvo) alvo.innerHTML = `<div class="alert alert-err">${escapeHtml(err.message || err)}</div>`;
+    }
+  }
+
+  function renderBoloesAdmin() {
+    const alvo = document.getElementById('listaBoloesAdmin');
+    if (!alvo) return;
+    if (!state.boloesAdmin.length) {
+      alvo.innerHTML = '<div class="muted">Nenhum bolão cadastrado.</div>';
+      return;
+    }
+    alvo.innerHTML = state.boloesAdmin.map(b => {
+      const id = encodeURIComponent(String(b.bolao_id || ''));
+      return `<div class="admin-item" style="border-left:4px solid ${escapeHtml(b.cor_tema || '#10b981')}">
+        <div class="admin-item-top"><strong>${escapeHtml(b.nome)}</strong><span class="badge ${String(b.status).toUpperCase() === 'ATIVO' ? 'badge-green' : 'badge-amber'}">${escapeHtml(b.status)}</span></div>
+        <div class="admin-form-grid">
+          <div><label>Nome</label><input id="editBolaoNome_${id}" value="${escapeHtml(b.nome)}" /></div>
+          <div><label>Tipo</label><select id="editBolaoTipo_${id}"><option value="FREQUENTE" ${b.tipo === 'FREQUENTE' ? 'selected' : ''}>Frequente</option><option value="COMEMORATIVO" ${b.tipo === 'COMEMORATIVO' ? 'selected' : ''}>Comemorativo</option></select></div>
+          <div><label>Cor</label><input id="editBolaoCor_${id}" type="color" value="${escapeHtml(b.cor_tema || '#10b981')}" /></div>
+          <div><label>Recebedor</label><input id="editBolaoRecebedor_${id}" value="${escapeHtml(b.recebedor_nome || '')}" /></div>
+          <div><label>Chave Pix</label><input id="editBolaoPix_${id}" value="${escapeHtml(b.chave_pix || '')}" /></div>
+          <div><label>Pasta Drive</label><input id="editBolaoPasta_${id}" value="${escapeHtml(b.pasta_drive || '')}" /></div>
+        </div>
+        <div class="admin-item-actions">
+          <button class="btn-primary btn-sm" onclick="salvarEdicaoBolaoAdmin('${id}')">Salvar alterações</button>
+          ${String(b.status).toUpperCase() === 'ATIVO' ? `<button class="btn-danger btn-sm" onclick="arquivarBolaoAdmin('${id}')">Encerrar / arquivar</button>` : ''}
+        </div>
+        <div class="admin-item-meta">ID: ${escapeHtml(b.bolao_id)} · Convite: ${escapeHtml(b.codigo_convite || '—')} · Criado: ${escapeHtml(b.data_criacao || '—')}</div>
+      </div>`;
+    }).join('');
+  }
+
+  async function salvarEdicaoBolaoAdmin(idEncoded) {
+    const id = decodeURIComponent(String(idEncoded || ''));
+    try {
+      const res = await apiPost({
+        action: 'atualizarBolao', bolao_id: id,
+        nome: document.getElementById('editBolaoNome_' + idEncoded).value.trim(),
+        tipo: document.getElementById('editBolaoTipo_' + idEncoded).value,
+        cor_tema: document.getElementById('editBolaoCor_' + idEncoded).value,
+        recebedor_nome: document.getElementById('editBolaoRecebedor_' + idEncoded).value.trim(),
+        chave_pix: document.getElementById('editBolaoPix_' + idEncoded).value.trim(),
+        pasta_drive: document.getElementById('editBolaoPasta_' + idEncoded).value.trim()
+      });
+      if (!res.success) throw new Error(res.message || 'Não foi possível salvar o bolão.');
+      showMsg('feedbackEditarBolaoAdmin', res.message || 'Bolão atualizado.', 'ok');
+      await carregarBoloesAdmin();
+      await atualizarListaBoloesUsuario();
+    } catch (err) {
+      showMsg('feedbackEditarBolaoAdmin', err.message || String(err), 'err');
+    }
+  }
+
+  async function arquivarBolaoAdmin(idEncoded) {
+    const id = decodeURIComponent(String(idEncoded || ''));
+    if (!confirm('Encerrar/arquivar este bolão? O convite será pausado e ele deixará de aceitar novas solicitações.')) return;
+    try {
+      const res = await apiPost({ action: 'arquivarBolao', bolao_id: id });
+      if (!res.success) throw new Error(res.message || 'Não foi possível arquivar o bolão.');
+      showMsg('feedbackEditarBolaoAdmin', res.message || 'Bolão arquivado.', 'ok');
+      await carregarBoloesAdmin();
+      await atualizarListaBoloesUsuario();
+      if (id === state.bolaoId) {
+        const proximo = state.boloes.find(b => String(b.status_membro).toUpperCase() === 'APROVADO' && b.bolao_id !== id);
+        if (proximo) {
+          state.bolaoId = proximo.bolao_id;
+          state.user.bolao_id = state.bolaoId;
+          state.user.perfil = (state.user.super_admin || proximo.papel === 'admin_bolao') ? 'admin' : 'user';
+          localStorage.setItem('bolao_ameba_user', JSON.stringify(state.user));
+          atualizarIdentidadeBolao();
+          await carregarDashboard();
+        }
+      }
+    } catch (err) {
+      showMsg('feedbackEditarBolaoAdmin', err.message || String(err), 'err');
+    }
+  }
 
   function obterPassosTour() {
     const isAdmin = state.user && state.user.perfil === 'admin';
