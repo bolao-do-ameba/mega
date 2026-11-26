@@ -71,7 +71,7 @@ const INFO_MODAL_CONTENT = {
   },
   pendencias: {
     titulo: '📌 Pendências em Aberto',
-    html: '<p>Lista todas as rodadas em que você ainda possui saldo a pagar neste bolão. Toque em <strong>Anexar Comprovante</strong> para dar baixa automática.</p>'
+    html: '<p>Lista todas as rodadas em que você ainda possui saldo a pagar neste bolão. Toque em <strong>Anexar</strong> para enviar o comprovante e dar baixa automática.</p>'
   },
   comprovante: {
     titulo: '🧾 Leitor de Comprovante Pix',
@@ -79,11 +79,11 @@ const INFO_MODAL_CONTENT = {
   },
   jogos: {
     titulo: '🎟️ Jogos por Concurso',
-    html: '<p>Agrupa todos os jogos apostados por número de concurso. Bilhetes de <strong>Teimosinha</strong> (vários concursos seguidos) aparecem automaticamente em cada concurso em que valem.</p><p style="margin-top:8px;">Quando o resultado daquele concurso é publicado, os acertos acendem em verde e destacam <strong>Quadra</strong>, <strong>Quina</strong> e <strong>Sena</strong>.</p>'
+    html: '<p>Agrupa todos os jogos apostados por número de concurso. Bilhetes de <strong>Teimosinha</strong> (vários concursos seguidos) aparecem automaticamente em cada concurso em que valem.</p><p style="margin-top:8px;">Quando o resultado daquele concurso é publicado, os acertos acendem em verde e destacam <strong>Quadra</strong>, <strong>Quina</strong> e <strong>Sena</strong>. Administradores podem tocar em <strong>✏️</strong> para corrigir dezenas ou concursos.</p>'
   },
   rodadas: {
     titulo: '🎱 Rodadas & Rateios',
-    html: '<p>Mostra cada rodada lançada, a data do bilhete, o intervalo de concursos, o valor por cota, o status de cada participante e o link <strong>📄</strong> para abrir o comprovante salvo no Drive.</p>'
+    html: '<p>Mostra cada rodada lançada, a data do bilhete, o intervalo de concursos, o valor por cota, o status de cada participante e o link <strong>📄</strong> para abrir o comprovante salvo no Drive.</p><p style="margin-top:8px;">Administradores podem editar rodadas, jogos, cotas e pagamentos usando os botões <strong>✏️</strong> e <strong>🗑️</strong>.</p>'
   },
   resumo: {
     titulo: '📊 Resumo Mensal & Situação Atual',
@@ -111,7 +111,7 @@ const INFO_MODAL_CONTENT = {
   },
   admin_rodada: {
     titulo: '⚙️ Nova Rodada',
-    html: '<p>Cadastre uma rodada definindo descrição, concurso inicial e final (para Teimosinha), data do bilhete, valor total, dezenas e cotas dos participantes.</p><p style="margin-top:8px;">A soma das cotas precisa fechar um <strong>número inteiro</strong> (quem escolhe 0,5 precisa formar par com outro 0,5).</p>'
+    html: '<p>Cadastre uma rodada definindo descrição, concurso inicial e final (para Teimosinha), data do bilhete, valor total, dezenas e cotas dos participantes.</p><p style="margin-top:8px;">A soma das cotas precisa fechar um <strong>número inteiro</strong> (quem escolhe 0,5 precisa formar par com outro 0,5). Depois de lançada, qualquer dado pode ser editado na aba Rodadas ou Jogos.</p>'
   },
   admin_ocr: {
     titulo: '📷 Leitura OCR de Bilhete Caixa',
@@ -130,12 +130,12 @@ const INFO_MODAL_CONTENT = {
     html: '<p>Promova participantes a administradores deste bolão ou remova o vínculo sem apagar a conta global do usuário em outros bolões.</p>'
   },
   admin_pix: {
-    titulo: '💸 Configurar Pix',
-    html: '<p>Define o <strong>Nome do Recebedor</strong> e a <strong>Chave Pix</strong> usados exclusivamente neste bolão, tanto para exibição na tela Pagar quanto na validação dos comprovantes.</p>'
+    titulo: '🎨 Editar Bolão Ativo & Pix',
+    html: '<p>Edite nome, tipo, cor do gradiente dos cards, pasta do Drive, <strong>Nome do Recebedor</strong> e <strong>Chave Pix</strong> deste bolão. A cor escolhida colore o degradê da esquerda para a direita nos cards sem alterar a cor dos botões.</p>'
   },
   admin_boloes: {
     titulo: '🛠️ Gerenciar Bolões (Super Admin)',
-    html: '<p>Crie novos bolões frequentes ou comemorativos (como Mega da Virada), personalize cor, recebedor, Pix e pasta do Google Drive, ou arquive bolões encerrados.</p>'
+    html: '<p>Crie novos bolões frequentes ou comemorativos (como Mega da Virada), personalize cor dos cards, recebedor, Pix e pasta do Google Drive, ou arquive bolões encerrados.</p>'
   },
   convite_tela: {
     titulo: '🍀 Acesso por Convite',
@@ -273,6 +273,15 @@ function escapeHtml(str) {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
+}
+
+function normalizarHexCor6(cor, fallback = '#10b981') {
+  const s = String(cor || '').trim();
+  if (/^#[0-9a-fA-F]{6}$/.test(s)) return s;
+  if (/^#[0-9a-fA-F]{3}$/.test(s)) {
+    return '#' + s[1] + s[1] + s[2] + s[2] + s[3] + s[3];
+  }
+  return fallback;
 }
 
 function showMsg(elId, msg, tipo = 'ok') {
@@ -454,14 +463,28 @@ function aplicarConfigPixNaInterface() {
   if (recEl) recEl.textContent = state.configPix.NOME_RECEBEDOR || '-';
   if (chaveEl) chaveEl.textContent = state.configPix.CHAVE_PIX || '-';
 
+  const bolao = obterBolaoAtivoLocal();
+  const inpNomeBolao = document.getElementById('cfgBolaoNome');
+  const inpTipoBolao = document.getElementById('cfgBolaoTipo');
+  const inpCorBolao = document.getElementById('cfgBolaoCor');
+  const inpPastaBolao = document.getElementById('cfgBolaoPasta');
   const inpNome = document.getElementById('cfgNomeRecebedor');
   const inpChave = document.getElementById('cfgChavePix');
+
+  if (bolao) {
+    if (inpNomeBolao) inpNomeBolao.value = bolao.nome || '';
+    if (inpTipoBolao) inpTipoBolao.value = String(bolao.tipo || 'FREQUENTE').toUpperCase();
+    if (inpCorBolao) inpCorBolao.value = normalizarHexCor6(bolao.cor_tema, '#10b981');
+    if (inpPastaBolao && state.bolaoAdminConfig && state.bolaoAdminConfig.bolao_id === bolao.bolao_id) {
+      inpPastaBolao.value = state.bolaoAdminConfig.pasta_drive || '';
+    }
+  }
   if (inpNome) inpNome.value = state.configPix.NOME_RECEBEDOR || '';
   if (inpChave) inpChave.value = state.configPix.CHAVE_PIX || '';
 }
 
 // =========================================================================
-// CARROSSEL DE BOLÕES (ARRASTE LATERAL COM SNAP)
+// CARROSSEL DE BOLÕES (ARRASTE LATERAL + COR APENAS NO GRADIENTE DOS CARDS)
 // =========================================================================
 function obterBolaoAtivoLocal() {
   return (state.boloes || []).find(b => String(b.bolao_id || '') === String(state.bolaoId || '')) || null;
@@ -478,11 +501,9 @@ function usuarioEhAdminNoBolao() {
 
 function atualizarIdentidadeBolao() {
   const bolao = obterBolaoAtivoLocal();
-  if (bolao && bolao.cor_tema && /^#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?$/.test(String(bolao.cor_tema))) {
-    document.documentElement.style.setProperty('--primary', bolao.cor_tema);
-  } else {
-    document.documentElement.style.setProperty('--primary', '#10b981');
-  }
+  const corValida = normalizarHexCor6(bolao && bolao.cor_tema, '#10b981');
+  // Aplica a cor apenas como gradiente/borda nos cards sem mudar os botões (--primary permanece fixo)
+  document.documentElement.style.setProperty('--bolao-accent', corValida);
   renderizarCarrosselBoloes();
 }
 
@@ -514,7 +535,7 @@ function renderizarCarrosselBoloes() {
     const statusBolao = String(b.status || 'ATIVO').toUpperCase();
     const isAtivo = String(b.bolao_id) === String(state.bolaoId);
     const isPendente = statusMembro === 'PENDENTE';
-    const cor = /^#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?$/.test(String(b.cor_tema || '')) ? b.cor_tema : '#10b981';
+    const cor = normalizarHexCor6(b.cor_tema, '#10b981');
 
     let badgeHtml = `<span class="badge badge-green">ATIVO</span>`;
     if (isPendente) badgeHtml = `<span class="badge badge-amber">PENDENTE</span>`;
@@ -561,7 +582,6 @@ function renderizarCarrosselBoloes() {
     dotsWrap.innerHTML = '';
   }
 
-  // Centraliza o cartão do bolão ativo sem disparar pulo brusco
   const cardAtivo = track.querySelector('.bolao-slide-card.active');
   if (cardAtivo) {
     setTimeout(() => {
@@ -752,6 +772,8 @@ window.addEventListener('DOMContentLoaded', async () => {
 window.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     fecharInfoModal();
+    if (typeof fecharModalEditarRodada === 'function') fecharModalEditarRodada();
+    if (typeof fecharModalEditarPagamento === 'function') fecharModalEditarPagamento();
     if (typeof fecharCameraAoVivo === 'function') fecharCameraAoVivo();
   }
 });
@@ -798,6 +820,8 @@ async function fazerLogin() {
 function fazerLogout() {
   if (typeof encerrarTour === 'function') encerrarTour();
   if (typeof fecharCameraAoVivo === 'function') fecharCameraAoVivo();
+  if (typeof fecharModalEditarRodada === 'function') fecharModalEditarRodada();
+  if (typeof fecharModalEditarPagamento === 'function') fecharModalEditarPagamento();
   fecharInfoModal();
 
   localStorage.removeItem('bolao_ameba_user');
