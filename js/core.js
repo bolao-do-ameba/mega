@@ -28,8 +28,8 @@ let state = {
   bolaoId: '',
   boloes: [],
   sessionToken: '',
-  bolaoAdminConfig: null,
   boloesAdmin: [],
+  membrosPorBolao: {},
   convite: {
     codigo: '',
     bolao: null,
@@ -45,6 +45,9 @@ let state = {
   convitePendente: null
 };
 
+// Abas onde o carrossel de bolões e o card de resultados ficam ocultos
+const ABAS_SEM_TOPO_GLOBAL = new Set(['tabCadastro', 'tabAdmin', 'tabTour']);
+
 // =========================================================================
 // DICIONÁRIO DE EXPLICAÇÕES DO BOTÃO "i" (MODAL DE INFORMAÇÃO)
 // =========================================================================
@@ -56,6 +59,10 @@ const INFO_MODAL_CONTENT = {
   boloes_carrossel: {
     titulo: '🎯 Meus Bolões',
     html: '<p>Arraste os cartões para a <strong>esquerda ou direita</strong> e toque em um bolão para alternar entre suas sessões (ex.: bolão frequente e Mega da Virada).</p><p style="margin-top:8px;">Cada bolão possui seus próprios jogos, rodadas, participantes e chave Pix isolados.</p>'
+  },
+  boloes_perfil: {
+    titulo: '🎯 Bolões que Participo',
+    html: '<p>Lista completa dos bolões em que você está vinculado, com seu papel (Membro ou Admin) e status de aprovação.</p><p style="margin-top:8px;">Toque em <strong>Abrir</strong> para alternar para outro bolão.</p>'
   },
   resultado: {
     titulo: '🎱 Resultado da Mega-Sena',
@@ -99,7 +106,7 @@ const INFO_MODAL_CONTENT = {
   },
   minha_conta: {
     titulo: '💳 Minha Conta',
-    html: '<p>Extrato individual com seu total de cotas, valor já pago, saldo devedor e acesso rápido aos seus comprovantes (<strong>📄</strong>) ou ao pagamento de itens em aberto.</p>'
+    html: '<p>Extrato individual do bolão selecionado com seu total de cotas, valor já pago, saldo devedor e acesso rápido aos seus comprovantes (<strong>📄</strong>) ou ao pagamento de itens em aberto.</p>'
   },
   perfil: {
     titulo: '👤 Perfil & Nome no Comprovante',
@@ -111,7 +118,7 @@ const INFO_MODAL_CONTENT = {
   },
   admin_rodada: {
     titulo: '⚙️ Nova Rodada',
-    html: '<p>Cadastre uma rodada definindo descrição, concurso inicial e final (para Teimosinha), data do bilhete, valor total, dezenas e cotas dos participantes.</p><p style="margin-top:8px;">A soma das cotas precisa fechar um <strong>número inteiro</strong> (quem escolhe 0,5 precisa formar par com outro 0,5). Depois de lançada, qualquer dado pode ser editado na aba Rodadas ou Jogos.</p>'
+    html: '<p>Cadastre uma rodada no bolão selecionado definindo descrição, concurso inicial e final (para Teimosinha), data do bilhete, valor total, dezenas e cotas dos participantes.</p><p style="margin-top:8px;">A soma das cotas precisa fechar um <strong>número inteiro</strong> (quem escolhe 0,5 precisa formar par com outro 0,5). Depois de lançada, qualquer dado pode ser editado na aba Rodadas ou Jogos.</p>'
   },
   admin_ocr: {
     titulo: '📷 Leitura OCR de Bilhete Caixa',
@@ -119,23 +126,11 @@ const INFO_MODAL_CONTENT = {
   },
   admin_pendentes: {
     titulo: '👥 Solicitações Pendentes',
-    html: '<p>Lista quem acessou o link de convite e aguarda sua aprovação para entrar neste bolão. Enquanto estiver pendente, a pessoa não vê jogos, valores nem chave Pix.</p>'
-  },
-  admin_convite: {
-    titulo: '🔗 Convite deste Bolão',
-    html: '<p>Compartilhe o link para convidar novos participantes. Você pode pausar novas solicitações a qualquer momento ou gerar um novo código para invalidar links antigos.</p>'
-  },
-  admin_membros: {
-    titulo: '🧑‍🤝‍🧑 Gerenciar Membros',
-    html: '<p>Promova participantes a administradores deste bolão ou remova o vínculo sem apagar a conta global do usuário em outros bolões.</p>'
-  },
-  admin_pix: {
-    titulo: '🎨 Editar Bolão Ativo & Pix',
-    html: '<p>Edite nome, tipo, cor do gradiente dos cards, pasta do Drive, <strong>Nome do Recebedor</strong> e <strong>Chave Pix</strong> deste bolão. A cor escolhida colore o degradê da esquerda para a direita nos cards sem alterar a cor dos botões.</p>'
+    html: '<p>Lista quem acessou o link de convite do bolão selecionado e aguarda aprovação. Enquanto estiver pendente, a pessoa não vê jogos, valores nem chave Pix.</p>'
   },
   admin_boloes: {
-    titulo: '🛠️ Gerenciar Bolões (Super Admin)',
-    html: '<p>Crie novos bolões frequentes ou comemorativos (como Mega da Virada), personalize cor dos cards, recebedor, Pix e pasta do Google Drive, ou arquive bolões encerrados.</p>'
+    titulo: '🛠️ Gerenciar Bolões',
+    html: '<p>Todos os bolões administrados por você aparecem aqui uma única vez. Clique em qualquer bolão para expandir e gerenciar:</p><ul><li>Nome, tipo, cor do gradiente dos cards, Recebedor, Chave Pix e Pasta Drive;</li><li>Link e código de convite (copiar, WhatsApp, pausar ou gerar novo código);</li><li>Lista de membros daquele bolão (alterar papel ou remover vínculo).</li></ul><p style="margin-top:8px;">Super Admins também podem criar novos bolões pelo botão <strong>＋ Criar bolão</strong> ou arquivar bolões existentes.</p>'
   },
   convite_tela: {
     titulo: '🍀 Acesso por Convite',
@@ -373,7 +368,7 @@ function parsearJogosTexto(texto) {
 }
 
 function atualizarPreviewJogos() {
-  const txt = document.getElementById('rodadaJogosTexto').value;
+  const txt = document.getElementById('rodadaJogosTexto')?.value || '';
   const infoEl = document.getElementById('previewJogosInfo');
   if (!infoEl) return;
   if (!txt.trim()) {
@@ -462,68 +457,76 @@ function aplicarConfigPixNaInterface() {
   const chaveEl = document.getElementById('pixChave');
   if (recEl) recEl.textContent = state.configPix.NOME_RECEBEDOR || '-';
   if (chaveEl) chaveEl.textContent = state.configPix.CHAVE_PIX || '-';
-
-  const bolao = obterBolaoAtivoLocal();
-  const inpNomeBolao = document.getElementById('cfgBolaoNome');
-  const inpTipoBolao = document.getElementById('cfgBolaoTipo');
-  const inpCorBolao = document.getElementById('cfgBolaoCor');
-  const inpPastaBolao = document.getElementById('cfgBolaoPasta');
-  const inpNome = document.getElementById('cfgNomeRecebedor');
-  const inpChave = document.getElementById('cfgChavePix');
-
-  if (bolao) {
-    if (inpNomeBolao) inpNomeBolao.value = bolao.nome || '';
-    if (inpTipoBolao) inpTipoBolao.value = String(bolao.tipo || 'FREQUENTE').toUpperCase();
-    if (inpCorBolao) inpCorBolao.value = normalizarHexCor6(bolao.cor_tema, '#10b981');
-    if (inpPastaBolao && state.bolaoAdminConfig && state.bolaoAdminConfig.bolao_id === bolao.bolao_id) {
-      inpPastaBolao.value = state.bolaoAdminConfig.pasta_drive || '';
-    }
-  }
-  if (inpNome) inpNome.value = state.configPix.NOME_RECEBEDOR || '';
-  if (inpChave) inpChave.value = state.configPix.CHAVE_PIX || '';
 }
 
 // =========================================================================
-// CARROSSEL DE BOLÕES (ARRASTE LATERAL + COR APENAS NO GRADIENTE DOS CARDS)
+// IDENTIDADE, PERMISSÕES E CARROSSEL DE BOLÕES
 // =========================================================================
 function obterBolaoAtivoLocal() {
   return (state.boloes || []).find(b => String(b.bolao_id || '') === String(state.bolaoId || '')) || null;
 }
 
+function usuarioEhSuperAdmin() {
+  return Boolean(state.user && (
+    state.user.super_admin === true ||
+    String(state.user.super_admin || '').toUpperCase() === 'SIM'
+  ));
+}
+
 function usuarioEhAdminNoBolao() {
   const bolao = obterBolaoAtivoLocal();
   return Boolean(state.user && (
-    state.user.super_admin === true ||
-    String(state.user.super_admin || '').toUpperCase() === 'SIM' ||
+    usuarioEhSuperAdmin() ||
     String(bolao && bolao.papel || '').toLowerCase() === 'admin_bolao'
   ));
+}
+
+function atualizarVisibilidadeTopoPorAba(tabId) {
+  const aba = tabId || state.abaAtual || 'tabPagar';
+  const ocultarTopo = ABAS_SEM_TOPO_GLOBAL.has(aba);
+
+  const bannerMega = document.getElementById('cardUltimoResultado');
+  if (bannerMega) {
+    bannerMega.classList.toggle('hidden', ocultarTopo);
+  }
+
+  const carrossel = document.getElementById('boloesCarouselSection');
+  if (carrossel) {
+    const temBoloesVisiveis = (state.boloes || []).some(b =>
+      ['APROVADO', 'PENDENTE'].includes(String(b.status_membro || '').toUpperCase())
+    );
+    carrossel.classList.toggle('hidden', ocultarTopo || !temBoloesVisiveis);
+  }
 }
 
 function atualizarIdentidadeBolao() {
   const bolao = obterBolaoAtivoLocal();
   const corValida = normalizarHexCor6(bolao && bolao.cor_tema, '#10b981');
-  // Aplica a cor apenas como gradiente/borda nos cards sem mudar os botões (--primary permanece fixo)
+  // Cor do bolão atua somente no preenchimento gradiente/borda dos cards (botões mantêm --primary fixo)
   document.documentElement.style.setProperty('--bolao-accent', corValida);
+
+  const badgeRodada = document.getElementById('adminRodadaBolaoBadge');
+  if (badgeRodada) {
+    badgeRodada.textContent = bolao ? bolao.nome : '';
+  }
+
   renderizarCarrosselBoloes();
+  if (typeof renderMeusBoloesPerfil === 'function') renderMeusBoloesPerfil();
 }
 
 function renderizarCarrosselBoloes() {
-  const section = document.getElementById('boloesCarouselSection');
   const track = document.getElementById('boloesCarouselTrack');
   const dotsWrap = document.getElementById('boloesCarouselDots');
   const counterEl = document.getElementById('boloesCarouselCounter');
-  if (!section || !track || !dotsWrap) return;
+  if (!track || !dotsWrap) return;
 
   const visiveis = (state.boloes || []).filter(b =>
     ['APROVADO', 'PENDENTE'].includes(String(b.status_membro || '').toUpperCase())
   );
 
-  if (visiveis.length === 0) {
-    section.classList.add('hidden');
-    return;
-  }
+  atualizarVisibilidadeTopoPorAba(state.abaAtual);
+  if (visiveis.length === 0) return;
 
-  section.classList.remove('hidden');
   const idxAtivo = Math.max(0, visiveis.findIndex(b => String(b.bolao_id) === String(state.bolaoId)));
   if (counterEl) {
     counterEl.textContent = visiveis.length > 1 ? `${idxAtivo + 1}/${visiveis.length}` : 'Ativo';
@@ -582,11 +585,13 @@ function renderizarCarrosselBoloes() {
     dotsWrap.innerHTML = '';
   }
 
-  const cardAtivo = track.querySelector('.bolao-slide-card.active');
-  if (cardAtivo) {
-    setTimeout(() => {
-      cardAtivo.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
-    }, 40);
+  if (!ABAS_SEM_TOPO_GLOBAL.has(state.abaAtual)) {
+    const cardAtivo = track.querySelector('.bolao-slide-card.active');
+    if (cardAtivo) {
+      setTimeout(() => {
+        cardAtivo.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+      }, 40);
+    }
   }
 }
 
@@ -640,7 +645,7 @@ function abrirPendenteDoCarrossel(bolaoIdEnc) {
   if (typeof exibirTelaPendente === 'function') exibirTelaPendente();
 }
 
-async function trocarBolaoAtivo(bolaoIdEnc) {
+async function trocarBolaoAtivo(bolaoIdEnc, manterAbaAtual) {
   const novoId = decodeURIComponent(String(bolaoIdEnc || '')).trim();
   if (!novoId || novoId === String(state.bolaoId || '')) return;
 
@@ -652,31 +657,31 @@ async function trocarBolaoAtivo(bolaoIdEnc) {
 
   state.bolaoId = novoId;
   state.user.bolao_id = novoId;
-  state.user.perfil = (state.user.super_admin || String(alvo.papel || '').toLowerCase() === 'admin_bolao') ? 'admin' : 'user';
+  state.user.perfil = (usuarioEhSuperAdmin() || String(alvo.papel || '').toLowerCase() === 'admin_bolao') ? 'admin' : 'user';
   localStorage.setItem('bolao_ameba_user', JSON.stringify(state.user));
 
   atualizarBadgesEPermissoes();
   atualizarIdentidadeBolao();
-  trocarAba('tabPagar');
+
+  if (!manterAbaAtual || (state.abaAtual === 'tabAdmin' && !usuarioEhAdminNoBolao())) {
+    trocarAba('tabPagar');
+  }
   await carregarDashboard();
 }
 
 function atualizarBadgesEPermissoes() {
   const roleBadge = document.getElementById('userRoleBadge');
   const isAdmin = usuarioEhAdminNoBolao();
-  const ehSuper = state.user && (
-    state.user.super_admin === true ||
-    String(state.user.super_admin || '').toUpperCase() === 'SIM'
-  );
+  const ehSuper = usuarioEhSuperAdmin();
 
   if (roleBadge) {
     roleBadge.textContent = ehSuper ? 'SUPER ADMIN' : (isAdmin ? 'ADMIN' : 'MEMBRO');
     roleBadge.className = isAdmin ? 'badge badge-amber' : 'badge badge-green';
   }
-  document.getElementById('tabAdminBtn').classList.toggle('hidden', !isAdmin);
-  document.getElementById('adminBuscaResultadoWrap').classList.toggle('hidden', !isAdmin);
-  document.getElementById('tourAdminGuideCard').classList.toggle('hidden', !isAdmin);
-  document.getElementById('cardGerenciarBoloes').classList.toggle('hidden', !ehSuper);
+  document.getElementById('tabAdminBtn')?.classList.toggle('hidden', !isAdmin);
+  document.getElementById('adminBuscaResultadoWrap')?.classList.toggle('hidden', !isAdmin);
+  document.getElementById('tourAdminGuideCard')?.classList.toggle('hidden', !isAdmin);
+  document.getElementById('btnAbrirModalCriarBolao')?.classList.toggle('hidden', !ehSuper);
 }
 
 // =========================================================================
@@ -772,6 +777,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 window.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     fecharInfoModal();
+    if (typeof fecharModalCriarBolao === 'function') fecharModalCriarBolao();
     if (typeof fecharModalEditarRodada === 'function') fecharModalEditarRodada();
     if (typeof fecharModalEditarPagamento === 'function') fecharModalEditarPagamento();
     if (typeof fecharCameraAoVivo === 'function') fecharCameraAoVivo();
@@ -820,6 +826,7 @@ async function fazerLogin() {
 function fazerLogout() {
   if (typeof encerrarTour === 'function') encerrarTour();
   if (typeof fecharCameraAoVivo === 'function') fecharCameraAoVivo();
+  if (typeof fecharModalCriarBolao === 'function') fecharModalCriarBolao();
   if (typeof fecharModalEditarRodada === 'function') fecharModalEditarRodada();
   if (typeof fecharModalEditarPagamento === 'function') fecharModalEditarPagamento();
   fecharInfoModal();
@@ -831,6 +838,8 @@ function fazerLogout() {
   state.sessionToken = '';
   state.bolaoId = '';
   state.boloes = [];
+  state.boloesAdmin = [];
+  state.membrosPorBolao = {};
   state.convitePendente = null;
 
   document.getElementById('appHeader').classList.add('hidden');
@@ -869,7 +878,7 @@ function entrarNoApp() {
 
   const bolao = obterBolaoAtivoLocal();
   state.user.bolao_id = state.bolaoId;
-  state.user.perfil = (state.user.super_admin || String(bolao && bolao.papel || '').toLowerCase() === 'admin_bolao') ? 'admin' : 'user';
+  state.user.perfil = (usuarioEhSuperAdmin() || String(bolao && bolao.papel || '').toLowerCase() === 'admin_bolao') ? 'admin' : 'user';
   localStorage.setItem('bolao_ameba_user', JSON.stringify(state.user));
 
   document.getElementById('loginSection').classList.add('hidden');
@@ -903,12 +912,13 @@ function trocarAba(tabId, btnEl) {
   const activeBtn = btnEl || document.querySelector(`.bottom-nav-btn[data-tab="${tabId}"]`);
   if (activeBtn) activeBtn.classList.add('active');
 
-  const bannerMega = document.getElementById('cardUltimoResultado');
-  if (bannerMega) {
-    bannerMega.classList.toggle('hidden', tabId === 'tabTour');
+  state.abaAtual = tabId;
+  atualizarVisibilidadeTopoPorAba(tabId);
+
+  if (tabId === 'tabCadastro' && typeof renderMeusBoloesPerfil === 'function') {
+    renderMeusBoloesPerfil();
   }
 
-  state.abaAtual = tabId;
   if (!window.tourState || !window.tourState.ativo) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
@@ -954,6 +964,7 @@ async function carregarDashboard() {
     if (typeof popularFiltroMesesResumo === 'function') popularFiltroMesesResumo();
     if (typeof renderResumoMensal === 'function') renderResumoMensal();
     if (typeof renderRankings === 'function') renderRankings();
+    if (typeof renderMeusBoloesPerfil === 'function') renderMeusBoloesPerfil();
     if (typeof renderMinhasTransferencias === 'function') renderMinhasTransferencias();
     if (typeof renderCadastroUsuarios === 'function') renderCadastroUsuarios();
 
