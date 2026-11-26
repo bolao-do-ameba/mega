@@ -1,9 +1,8 @@
 // =========================================================================
 // ABAS DO MEMBRO — RESULTADO, PAGAR, JOGOS (MULTI-CONCURSO + EDIÇÃO ADMIN),
-// RODADAS (+ EDIÇÃO ADMIN), RESUMO MENSAL, RANKINGS, MINHA CONTA E PERFIL
+// RODADAS (+ EDIÇÃO ADMIN), RESUMO MENSAL, RANKINGS, PERFIL (COM MEUS BOLÕES)
 // =========================================================================
 
-// Helper único de conferência de dezenas (reutilizado em Jogos e Rodadas)
 function conferirListaJogos(jogos, resultadoObj) {
   const setSorteadas = resultadoObj
     ? new Set((resultadoObj.dezenas || []).map(d => String(d).padStart(2, '0')))
@@ -678,8 +677,59 @@ function renderRankings() {
 }
 
 // =========================================================================
-// ABA 5: MINHA CONTA + PERFIL
+// ABA 5: PERFIL — LISTA DE BOLÕES QUE PARTICIPO + MINHA CONTA + PERFIL
 // =========================================================================
+function renderMeusBoloesPerfil() {
+  const alvo = document.getElementById('listaMeusBoloesPerfil');
+  if (!alvo) return;
+
+  const lista = (state.boloes || []).filter(b =>
+    String(b.status_membro || '').toUpperCase() !== 'REMOVIDO'
+  );
+
+  if (lista.length === 0) {
+    alvo.innerHTML = '<div class="muted">Você ainda não participa de nenhum bolão.</div>';
+    return;
+  }
+
+  alvo.innerHTML = lista.map(b => {
+    const idEnc = encodeURIComponent(String(b.bolao_id || ''));
+    const cor = normalizarHexCor6(b.cor_tema, '#10b981');
+    const statusMembro = String(b.status_membro || '').toUpperCase();
+    const statusBolao = String(b.status || 'ATIVO').toUpperCase();
+    const isAtivo = String(b.bolao_id) === String(state.bolaoId);
+    const tipoLabel = String(b.tipo || 'FREQUENTE').toUpperCase() === 'COMEMORATIVO' ? 'Comemorativo' : 'Frequente';
+    const papelLabel = statusMembro === 'APROVADO'
+      ? (String(b.papel || '').toLowerCase() === 'admin_bolao' ? 'Admin' : 'Membro')
+      : statusMembro;
+
+    let acaoHtml = '';
+    if (statusMembro === 'APROVADO') {
+      acaoHtml = isAtivo
+        ? `<span class="badge badge-green">ATUAL</span>`
+        : `<button type="button" class="btn-primary btn-sm" onclick="trocarBolaoAtivo('${idEnc}', true)">Abrir</button>`;
+    } else if (statusMembro === 'PENDENTE') {
+      acaoHtml = `<button type="button" class="btn-warning btn-sm" onclick="abrirPendenteDoCarrossel('${idEnc}')">Pendente</button>`;
+    } else {
+      acaoHtml = `<span class="badge badge-red">${escapeHtml(statusMembro)}</span>`;
+    }
+
+    const badgeStatusBolao = statusBolao !== 'ATIVO'
+      ? ` <span class="badge badge-blue">${escapeHtml(statusBolao)}</span>`
+      : '';
+
+    return `
+      <div class="bolao-perfil-card ${isAtivo ? 'active' : ''}" style="--card-accent:${escapeHtml(cor)}">
+        <div style="min-width:0; flex:1;">
+          <strong>🍀 ${escapeHtml(b.nome)}</strong>${badgeStatusBolao}
+          <div class="muted">${tipoLabel} • ${escapeHtml(papelLabel)}</div>
+        </div>
+        <div>${acaoHtml}</div>
+      </div>
+    `;
+  }).join('');
+}
+
 function trocarFiltroMinhasTransferencias(filtro, btnEl) {
   state.filtroMinhasTransferencias = filtro;
   document.querySelectorAll('#cardMinhasTransferencias .pill-btn').forEach(b => b.classList.remove('active'));
