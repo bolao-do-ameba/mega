@@ -1,6 +1,6 @@
 // =========================================================================
-// ABAS DO MEMBRO — RESULTADO, PAGAR, JOGOS (MULTI-CONCURSO), RODADAS,
-// RESUMO MENSAL, RANKINGS, MINHA CONTA E PERFIL
+// ABAS DO MEMBRO — RESULTADO, PAGAR, JOGOS (MULTI-CONCURSO + EDIÇÃO ADMIN),
+// RODADAS (+ EDIÇÃO ADMIN), RESUMO MENSAL, RANKINGS, MINHA CONTA E PERFIL
 // =========================================================================
 
 // Helper único de conferência de dezenas (reutilizado em Jogos e Rodadas)
@@ -156,7 +156,7 @@ function irParaPagarParticipacao(idParticipacao) {
 }
 
 // =========================================================================
-// ABA 2: JOGOS POR CONCURSO (EXPANDINDO TEIMOSINHA PARA TODOS OS CONCURSOS)
+// ABA 2: JOGOS POR CONCURSO (TEIMOSINHA + BOTÃO EDITAR PARA ADMIN)
 // =========================================================================
 function alternarOrdemConcursos() {
   state.ordemConcursosDesc = !state.ordemConcursosDesc;
@@ -175,7 +175,9 @@ function renderJogosPorConcurso() {
   const container = document.getElementById('listaJogosPorConcurso');
   if (!container) return;
 
+  const isAdmin = usuarioEhAdminNoBolao();
   const grupos = {};
+
   state.rodadas.forEach(r => {
     const jogos = Array.isArray(r.jogos) ? r.jogos : [];
     if (jogos.length === 0) return;
@@ -194,6 +196,7 @@ function renderJogosPorConcurso() {
       }
       jogos.forEach(dezenas => {
         grupos[conc].itens.push({
+          idRodada: r.id_rodada,
           rodadaDescricao: r.descricao,
           dataBilhete: r.data_bilhete || '',
           concDisplay,
@@ -229,6 +232,9 @@ function renderJogosPorConcurso() {
       const badgeStatus = ehValido ? c.badgeStatus : `<span class="muted">Sem concurso</span>`;
       const tagBilhete = meta.dataBilhete ? ` • ${escapeHtml(meta.dataBilhete)}` : '';
       const tagTeim = meta.ehTeimosinha ? ` (${escapeHtml(meta.concDisplay)})` : '';
+      const btnEditJogo = isAdmin
+        ? `<button type="button" class="btn-secondary icon-action-btn" title="Editar jogos desta rodada" onclick="abrirModalEditarRodada('${escapeHtml(meta.idRodada)}')">✏️</button>`
+        : '';
 
       return `
         <div class="jogo-row ${c.rowClass}">
@@ -239,6 +245,7 @@ function renderJogosPorConcurso() {
           <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
             <span class="muted" style="font-size:0.74rem;">${escapeHtml(meta.rodadaDescricao)}${tagTeim}${tagBilhete}</span>
             ${badgeStatus}
+            ${btnEditJogo}
           </div>
         </div>
       `;
@@ -288,7 +295,7 @@ function renderJogosPorConcurso() {
 }
 
 // =========================================================================
-// ABA 3: RODADAS + CONFERÊNCIA MULTI-CONCURSO + COMPROVANTES 📄
+// ABA 3: RODADAS + CONFERÊNCIA MULTI-CONCURSO + EDIÇÃO ADMIN
 // =========================================================================
 function montarBlocoJogosConferencia(rodada) {
   const jogos = Array.isArray(rodada.jogos) ? rodada.jogos : [];
@@ -299,7 +306,6 @@ function montarBlocoJogosConferencia(rodada) {
     .map(c => state.resultados.find(res => String(res.concurso).trim() === c))
     .filter(Boolean);
 
-  // Caso sem resultado apurado ainda (1 ou vários concursos)
   if (resultadosDaRodada.length === 0) {
     const conf = conferirListaJogos(jogos, null);
     const linhas = conf.itens.map((c, idx) => `
@@ -401,8 +407,11 @@ function renderRodadas() {
           ).join('')
         : `<span class="muted">-</span>`;
 
-      const btnManual = (isAdmin && saldo > 0)
-        ? `<button class="btn-warning btn-sm" onclick="baixaManualAdmin('${p.id_participacao}','${p.id_usuario}',${saldo})">Baixa</button>`
+      const acoesAdmin = isAdmin
+        ? `<div class="toolbar-inline" style="gap:4px;">
+            ${saldo > 0 ? `<button class="btn-warning icon-action-btn" onclick="baixaManualAdmin('${escapeHtml(p.id_participacao)}','${escapeHtml(p.id_usuario)}',${saldo})">Baixa</button>` : ''}
+            <button class="btn-secondary icon-action-btn" title="Editar pagamento" onclick="abrirModalEditarPagamento('${escapeHtml(p.id_participacao)}')">✏️</button>
+          </div>`
         : '';
 
       return `
@@ -412,7 +421,7 @@ function renderRodadas() {
           <td>${formatBRL(p.valor_devido)}</td>
           <td>${badge}</td>
           <td>${celulaComp}</td>
-          <td>${btnManual}</td>
+          <td>${acoesAdmin}</td>
         </tr>
       `;
     }).join('');
@@ -422,6 +431,13 @@ function renderRodadas() {
     const tagDataBilhete = r.data_bilhete ? `<span class="badge badge-green">📅 ${escapeHtml(r.data_bilhete)}</span>` : '';
     const blocoJogos = montarBlocoJogosConferencia(r);
 
+    const botoesRodadaAdmin = isAdmin
+      ? `<div class="toolbar-inline" style="gap:6px;">
+          <button type="button" class="btn-secondary btn-sm" onclick="abrirModalEditarRodada('${escapeHtml(r.id_rodada)}')">✏️ Editar</button>
+          <button type="button" class="btn-danger btn-sm" onclick="excluirRodadaAdmin('${escapeHtml(r.id_rodada)}')" aria-label="Excluir rodada">🗑️</button>
+        </div>`
+      : '';
+
     return `
       <div class="list-item">
         <div class="row-between" style="margin-bottom:8px;">
@@ -429,6 +445,7 @@ function renderRodadas() {
             <strong>${escapeHtml(r.descricao)}</strong> ${tagConcurso} ${tagDataBilhete}
             <div class="muted">${r.data_criacao} • ${formatBRL(r.valor_total)} • ${r.total_cotas} cota(s) (${formatBRL(r.valor_cota)})</div>
           </div>
+          ${botoesRodadaAdmin}
         </div>
         <div class="table-wrap">
           <table>
