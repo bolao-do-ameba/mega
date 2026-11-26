@@ -5,6 +5,7 @@
   --border: #263859;
   --primary: #10b981;
   --primary-hover: #059669;
+  --bolao-accent: #10b981;
   --warning: #f59e0b;
   --danger: #ef4444;
   --text: #f1f5f9;
@@ -92,7 +93,7 @@ header {
 }
 
 /* =========================================================================
-   CARROSSEL DE BOLÕES (ÚNICO ARRASTE LATERAL DA TELA PRINCIPAL)
+   CARROSSEL DE BOLÕES (GRADIENTE ESQUERDA -> TRANSPARENTE NA DIREITA)
    ========================================================================= */
 .carousel-section {
   margin-bottom: 14px;
@@ -122,9 +123,16 @@ header {
 .bolao-slide-card {
   flex: 0 0 min(82%, 300px);
   scroll-snap-align: center;
-  background: var(--surface);
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--card-accent, var(--bolao-accent)) 30%, transparent) 0%,
+      color-mix(in srgb, var(--card-accent, var(--bolao-accent)) 10%, transparent) 50%,
+      transparent 100%
+    ),
+    var(--surface);
   border: 1.5px solid var(--border);
-  border-left: 5px solid var(--card-accent, var(--primary));
+  border-left: 5px solid var(--card-accent, var(--bolao-accent));
   border-radius: 12px;
   padding: 12px 14px;
   text-align: left;
@@ -136,9 +144,17 @@ header {
 }
 .bolao-slide-card:active { transform: scale(0.98); }
 .bolao-slide-card.active {
-  border-color: var(--card-accent, var(--primary));
-  background: linear-gradient(135deg, color-mix(in srgb, var(--card-accent, var(--primary)) 18%, var(--surface)), var(--surface-2));
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--card-accent, var(--primary)) 45%, transparent);
+  border-color: color-mix(in srgb, var(--card-accent, var(--bolao-accent)) 65%, var(--border));
+  border-left: 5px solid var(--card-accent, var(--bolao-accent));
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--card-accent, var(--bolao-accent)) 48%, transparent) 0%,
+      color-mix(in srgb, var(--card-accent, var(--bolao-accent)) 18%, transparent) 52%,
+      transparent 100%
+    ),
+    var(--surface);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--card-accent, var(--bolao-accent)) 40%, transparent);
 }
 .bolao-slide-card.pending {
   opacity: 0.85;
@@ -187,7 +203,7 @@ header {
 }
 
 /* =========================================================================
-   BOTÃO "i" DE INFORMAÇÃO + MODAL
+   BOTÃO "i" DE INFORMAÇÃO + MODAIS
    ========================================================================= */
 .card-title-row {
   display: flex;
@@ -244,6 +260,17 @@ header {
   border-radius: 14px;
   padding: 18px;
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.65);
+}
+.edit-modal-card {
+  width: min(560px, 100%);
+  max-height: 88vh;
+  overflow-y: auto;
+  background: #101b2e;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--bolao-accent);
+  border-radius: 14px;
+  padding: 18px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.72);
 }
 .info-modal-head {
   display: flex;
@@ -342,6 +369,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 .btn-danger { background: rgba(239, 68, 68, 0.2); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.35); }
 .btn-warning { background: rgba(245, 158, 11, 0.2); color: #fde68a; border: 1px solid rgba(245, 158, 11, 0.35); }
 .btn-sm { padding: 6px 10px; font-size: 0.8rem; }
+.icon-action-btn { padding: 5px 8px; font-size: 0.78rem; border-radius: 7px; line-height: 1.1; }
 
 .toolbar-inline { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .admin-busca-wrap { display: flex; gap: 6px; align-items: center; max-width: 100%; }
@@ -425,8 +453,16 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 .jogo-row-sena { border-color: rgba(250, 204, 21, 0.85); background: rgba(250, 204, 21, 0.15); box-shadow: 0 0 12px rgba(250, 204, 21, 0.25); }
 
 .mega-banner {
-  background: linear-gradient(135deg, rgba(6, 78, 59, 0.45), rgba(19, 30, 49, 0.95));
-  border: 1px solid rgba(16, 185, 129, 0.4);
+  border: 1px solid color-mix(in srgb, var(--bolao-accent) 45%, var(--border));
+  border-left: 5px solid var(--bolao-accent);
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--bolao-accent) 34%, transparent) 0%,
+      color-mix(in srgb, var(--bolao-accent) 12%, transparent) 48%,
+      transparent 100%
+    ),
+    var(--surface);
 }
 
 /* Acordeão de Concursos */
@@ -828,6 +864,17 @@ pre {
    ========================================================================= */
 .admin-list { display: grid; gap: 10px; }
 .admin-item { padding: 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-2); min-width: 0; }
+.bolao-admin-card {
+  border-left: 5px solid var(--card-accent, var(--bolao-accent));
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--card-accent, var(--bolao-accent)) 32%, transparent) 0%,
+      color-mix(in srgb, var(--card-accent, var(--bolao-accent)) 10%, transparent) 52%,
+      transparent 100%
+    ),
+    var(--surface-2);
+}
 .admin-item-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
 .admin-item-meta { color: var(--muted); font-size: 0.78rem; line-height: 1.45; margin-top: 4px; overflow-wrap: anywhere; }
 .admin-item-actions { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 10px; }
