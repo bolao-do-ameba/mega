@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>Bolão da Mega-Sena do Ameba</title>
+
+  <link rel="manifest" href="./manifest.json" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Bolão Ameba" />
+
+  <link rel="stylesheet" href="./css/styles.css" />
+
+  <script src="./config.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+</head>
+<body>
+
+<header id="appHeader" class="hidden">
+  <div class="header-inner">
+    <div class="brand">
+      🍀 Bolão do Ameba
+      <span id="userRoleBadge" class="badge badge-green"></span>
+    </div>
+    <div class="header-actions">
+      <span id="userNameTop" class="muted"></span>
+      <button id="btnPush" class="btn-warning btn-sm" onclick="ativarNotificacoesPush()">🔔 Push</button>
+      <button class="btn-secondary btn-sm" onclick="carregarDashboard()" aria-label="Atualizar">↻</button>
+      <button class="btn-danger btn-sm" onclick="fazerLogout()">Sair</button>
+    </div>
+  </div>
+</header>
+
+<div class="container">
+  <!-- TELA DE LOGIN -->
+  <section id="loginSection" class="card login-box">
+    <div class="card-title-row">
+      <h2>🍀 Bolão do Ameba</h2>
+      <button type="button" class="info-btn" onclick="abrirInfoModal('login')" aria-label="Informações sobre acesso">i</button>
+    </div>
+
+    <label for="loginTelefone">Telefone</label>
+    <input id="loginTelefone" type="tel" inputmode="tel" placeholder="12999999999" />
+
+    <label for="loginSenha">Senha</label>
+    <input id="loginSenha" type="password" placeholder="••••••" onkeydown="if(event.key==='Enter') fazerLogin()" />
+
+    <button id="btnLogin" class="btn-primary" style="width:100%; margin-top:16px;" onclick="fazerLogin()">Entrar</button>
+    <div id="loginFeedback"></div>
+  </section>
+
+  <!-- FLUXO DE CONVITE (?convite=CODIGO) -->
+  <section id="inviteSection" class="card invite-shell hidden" aria-live="polite">
+    <div id="inviteHeader"></div>
+    <div id="inviteFlowContent" class="invite-content"></div>
+  </section>
+
+  <!-- TELA DE ACESSO PENDENTE -->
+  <section id="pendingSection" class="card pending-shell hidden" aria-live="polite">
+    <div id="pendingContent"></div>
+  </section>
+
+  <!-- APP PRINCIPAL -->
+  <main id="mainApp" class="hidden">
+    <!-- CARROSSEL DE BOLÕES (OCULTO EM PERFIL, ADMIN E TOUR) -->
+    <section id="boloesCarouselSection" class="carousel-section hidden">
+      <div class="carousel-header">
+        <div class="card-title-row" style="margin-bottom:0;">
+          <h3 style="margin:0; color:var(--text);">🎯 Meus Bolões</h3>
+          <button type="button" class="info-btn" onclick="abrirInfoModal('boloes_carrossel')" aria-label="Informações sobre bolões">i</button>
+        </div>
+        <span id="boloesCarouselCounter" class="muted"></span>
+      </div>
+      <div id="boloesCarouselTrack" class="boloes-carousel" role="region" aria-label="Selecionar bolão"></div>
+      <div id="boloesCarouselDots" class="carousel-dots"></div>
+    </section>
+
+    <!-- CARD ÚLTIMO RESULTADO DA MEGA-SENA (OCULTO EM PERFIL, ADMIN E TOUR) -->
+    <section id="cardUltimoResultado" class="card mega-banner">
+      <div class="row-between">
+        <div class="card-title-row" style="margin-bottom:0;">
+          <h2 style="margin:0;">🎱 Mega-Sena</h2>
+          <button type="button" class="info-btn" onclick="abrirInfoModal('resultado')" aria-label="Informações sobre resultado">i</button>
+        </div>
+        <div id="adminBuscaResultadoWrap" class="hidden admin-busca-wrap">
+          <input id="inputConcursoManual" type="text" inputmode="numeric" placeholder="Conc. ou 3087-3090" class="input-conc-manual" />
+          <button id="btnBuscarMega" class="btn-primary btn-sm" onclick="forcarBuscaResultado()">🔄 Buscar</button>
+        </div>
+      </div>
+      <div id="conteudoUltimoResultado" class="muted" style="margin-top:10px;">Carregando...</div>
+    </section>
+
+    <!-- ABA 1: PAGAR E LEITOR DE COMPROVANTE -->
+    <section id="tabPagar" class="tab-content">
+      <div class="card">
+        <div class="card-title-row">
+          <h2>💸 Pix</h2>
+          <button type="button" class="info-btn" onclick="abrirInfoModal('pix')" aria-label="Informações sobre Pix">i</button>
+        </div>
+
+        <div id="pixBoxArea" class="pix-box">
+          <div style="min-width:0; flex:1;">
+            <div class="muted">Recebedor</div>
+            <strong id="pixRecebedor">-</strong>
+            <div class="muted" style="margin-top:4px;">Chave Pix</div>
+            <strong id="pixChave" style="color:var(--primary); word-break:break-all;">-</strong>
+          </div>
+          <button class="btn-primary btn-sm" onclick="copiarPix()">Copiar Pix</button>
+        </div>
+
+        <div id="pendenciasArea">
+          <div class="card-title-row" style="margin-bottom:8px;">
+            <h3 style="margin:0;">Pendências</h3>
+            <button type="button" class="info-btn" onclick="abrirInfoModal('pendencias')" aria-label="Informações sobre pendências">i</button>
+          </div>
+          <div id="listaMinhasPendencias"></div>
+        </div>
+      </div>
+
+      <!-- CARD DE LEITURA DE COMPROVANTE -->
+      <div id="boxLeitor" class="card hidden">
+        <div class="row-between" style="margin-bottom:10px;">
+          <div class="card-title-row" style="margin-bottom:0;">
+            <h2 style="margin:0;">🧾 Comprovante</h2>
+            <button type="button" class="info-btn" onclick="abrirInfoModal('comprovante')" aria-label="Informações sobre comprovante">i</button>
+          </div>
+          <button class="btn-secondary btn-sm" onclick="fecharLeitor()">Fechar</button>
+        </div>
+        <div id="leitorResumo" class="muted" style="margin-bottom:10px;"></div>
+
+        <label for="arquivoComprovante">Arquivo (PDF ou imagem)</label>
+        <input id="arquivoComprovante" type="file" accept=".pdf,image/*" onchange="processarComprovante(event)" />
+
+        <div id="leitorProgressoWrap" class="hidden" style="margin-top:10px;">
+          <div id="leitorStatusTexto" class="muted">Processando...</div>
+          <div class="progress-bar-bg"><div id="leitorProgressoBar" class="progress-bar-fill"></div></div>
+        </div>
+
+        <div id="leitorResultado"></div>
+        <div id="boxSugestaoPosUpload" class="alert alert-warn hidden"></div>
+
+        <details id="detalhesTextoBruto" class="hidden">
+          <summary>Texto extraído</summary>
+          <pre id="textoBrutoExtraido"></pre>
+        </details>
+      </div>
+    </section>
+
+    <!-- ABA 2: JOGOS POR CONCURSO -->
+    <section id="tabJogos" class="tab-content hidden">
+      <div id="cardJogosConcursos" class="card">
+        <div class="row-between" style="margin-bottom:12px;">
+          <div class="card-title-row" style="margin-bottom:0;">
+            <h2 style="margin:0;">🎟️ Jogos</h2>
+            <button type="button" class="info-btn" onclick="abrirInfoModal('jogos')" aria-label="Informações sobre jogos">i</button>
+          </div>
+          <div class="toolbar-inline">
+            <button id="btnOrdemConcursos" class="btn-secondary btn-sm" onclick="alternarOrdemConcursos()">⇅ Maior → Menor</button>
+            <button class="btn-secondary btn-sm" onclick="toggleTodosConcursos(true)">Expandir</button>
+            <button class="btn-secondary btn-sm" onclick="toggleTodosConcursos(false)">Retrair</button>
+          </div>
+        </div>
+        <div id="listaJogosPorConcurso"></div>
+      </div>
+    </section>
+
+    <!-- ABA 3: RODADAS E RATEIOS -->
+    <section id="tabRodadas" class="tab-content hidden">
+      <div id="cardRodadas" class="card">
+        <div class="card-title-row">
+          <h2>🎱 Rodadas</h2>
+          <button type="button" class="info-btn" onclick="abrirInfoModal('rodadas')" aria-label="Informações sobre rodadas">i</button>
+        </div>
+        <div id="listaRodadas"></div>
+      </div>
+    </section>
+
+    <!-- ABA 4: RESUMO MENSAL & RANKINGS -->
+    <section id="tabResumo" class="tab-content hidden">
+      <div id="cardResumoMensal" class="card">
+        <div class="row-between" style="margin-bottom:12px;">
+          <div class="card-title-row" style="margin-bottom:0;">
+            <h2 style="margin:0;">📊 Resumo</h2>
+            <button type="button" class="info-btn" onclick="abrirInfoModal('resumo')" aria-label="Informações sobre resumo mensal">i</button>
+          </div>
+          <select id="filtroMesResumo" onchange="renderResumoMensal()" class="select-compact"></select>
+        </div>
+
+        <div id="resumoKpiStrip" class="kpi-grid"></div>
+
+        <div class="table-scroll-y">
+          <table>
+            <thead>
+              <tr>
+                <th>Usuário</th>
+                <th>Consumo</th>
+                <th>Deve</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="tabelaResumoBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div id="cardRankingAtual" class="card">
+          <div class="card-title-row">
+            <h2>🚨 Devedores Atuais</h2>
+            <button type="button" class="info-btn" onclick="abrirInfoModal('devedores')" aria-label="Informações sobre devedores">i</button>
+          </div>
+          <div id="rankingAtual"></div>
+        </div>
+
+        <div id="cardRankingHistorico" class="card">
+          <div class="card-title-row">
+            <h2>📜 Ranking Histórico</h2>
+            <button type="button" class="info-btn" onclick="abrirInfoModal('ranking')" aria-label="Informações sobre ranking">i</button>
+          </div>
+          <div id="rankingHistorico"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ABA 5: PERFIL (MEUS BOLÕES + MINHA CONTA + PERFIL) -->
+    <section id="tabCadastro" class="tab-content hidden">
+      <div id="cardMeusBoloesPerfil" class="card">
+        <div class="card-title-row">
+          <h2>🎯 Bolões que Participo</h2>
+          <button type="button" class="info-btn" onclick="abrirInfoModal('boloes_perfil')" aria-label="Informações sobre meus bolões">i</button>
+        </div>
+        <div id="listaMeusBoloesPerfil" class="admin-list"><div class="muted">Carregando...</div></div>
+      </div>
+
+      <div id="cardMinhasTransferencias" class="card">
+        <div class="row-between" style="margin-bottom:10px;">
+          <div class="card-title-row" style="margin-bottom:0;">
+            <h2 style="margin:0;">💳 Minha Conta</h2>
+            <button type="button" class="info-btn" onclick="abrirInfoModal('minha_conta')" aria-label="Informações sobre minha conta">i</button>
+          </div>
+          <span id="meuStatusGeralBadge" class="badge badge-green">EM DIA</span>
+        </div>
+
+        <div id="meuResumoFinanceiro" class="kpi-grid"></div>
+
+        <div class="filter-pills">
+          <button class="pill-btn active" data-filtro="todas" onclick="trocarFiltroMinhasTransferencias('todas', this)">Todas</button>
+          <button class="pill-btn" data-filtro="pagas" onclick="trocarFiltroMinhasTransferencias('pagas', this)">Com Pagamento</button>
+          <button class="pill-btn" data-filtro="pendentes" onclick="trocarFiltroMinhasTransferencias('pendentes', this)">Em Aberto</button>
+        </div>
+
+        <div class="table-scroll-y" style="max-height:360px;">
+          <table>
+            <thead>
+              <tr>
+                <th>Rodada</th>
+                <th>Data</th>
+                <th>Devido</th>
+                <th>Pago</th>
+                <th>Saldo</th>
+                <th>Status</th>
+                <th>Doc</th>
+              </tr>
+            </thead>
+            <tbody id="tabelaMinhasTransferenciasBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="cardCadastro" class="card">
+        <div class="card-title-row">
+          <h2>👤 Perfil</h2>
+          <button type="button" class="info-btn" onclick="abrirInfoModal('perfil')" aria-label="Informações sobre perfil">i</button>
+        </div>
+
+        <label for="cadSelectUsuario">Usuário</label>
+        <select id="cadSelectUsuario" onchange="aoTrocarUsuarioCadastro()"></select>
+
+        <div id="camposNovoOuAdmin">
+          <label for="cadNome">Nome</label>
+          <input id="cadNome" type="text" placeholder="Ex: Lucas Silva" oninput="atualizarSugestaoCadastro()" />
+
+          <div id="camposCredenciaisAdmin">
+            <label for="cadTelefone">Telefone</label>
+            <input id="cadTelefone" type="tel" inputmode="tel" placeholder="12988887777" />
+
+            <label for="cadSenha">Senha</label>
+            <input id="cadSenha" type="text" placeholder="Senha" />
+          </div>
+        </div>
+
+        <label for="cadNomeComprovante">Nome no comprovante</label>
+        <input id="cadNomeComprovante" type="text" placeholder="LUCAS EDUARDO DA SILVA" oninput="atualizarSugestaoCadastro()" />
+
+        <div id="boxSugestaoCadastro" class="alert alert-ok hidden" style="margin-top:10px;"></div>
+
+        <div class="toolbar-inline" style="margin-top:14px;">
+          <button class="btn-primary" onclick="salvarUsuarioCadastro()">Salvar</button>
+          <button class="btn-secondary" onclick="aplicarSugestaoCadastro()">✨ Sugestão</button>
+        </div>
+        <div id="cadFeedback"></div>
+      </div>
+    </section>
+
+    <!-- ABA 6: TOUR / GUIA RÁPIDO -->
+    <section id="tabTour" class="tab-content hidden">
+      <div class="card tour-hero">
+        <div class="card-title-row" style="justify-content:center;">
+          <h2 style="margin:0;">🧭 Tour Interativo</h2>
+          <button type="button" class="info-btn" onclick="abrirInfoModal('tour')" aria-label="Informações sobre tour">i</button>
+        </div>
+        <button class="btn-primary" onclick="iniciarTour(0)" style="padding:12px 22px; font-size:0.95rem; margin-top:14px;">
+          ▶ Iniciar Tour
+        </button>
+      </div>
+
+      <div class="card">
+        <h2>📖 Atalhos do Guia</h2>
+        <div class="tour-guide-grid">
+          <div class="tour-guide-card">
+            <div class="row-between">
+              <h3>🎯 Bolões</h3>
+              <button type="button" class="info-btn" onclick="abrirInfoModal('boloes_carrossel')" aria-label="Detalhes Bolões">i</button>
+            </div>
+            <button class="btn-secondary btn-sm" onclick="iniciarTourNoPasso('boloes')">Destacar no app</button>
+          </div>
+
+          <div class="tour-guide-card">
+            <div class="row-between">
+              <h3>🎱 Resultado</h3>
+              <button type="button" class="info-btn" onclick="abrirInfoModal('resultado')" aria-label="Detalhes Resultado">i</button>
+            </div>
+            <button class="btn-secondary btn-sm" onclick="iniciarTourNoPasso('resultado')">Destacar no app</button>
+          </div>
+
+          <div class="tour-guide-card">
+            <div class="row-between">
+              <h3>🔔 Push</h3>
+              <button type="button" class="info-btn" onclick="abrirInfoModal('push')" aria-label="Detalhes Push">i</button>
+            </div>
+            <button class="btn-secondary btn-sm" onclick="iniciarTourNoPasso('push')">Destacar no app</button>
+          </div>
+
+          <div class="tour-guide-card">
+            <div class="row-between">
+              <h3>💸 Pix & Comprovante</h3>
+              <button type="button" class="info-btn" onclick="abrirInfoModal('comprovante')" aria-label="Detalhes Comprovante">i</button>
+            </div>
+            <button class="btn-secondary btn-sm" onclick="iniciarTourNoPasso('pagar')">Destacar no app</button>
+          </div>
+
+          <div class="tour-guide-card">
+            <div class="row-between">
+              <h3>🎟️ Jogos</h3>
+              <button type="button" class="info-btn" onclick="abrirInfoModal('jogos')" aria-label="Detalhes Jogos">i</button>
+            </div>
+            <button class="btn-secondary btn-sm" onclick="iniciarTourNoPasso('jogos')">Destacar no app</button>
+          </div>
+
+          <div class="tour-guide-card">
+            <div class="row-between">
+              <h3>📄 Rodadas</h3>
+              <button type="button" class="info-btn" onclick="abrirInfoModal('rodadas')" aria-label="Detalhes Rodadas">i</button>
+            </div>
+            <button class="btn-secondary btn-sm" onclick="iniciarTourNoPasso('rodadas')">Destacar no app</button>
+          </div>
+
+          <div class="tour-guide-card">
+            <div class="row-between">
+              <h3>📊 Resumo</h3>
+              <button type="button" class="info-btn" onclick="abrirInfoModal('resumo')" aria-label="Detalhes Resumo">i</button>
+            </div>
+            <button class="btn-secondary btn-sm" onclick="iniciarTourNoPasso('resumo')">Destacar no app</button>
+          </div>
+
+          <div class="tour-guide-card">
+            <div class="row-between">
+              <h3>💳 Conta & Perfil</h3>
+              <button type="button" class="info-btn" onclick="abrirInfoModal('minha_conta')" aria-label="Detalhes Conta">i</button>
+            </div>
+            <button class="btn-secondary btn-sm" onclick="iniciarTourNoPasso('conta')">Destacar no app</button>
+          </div>
+
+          <div id="tourAdminGuideCard" class="tour-guide-card hidden">
+            <div class="row-between">
+              <h3>⚙️ Painel Admin</h3>
+              <button type="button" class="info-btn" onclick="abrirInfoModal('admin_rodada')" aria-label="Detalhes Admin">i</button>
+            </div>
+            <button class="btn-secondary btn-sm" onclick="iniciarTourNoPasso('admin')">Destacar no app</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ABA 7: PAINEL ADMIN (UNIFICADO — SEM DUPLICAÇÃO DE BOLÕES) -->
+    <section id="tabAdmin" class="tab-content hidden">
+      <!-- NOVA RODADA COM OCR CAIXA -->
+      <div id="cardAdminRodada" class="card">
+        <div class="row-between" style="margin-bottom:10px;">
+          <div class="card-title-row" style="margin-bottom:0;">
+            <h2 style="margin:0;">⚙️ Nova Rodada</h2>
+            <button type="button" class="info-btn" onclick="abrirInfoModal('admin_rodada')" aria-label="Informações sobre nova rodada">i</button>
+          </div>
+          <span id="adminRodadaBolaoBadge" class="badge badge-blue"></span>
+        </div>
+
+        <label for="rodadaDescricao">Descrição</label>
+        <input id="rodadaDescricao" type="text" placeholder="Ex: Mega-Sena Teimosinha 3087 a 3090" />
+
+        <div class="grid-3">
+          <div>
+            <label for="rodadaConcurso">Conc. Inicial</label>
+            <input id="rodadaConcurso" type="number" inputmode="numeric" min="1" placeholder="3087" oninput="atualizarPreviewIntervaloConcursos()" />
+          </div>
+          <div>
+            <label for="rodadaConcursoFim">Conc. Final</label>
+            <input id="rodadaConcursoFim" type="number" inputmode="numeric" min="1" placeholder="3090" oninput="atualizarPreviewIntervaloConcursos()" />
+          </div>
+          <div>
+            <label for="rodadaDataBilhete">Data do Bilhete</label>
+            <input id="rodadaDataBilhete" type="text" placeholder="17/11/2026" />
+          </div>
+        </div>
+        <div id="previewIntervaloConcursos" class="muted" style="margin-top:6px;"></div>
+
+        <label for="rodadaValorTotal">Valor Total (R$)</label>
+        <input id="rodadaValorTotal" type="number" inputmode="decimal" step="0.01" min="0" placeholder="72.00" oninput="recalcularPreviewRodada()" />
+
+        <div class="card-title-row" style="margin-top:12px; margin-bottom:4px;">
+          <label for="rodadaJogosTexto" style="margin:0;">Jogos (1 por linha)</label>
+          <button type="button" class="info-btn" onclick="abrirInfoModal('admin_ocr')" aria-label="Informações sobre OCR de bilhete">i</button>
+        </div>
+
+        <div id="scannerBilheteArea" class="scanner-toolbar">
+          <button type="button" class="btn-primary btn-sm" onclick="acionarCameraBilhete()">📷 Câmera</button>
+          <button type="button" class="btn-secondary btn-sm" onclick="abrirCameraAoVivo()">🎥 Ao Vivo</button>
+          <button type="button" class="btn-secondary btn-sm" onclick="acionarGaleriaBilhete()">🖼️ Galeria</button>
+          <input id="inputCameraBilhete" type="file" accept="image/*" capture="environment" class="hidden" onchange="lerFotoBilhete(event)" />
+          <input id="inputGaleriaBilhete" type="file" accept="image/*" class="hidden" onchange="lerFotoBilhete(event)" />
+        </div>
+
+        <div id="bilheteOcrProgressoWrap" class="hidden" style="margin:8px 0;">
+          <div id="bilheteOcrStatus" class="muted">Lendo bilhete...</div>
+          <div class="progress-bar-bg"><div id="bilheteOcrBar" class="progress-bar-fill"></div></div>
+        </div>
+        <div id="bilheteOcrResumo" class="ocr-summary-chips hidden"></div>
+        <div id="bilheteOcrFeedback"></div>
+        <details id="detalhesBilheteBruto" class="hidden" style="margin-bottom:8px;">
+          <summary>Texto OCR</summary>
+          <pre id="textoBilheteBruto"></pre>
+        </details>
+
+        <textarea id="rodadaJogosTexto" placeholder="09 18 22 27 31 49&#10;09 18 22 33 40 49&#10;10 13 22 31 40 49" oninput="atualizarPreviewJogos()"></textarea>
+        <div id="previewJogosInfo" class="muted" style="margin-top:4px;">0 jogos</div>
+
+        <h3 style="margin-top:16px;">Participantes</h3>
+        <div id="listaParticipantesAdmin"></div>
+
+        <div class="summary-strip" id="previewRodadaBox">
+          <div>Cotas: <strong id="prevTotalCotas">0</strong></div>
+          <div><span id="prevStatusCotas" class="badge badge-red">Selecione</span></div>
+          <div>Inteira: <strong id="prevValorInteira">R$ 0,00</strong></div>
+          <div>Meia: <strong id="prevValorMeia">R$ 0,00</strong></div>
+        </div>
+
+        <div class="toolbar-inline">
+          <button id="btnCancelarRodada" type="button" class="btn-danger" style="flex:1; min-width:110px;" onclick="cancelarCadastroRodada()">Cancelar</button>
+          <button id="btnCriarRodada" type="button" class="btn-primary" style="flex:2; min-width:160px;" onclick="criarNovaRodada()" disabled>Lançar Rodada</button>
+        </div>
+        <div id="adminRodadaFeedback"></div>
+      </div>
+
+      <!-- SOLICITAÇÕES PENDENTES -->
+      <div id="cardSolicitacoesPendentes" class="card">
+        <div class="row-between" style="margin-bottom:10px;">
+          <div class="card-title-row" style="margin-bottom:0;">
+            <h2 style="margin:0;">👥 Pendentes <span id="pendentesAdminBadge" class="badge badge-amber">0</span></h2>
+            <button type="button" class="info-btn" onclick="abrirInfoModal('admin_pendentes')" aria-label="Informações sobre solicitações">i</button>
+          </div>
+          <button class="btn-secondary btn-sm" onclick="carregarSolicitacoesPendentes()">↻</button>
+        </div>
+        <div id="listaSolicitacoesPendentes" class="admin-list"><div class="muted">Carregando...</div></div>
+        <div id="feedbackSolicitacoesAdmin"></div>
+      </div>
+
+      <!-- GERENCIAR BOLÕES (LISTA ÚNICA — CADA BOLÃO COM CONFIG, PIX, CONVITE E MEMBROS) -->
+      <div id="cardGerenciarBoloes" class="card">
+        <div class="row-between" style="margin-bottom:12px;">
+          <div class="card-title-row" style="margin-bottom:0;">
+            <h2 style="margin:0;">🛠️ Bolões</h2>
+            <button type="button" class="info-btn" onclick="abrirInfoModal('admin_boloes')" aria-label="Informações sobre gerenciar bolões">i</button>
+          </div>
+          <div class="toolbar-inline">
+            <button id="btnAbrirModalCriarBolao" type="button" class="btn-primary btn-sm hidden" onclick="abrirModalCriarBolao()">＋ Criar bolão</button>
+            <button type="button" class="btn-secondary btn-sm" onclick="carregarBoloesAdmin()">↻</button>
+          </div>
+        </div>
+        <div id="listaBoloesAdmin" class="admin-list"><div class="muted">Carregando...</div></div>
+        <div id="feedbackEditarBolaoAdmin"></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- MODAL DE INFORMAÇÃO (BOTÃO "i") -->
+<div id="infoModal" class="info-modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="infoModalTitle" onclick="if(event.target===this) fecharInfoModal()">
+  <div class="info-modal-card">
+    <div class="info-modal-head">
+      <h3 id="infoModalTitle">Informação</h3>
+      <button type="button" class="tour-close-btn" onclick="fecharInfoModal()" aria-label="Fechar">✕</button>
+    </div>
+    <div id="infoModalBody" class="info-modal-body"></div>
+    <div class="info-modal-foot">
+      <button type="button" class="btn-primary btn-sm" onclick="fecharInfoModal()">Entendi</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DE CRIAR NOVO BOLÃO (SUPER ADMIN) -->
+<div id="criarBolaoModal" class="info-modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="criarBolaoModalTitle" onclick="if(event.target===this) fecharModalCriarBolao()">
+  <div class="edit-modal-card">
+    <div class="info-modal-head">
+      <h3 id="criarBolaoModalTitle">＋ Novo Bolão</h3>
+      <button type="button" class="tour-close-btn" onclick="fecharModalCriarBolao()" aria-label="Fechar">✕</button>
+    </div>
+
+    <div class="admin-form-grid">
+      <div>
+        <label for="novoBolaoNome">Nome</label>
+        <input id="novoBolaoNome" type="text" placeholder="Ex.: Mega da Virada 2026" />
+      </div>
+      <div>
+        <label for="novoBolaoTipo">Tipo</label>
+        <select id="novoBolaoTipo">
+          <option value="COMEMORATIVO">Comemorativo</option>
+          <option value="FREQUENTE">Frequente</option>
+        </select>
+      </div>
+      <div>
+        <label for="novoBolaoCor">Cor do Card</label>
+        <input id="novoBolaoCor" type="color" value="#10b981" />
+      </div>
+      <div>
+        <label for="novoBolaoAdminTelefone">Tel. Admin inicial</label>
+        <input id="novoBolaoAdminTelefone" type="tel" inputmode="tel" placeholder="Vazio = você" />
+      </div>
+      <div>
+        <label for="novoBolaoRecebedor">Recebedor</label>
+        <input id="novoBolaoRecebedor" type="text" placeholder="Nome do recebedor" />
+      </div>
+      <div>
+        <label for="novoBolaoPix">Chave Pix</label>
+        <input id="novoBolaoPix" type="text" placeholder="Chave Pix" />
+      </div>
+      <div>
+        <label for="novoBolaoPasta">Pasta Drive</label>
+        <input id="novoBolaoPasta" type="text" placeholder="Opcional" />
+      </div>
+    </div>
+
+    <div id="feedbackCriarBolaoAdmin"></div>
+
+    <div class="toolbar-inline" style="margin-top:16px; justify-content:flex-end;">
+      <button type="button" class="btn-secondary btn-sm" onclick="fecharModalCriarBolao()">Cancelar</button>
+      <button id="btnConfirmarCriarBolao" type="button" class="btn-primary btn-sm" onclick="criarBolaoAdmin()">Criar bolão</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DE EDIÇÃO DE RODADA E JOGOS (ADMIN) -->
+<div id="editRodadaModal" class="info-modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="editRodadaModalTitle" onclick="if(event.target===this) fecharModalEditarRodada()">
+  <div class="edit-modal-card">
+    <div class="info-modal-head">
+      <h3 id="editRodadaModalTitle">✏️ Editar Rodada & Jogos</h3>
+      <button type="button" class="tour-close-btn" onclick="fecharModalEditarRodada()" aria-label="Fechar">✕</button>
+    </div>
+
+    <input id="editRodadaId" type="hidden" />
+
+    <label for="editRodadaDescricao">Descrição</label>
+    <input id="editRodadaDescricao" type="text" />
+
+    <div class="grid-3">
+      <div>
+        <label for="editRodadaConcurso">Conc. Inicial</label>
+        <input id="editRodadaConcurso" type="number" inputmode="numeric" min="1" />
+      </div>
+      <div>
+        <label for="editRodadaConcursoFim">Conc. Final</label>
+        <input id="editRodadaConcursoFim" type="number" inputmode="numeric" min="1" />
+      </div>
+      <div>
+        <label for="editRodadaDataBilhete">Data Bilhete</label>
+        <input id="editRodadaDataBilhete" type="text" placeholder="17/11/2026" />
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div>
+        <label for="editRodadaValorTotal">Valor Total (R$)</label>
+        <input id="editRodadaValorTotal" type="number" inputmode="decimal" step="0.01" min="0" oninput="recalcularPreviewEdicaoRodada()" />
+      </div>
+      <div>
+        <label for="editRodadaStatus">Status</label>
+        <select id="editRodadaStatus">
+          <option value="ABERTA">ABERTA</option>
+          <option value="ENCERRADA">ENCERRADA</option>
+        </select>
+      </div>
+    </div>
+
+    <label for="editRodadaJogosTexto">Jogos (1 por linha)</label>
+    <textarea id="editRodadaJogosTexto" oninput="atualizarPreviewJogosEdicao()"></textarea>
+    <div id="editRodadaJogosInfo" class="muted" style="margin-top:4px;">0 jogos</div>
+
+    <h3 style="margin-top:14px;">Participantes & Cotas</h3>
+    <div id="editRodadaParticipantesList"></div>
+
+    <div class="summary-strip">
+      <div>Cotas: <strong id="editPrevTotalCotas">0</strong></div>
+      <div><span id="editPrevStatusCotas" class="badge badge-green">OK</span></div>
+      <div>Inteira: <strong id="editPrevValorInteira">R$ 0,00</strong></div>
+      <div>Meia: <strong id="editPrevValorMeia">R$ 0,00</strong></div>
+    </div>
+
+    <div id="editRodadaFeedback"></div>
+
+    <div class="toolbar-inline" style="margin-top:14px; justify-content:space-between;">
+      <button type="button" class="btn-danger btn-sm" onclick="excluirRodadaAdmin(document.getElementById('editRodadaId').value)">🗑️ Excluir</button>
+      <div class="toolbar-inline">
+        <button type="button" class="btn-secondary btn-sm" onclick="fecharModalEditarRodada()">Cancelar</button>
+        <button id="btnSalvarEdicaoRodada" type="button" class="btn-primary btn-sm" onclick="salvarEdicaoRodada()">Salvar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DE EDIÇÃO DE PAGAMENTO / PARTICIPAÇÃO (ADMIN) -->
+<div id="editPagamentoModal" class="info-modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="editPagModalTitle" onclick="if(event.target===this) fecharModalEditarPagamento()">
+  <div class="edit-modal-card" style="width:min(440px, 100%);">
+    <div class="info-modal-head">
+      <h3 id="editPagModalTitle">✏️ Editar Pagamento</h3>
+      <button type="button" class="tour-close-btn" onclick="fecharModalEditarPagamento()" aria-label="Fechar">✕</button>
+    </div>
+
+    <input id="editPagId" type="hidden" />
+    <div id="editPagResumo" class="muted" style="margin-bottom:8px;"></div>
+
+    <div class="grid-2">
+      <div>
+        <label for="editPagFracao">Cota</label>
+        <input id="editPagFracao" type="number" inputmode="decimal" step="0.5" min="0" />
+      </div>
+      <div>
+        <label for="editPagDevido">Valor Devido (R$)</label>
+        <input id="editPagDevido" type="number" inputmode="decimal" step="0.01" min="0" />
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div>
+        <label for="editPagPago">Valor Pago (R$)</label>
+        <input id="editPagPago" type="number" inputmode="decimal" step="0.01" min="0" />
+      </div>
+      <div>
+        <label for="editPagStatus">Status</label>
+        <select id="editPagStatus">
+          <option value="AUTO">Automático</option>
+          <option value="PENDENTE">PENDENTE</option>
+          <option value="PARCIAL">PARCIAL</option>
+          <option value="PAGO">PAGO</option>
+        </select>
+      </div>
+    </div>
+
+    <label for="editPagData">Data do Pagamento</label>
+    <input id="editPagData" type="text" placeholder="dd/MM/yyyy HH:mm (vazio = automático)" />
+
+    <label class="admin-inline" style="margin-top:12px;">
+      <input id="editPagEstornarDocs" type="checkbox" />
+      <span style="color:var(--text); font-size:0.84rem;">Remover comprovantes vinculados (libera reenvio)</span>
+    </label>
+
+    <div id="editPagFeedback"></div>
+
+    <div class="toolbar-inline" style="margin-top:14px; justify-content:flex-end;">
+      <button type="button" class="btn-secondary btn-sm" onclick="fecharModalEditarPagamento()">Cancelar</button>
+      <button id="btnSalvarEdicaoPag" type="button" class="btn-primary btn-sm" onclick="salvarEdicaoPagamento()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DE CÂMERA AO VIVO (OCR BILHETE) -->
+<div id="cameraLiveModal" class="camera-modal hidden" role="dialog" aria-modal="true">
+  <div class="camera-stage">
+    <video id="cameraLiveVideo" autoplay playsinline muted></video>
+    <div class="camera-guide-frame"></div>
+  </div>
+  <div class="camera-controls">
+    <button type="button" class="btn-primary" onclick="capturarFrameCamera()">📸 Capturar Bilhete</button>
+    <button type="button" class="btn-danger" onclick="fecharCameraAoVivo()">Cancelar</button>
+  </div>
+</div>
+
+<!-- BARRA DE NAVEGAÇÃO INFERIOR -->
+<nav id="bottomNav" class="bottom-nav hidden" aria-label="Navegação principal">
+  <div class="bottom-nav-inner">
+    <button class="bottom-nav-btn active" data-tab="tabPagar" onclick="trocarAba('tabPagar', this)">
+      <svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+      <span>Pagar</span>
+    </button>
+    <button class="bottom-nav-btn" data-tab="tabJogos" onclick="trocarAba('tabJogos', this)">
+      <svg viewBox="0 0 24 24"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/><path d="M13 5v2"/><path d="M13 17v2"/><path d="M13 11v2"/></svg>
+      <span>Jogos</span>
+    </button>
+    <button class="bottom-nav-btn" data-tab="tabRodadas" onclick="trocarAba('tabRodadas', this)">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/><path d="M12 3v3"/><path d="M12 18v3"/><path d="M3 12h3"/><path d="M18 12h3"/></svg>
+      <span>Rodadas</span>
+    </button>
+    <button class="bottom-nav-btn" data-tab="tabResumo" onclick="trocarAba('tabResumo', this)">
+      <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      <span>Resumo</span>
+    </button>
+    <button class="bottom-nav-btn" data-tab="tabCadastro" onclick="trocarAba('tabCadastro', this)">
+      <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <span>Perfil</span>
+    </button>
+    <button class="bottom-nav-btn" data-tab="tabTour" onclick="trocarAba('tabTour', this)">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
+      <span>Tour</span>
+    </button>
+    <button id="tabAdminBtn" class="bottom-nav-btn hidden" data-tab="tabAdmin" onclick="trocarAba('tabAdmin', this)">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
+      <span>Admin</span>
+    </button>
+  </div>
+</nav>
+
+<!-- OVERLAY DO TOUR INTERATIVO -->
+<div id="tourBlocker" class="tour-blocker hidden" onclick="encerrarTour()"></div>
+<div id="tourSpotlight" class="tour-spotlight hidden"></div>
+<div id="tourTooltip" class="tour-tooltip hidden" role="dialog" aria-modal="true" aria-labelledby="tourTitle">
+  <div class="tour-tooltip-top">
+    <span id="tourStepCounter" class="tour-step-counter">Passo 1 de 1</span>
+    <button class="tour-close-btn" onclick="encerrarTour()" aria-label="Fechar tour">✕</button>
+  </div>
+  <div class="tour-progress-track">
+    <div id="tourProgressFill" class="tour-progress-fill"></div>
+  </div>
+  <h3 id="tourTitle"></h3>
+  <p id="tourText"></p>
+  <div class="tour-tooltip-actions">
+    <button class="btn-secondary btn-sm" onclick="encerrarTour()">Sair</button>
+    <div class="tour-tooltip-nav">
+      <button id="tourPrevBtn" class="btn-secondary btn-sm" onclick="anteriorPassoTour()">← Voltar</button>
+      <button id="tourNextBtn" class="btn-primary btn-sm" onclick="proximoPassoTour()">Próximo →</button>
+    </div>
+  </div>
+</div>
+
+<!-- MÓDULOS JAVASCRIPT (CARREGADOS EM ORDEM) -->
+<script src="./js/core.js"></script>
+<script src="./js/convite.js"></script>
+<script src="./js/ocr-pix.js"></script>
+<script src="./js/ocr-bilhete.js"></script>
+<script src="./js/abas-membro.js"></script>
+<script src="./js/abas-admin.js"></script>
+<script src="./js/tour.js"></script>
+</body>
+</html>
