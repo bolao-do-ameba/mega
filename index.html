@@ -298,7 +298,7 @@
       </div>
     </section>
 
-    <!-- ABA 6: TOUR / GUIA RÁPIDO (LIMPO COM BOTÕES "i") -->
+    <!-- ABA 6: TOUR / GUIA RÁPIDO -->
     <section id="tabTour" class="tab-content hidden">
       <div class="card tour-hero">
         <div class="card-title-row" style="justify-content:center;">
@@ -416,7 +416,7 @@
         </div>
         <div id="previewIntervaloConcursos" class="muted" style="margin-top:6px;"></div>
 
-        <label for="rodadaValorTotal">Valor Total (R$)</label>
+        <label for="rodadaValorTotal">Valor Total (R\$)</label>
         <input id="rodadaValorTotal" type="number" inputmode="decimal" step="0.01" min="0" placeholder="72.00" oninput="recalcularPreviewRodada()" />
 
         <div class="card-title-row" style="margin-top:12px; margin-bottom:4px;">
@@ -452,8 +452,8 @@
         <div class="summary-strip" id="previewRodadaBox">
           <div>Cotas: <strong id="prevTotalCotas">0</strong></div>
           <div><span id="prevStatusCotas" class="badge badge-red">Selecione</span></div>
-          <div>Inteira: <strong id="prevValorInteira">R$ 0,00</strong></div>
-          <div>Meia: <strong id="prevValorMeia">R$ 0,00</strong></div>
+          <div>Inteira: <strong id="prevValorInteira">R\$ 0,00</strong></div>
+          <div>Meia: <strong id="prevValorMeia">R\$ 0,00</strong></div>
         </div>
 
         <div class="toolbar-inline">
@@ -513,11 +513,33 @@
         <div id="feedbackMembrosAdmin"></div>
       </div>
 
-      <!-- CONFIGURAR PIX -->
+      <!-- CONFIGURAR BOLÃO ATIVO E PIX -->
       <div id="cardConfigPix" class="card">
         <div class="card-title-row">
-          <h2>💸 Configurar Pix</h2>
-          <button type="button" class="info-btn" onclick="abrirInfoModal('admin_pix')" aria-label="Informações sobre configuração Pix">i</button>
+          <h2>🎨 Editar Bolão Ativo & Pix</h2>
+          <button type="button" class="info-btn" onclick="abrirInfoModal('admin_pix')" aria-label="Informações sobre configuração do bolão">i</button>
+        </div>
+
+        <div class="admin-form-grid">
+          <div>
+            <label for="cfgBolaoNome">Nome do Bolão</label>
+            <input id="cfgBolaoNome" type="text" placeholder="Nome do bolão" />
+          </div>
+          <div>
+            <label for="cfgBolaoTipo">Tipo</label>
+            <select id="cfgBolaoTipo">
+              <option value="FREQUENTE">Frequente</option>
+              <option value="COMEMORATIVO">Comemorativo</option>
+            </select>
+          </div>
+          <div>
+            <label for="cfgBolaoCor">Cor do Card</label>
+            <input id="cfgBolaoCor" type="color" value="#10b981" />
+          </div>
+          <div>
+            <label for="cfgBolaoPasta">Pasta Drive</label>
+            <input id="cfgBolaoPasta" type="text" placeholder="Pasta de comprovantes" />
+          </div>
         </div>
 
         <label for="cfgNomeRecebedor">Nome do Recebedor</label>
@@ -527,7 +549,7 @@
         <input id="cfgChavePix" type="text" placeholder="CPF, e-mail, telefone ou chave aleatória" />
 
         <div class="toolbar-inline" style="margin-top:14px;">
-          <button id="btnSalvarPix" type="button" class="btn-primary" onclick="salvarConfigPix()">Salvar Pix</button>
+          <button id="btnSalvarPix" type="button" class="btn-primary" onclick="salvarConfigPix()">Salvar Alterações</button>
         </div>
         <div id="configPixFeedback"></div>
       </div>
@@ -541,7 +563,7 @@
         <div class="admin-form-grid">
           <div><label for="novoBolaoNome">Nome</label><input id="novoBolaoNome" type="text" placeholder="Ex.: Mega da Virada 2026" /></div>
           <div><label for="novoBolaoTipo">Tipo</label><select id="novoBolaoTipo"><option value="COMEMORATIVO">Comemorativo</option><option value="FREQUENTE">Frequente</option></select></div>
-          <div><label for="novoBolaoCor">Cor</label><input id="novoBolaoCor" type="color" value="#10b981" /></div>
+          <div><label for="novoBolaoCor">Cor do Card</label><input id="novoBolaoCor" type="color" value="#10b981" /></div>
           <div><label for="novoBolaoAdminTelefone">Tel. Admin inicial</label><input id="novoBolaoAdminTelefone" type="tel" inputmode="tel" placeholder="Vazio = você" /></div>
           <div><label for="novoBolaoRecebedor">Recebedor</label><input id="novoBolaoRecebedor" type="text" placeholder="Nome do recebedor" /></div>
           <div><label for="novoBolaoPix">Chave Pix</label><input id="novoBolaoPix" type="text" placeholder="Chave Pix" /></div>
@@ -571,6 +593,129 @@
     <div id="infoModalBody" class="info-modal-body"></div>
     <div class="info-modal-foot">
       <button type="button" class="btn-primary btn-sm" onclick="fecharInfoModal()">Entendi</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DE EDIÇÃO DE RODADA E JOGOS (ADMIN) -->
+<div id="editRodadaModal" class="info-modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="editRodadaModalTitle" onclick="if(event.target===this) fecharModalEditarRodada()">
+  <div class="edit-modal-card">
+    <div class="info-modal-head">
+      <h3 id="editRodadaModalTitle">✏️ Editar Rodada & Jogos</h3>
+      <button type="button" class="tour-close-btn" onclick="fecharModalEditarRodada()" aria-label="Fechar">✕</button>
+    </div>
+
+    <input id="editRodadaId" type="hidden" />
+
+    <label for="editRodadaDescricao">Descrição</label>
+    <input id="editRodadaDescricao" type="text" />
+
+    <div class="grid-3">
+      <div>
+        <label for="editRodadaConcurso">Conc. Inicial</label>
+        <input id="editRodadaConcurso" type="number" inputmode="numeric" min="1" />
+      </div>
+      <div>
+        <label for="editRodadaConcursoFim">Conc. Final</label>
+        <input id="editRodadaConcursoFim" type="number" inputmode="numeric" min="1" />
+      </div>
+      <div>
+        <label for="editRodadaDataBilhete">Data Bilhete</label>
+        <input id="editRodadaDataBilhete" type="text" placeholder="17/11/2026" />
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div>
+        <label for="editRodadaValorTotal">Valor Total (R\$)</label>
+        <input id="editRodadaValorTotal" type="number" inputmode="decimal" step="0.01" min="0" oninput="recalcularPreviewEdicaoRodada()" />
+      </div>
+      <div>
+        <label for="editRodadaStatus">Status</label>
+        <select id="editRodadaStatus">
+          <option value="ABERTA">ABERTA</option>
+          <option value="ENCERRADA">ENCERRADA</option>
+        </select>
+      </div>
+    </div>
+
+    <label for="editRodadaJogosTexto">Jogos (1 por linha)</label>
+    <textarea id="editRodadaJogosTexto" oninput="atualizarPreviewJogosEdicao()"></textarea>
+    <div id="editRodadaJogosInfo" class="muted" style="margin-top:4px;">0 jogos</div>
+
+    <h3 style="margin-top:14px;">Participantes & Cotas</h3>
+    <div id="editRodadaParticipantesList"></div>
+
+    <div class="summary-strip">
+      <div>Cotas: <strong id="editPrevTotalCotas">0</strong></div>
+      <div><span id="editPrevStatusCotas" class="badge badge-green">OK</span></div>
+      <div>Inteira: <strong id="editPrevValorInteira">R\$ 0,00</strong></div>
+      <div>Meia: <strong id="editPrevValorMeia">R\$ 0,00</strong></div>
+    </div>
+
+    <div id="editRodadaFeedback"></div>
+
+    <div class="toolbar-inline" style="margin-top:14px; justify-content:space-between;">
+      <button type="button" class="btn-danger btn-sm" onclick="excluirRodadaAdmin(document.getElementById('editRodadaId').value)">🗑️ Excluir</button>
+      <div class="toolbar-inline">
+        <button type="button" class="btn-secondary btn-sm" onclick="fecharModalEditarRodada()">Cancelar</button>
+        <button id="btnSalvarEdicaoRodada" type="button" class="btn-primary btn-sm" onclick="salvarEdicaoRodada()">Salvar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DE EDIÇÃO DE PAGAMENTO / PARTICIPAÇÃO (ADMIN) -->
+<div id="editPagamentoModal" class="info-modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="editPagModalTitle" onclick="if(event.target===this) fecharModalEditarPagamento()">
+  <div class="edit-modal-card" style="width:min(440px, 100%);">
+    <div class="info-modal-head">
+      <h3 id="editPagModalTitle">✏️ Editar Pagamento</h3>
+      <button type="button" class="tour-close-btn" onclick="fecharModalEditarPagamento()" aria-label="Fechar">✕</button>
+    </div>
+
+    <input id="editPagId" type="hidden" />
+    <div id="editPagResumo" class="muted" style="margin-bottom:8px;"></div>
+
+    <div class="grid-2">
+      <div>
+        <label for="editPagFracao">Cota</label>
+        <input id="editPagFracao" type="number" inputmode="decimal" step="0.5" min="0" />
+      </div>
+      <div>
+        <label for="editPagDevido">Valor Devido (R\$)</label>
+        <input id="editPagDevido" type="number" inputmode="decimal" step="0.01" min="0" />
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div>
+        <label for="editPagPago">Valor Pago (R\$)</label>
+        <input id="editPagPago" type="number" inputmode="decimal" step="0.01" min="0" />
+      </div>
+      <div>
+        <label for="editPagStatus">Status</label>
+        <select id="editPagStatus">
+          <option value="AUTO">Automático</option>
+          <option value="PENDENTE">PENDENTE</option>
+          <option value="PARCIAL">PARCIAL</option>
+          <option value="PAGO">PAGO</option>
+        </select>
+      </div>
+    </div>
+
+    <label for="editPagData">Data do Pagamento</label>
+    <input id="editPagData" type="text" placeholder="dd/MM/yyyy HH:mm (vazio = automático)" />
+
+    <label class="admin-inline" style="margin-top:12px;">
+      <input id="editPagEstornarDocs" type="checkbox" />
+      <span style="color:var(--text); font-size:0.84rem;">Remover comprovantes vinculados (libera reenvio)</span>
+    </label>
+
+    <div id="editPagFeedback"></div>
+
+    <div class="toolbar-inline" style="margin-top:14px; justify-content:flex-end;">
+      <button type="button" class="btn-secondary btn-sm" onclick="fecharModalEditarPagamento()">Cancelar</button>
+      <button id="btnSalvarEdicaoPag" type="button" class="btn-primary btn-sm" onclick="salvarEdicaoPagamento()">Salvar</button>
     </div>
   </div>
 </div>
