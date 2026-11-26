@@ -1,10 +1,15 @@
 // =========================================================================
-// ABA 7: ADMIN — NOVA RODADA, EDIÇÃO COMPLETA (RODADAS, JOGOS, PAGAMENTOS,
-// BOLÃO ATIVO), APROVAÇÕES, CONVITES, MEMBROS E GESTÃO DE BOLÕES
+// ABA 7: ADMIN — NOVA RODADA, PENDENTES, GESTÃO UNIFICADA DE BOLÕES
+// (CONFIG + PIX + CONVITE + MEMBROS DENTRO DE CADA BOLÃO) E MODAIS DE EDIÇÃO
 // =========================================================================
 function renderAdminFormRodada() {
   const container = document.getElementById('listaParticipantesAdmin');
   if (!container) return;
+
+  const bolao = obterBolaoAtivoLocal();
+  const badgeRodada = document.getElementById('adminRodadaBolaoBadge');
+  if (badgeRodada) badgeRodada.textContent = bolao ? bolao.nome : '';
+
   container.innerHTML = state.usuarios.map(u => `
     <div class="cota-row">
       <div><strong>${escapeHtml(u.nome)}</strong></div>
@@ -22,8 +27,8 @@ function renderAdminFormRodada() {
 
 function recalcularPreviewRodada() {
   const selects = [...document.querySelectorAll('.select-cota-admin')];
-  const valorTotal = parseFloat(document.getElementById('rodadaValorTotal').value) || 0;
-  const totalCotas = selects.reduce((acc, s) => acc + parseFloat(s.value), 0);
+  const valorTotal = parseFloat(document.getElementById('rodadaValorTotal')?.value) || 0;
+  const totalCotas = selects.reduce((acc, s) => acc + parseFloat(s.value || 0), 0);
   const ehInteiro = totalCotas > 0 && (Math.round(totalCotas * 100) % 100 === 0);
 
   document.getElementById('prevTotalCotas').textContent = totalCotas.toString().replace('.', ',');
@@ -165,76 +170,15 @@ async function criarNovaRodada() {
   }
 }
 
-async function salvarConfigPix() {
-  const nome = document.getElementById('cfgBolaoNome')?.value.trim() || '';
-  const tipo = document.getElementById('cfgBolaoTipo')?.value || 'FREQUENTE';
-  const corTema = normalizarHexCor6(document.getElementById('cfgBolaoCor')?.value, '#10b981');
-  const pastaDrive = document.getElementById('cfgBolaoPasta')?.value.trim() || '';
-  const nomeRecebedor = document.getElementById('cfgNomeRecebedor').value.trim();
-  const chavePix = document.getElementById('cfgChavePix').value.trim();
-
-  if (!nomeRecebedor || !chavePix) {
-    showMsg('configPixFeedback', 'Preencha o Nome do Recebedor e a Chave Pix.', 'err');
-    return;
-  }
-
-  const btn = document.getElementById('btnSalvarPix');
-  btn.disabled = true;
-  btn.textContent = 'Salvando...';
-
-  try {
-    const payload = {
-      action: 'atualizarBolao',
-      bolao_id: state.bolaoId,
-      recebedor_nome: nomeRecebedor,
-      chave_pix: chavePix,
-      cor_tema: corTema,
-      tipo
-    };
-    if (nome.length >= 3) payload.nome = nome;
-    if (pastaDrive) payload.pasta_drive = pastaDrive;
-
-    const res = await apiPost(payload);
-
-    if (res.success) {
-      localStorage.removeItem('bolao_ameba_pix_override');
-      state.configPix.NOME_RECEBEDOR = nomeRecebedor;
-      state.configPix.CHAVE_PIX = chavePix;
-      if (state.bolaoAdminConfig && state.bolaoAdminConfig.bolao_id === state.bolaoId && pastaDrive) {
-        state.bolaoAdminConfig.pasta_drive = pastaDrive;
-      }
-      await atualizarListaBoloesUsuario();
-      aplicarConfigPixNaInterface();
-      if (state.user && (state.user.super_admin === true || String(state.user.super_admin || '').toUpperCase() === 'SIM')) {
-        await carregarBoloesAdmin();
-      }
-      showMsg('configPixFeedback', `✅ ${res.message || 'Bolão atualizado!'}`, 'ok');
-    } else {
-      showMsg('configPixFeedback', `❌ ${res.message}`, 'err');
-    }
-  } catch (err) {
-    showMsg('configPixFeedback', 'Erro ao salvar: ' + err.message, 'err');
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Salvar Alterações';
-  }
-}
-
 // =========================================================================
-// PAINEL ADMINISTRATIVO MULTI-BOLÃO (PENDENTES, CONVITES, MEMBROS, BOLÕES)
+// PAINEL ADMINISTRATIVO UNIFICADO (PENDENTES + LISTA ÚNICA DE BOLÕES)
 // =========================================================================
 async function carregarPainelFase4() {
   if (!usuarioEhAdminNoBolao() || !state.bolaoId) return;
-  const superAdmin = state.user && (
-    state.user.super_admin === true ||
-    String(state.user.super_admin || '').toUpperCase() === 'SIM'
-  );
-  document.getElementById('cardGerenciarBoloes').classList.toggle('hidden', !superAdmin);
+  document.getElementById('btnAbrirModalCriarBolao')?.classList.toggle('hidden', !usuarioEhSuperAdmin());
   await Promise.all([
     carregarSolicitacoesPendentes(),
-    carregarConfigConviteAdmin(),
-    carregarMembrosBolaoAdmin(),
-    superAdmin ? carregarBoloesAdmin() : Promise.resolve()
+    carregarBoloesAdmin()
   ]);
 }
 
@@ -294,158 +238,31 @@ async function decidirSolicitacaoAdmin(idEncoded, decisao) {
     if (!res.success) throw new Error(res.message || 'Erro ao processar.');
     showMsg('feedbackSolicitacoesAdmin', res.message || 'Atualizado.', 'ok');
     await carregarSolicitacoesPendentes();
-    await carregarMembrosBolaoAdmin();
+    await carregarMembrosDoBolao(state.bolaoId, true);
   } catch (err) {
     showMsg('feedbackSolicitacoesAdmin', err.message || String(err), 'err');
   }
 }
 
-async function carregarConfigConviteAdmin() {
-  try {
-    const res = await apiPost({ action: 'obterConfigAdminBolao', bolao_id: state.bolaoId });
-    if (!res.success) throw new Error(res.message || 'Erro ao carregar convite.');
-    state.bolaoAdminConfig = res.bolao;
-    renderConfigConviteAdmin();
-  } catch (err) {
-    showMsg('feedbackConviteAdmin', err.message || String(err), 'err');
-  }
-}
-
-function montarLinkConviteAdmin() {
-  const codigo = state.bolaoAdminConfig && state.bolaoAdminConfig.codigo_convite;
-  if (!codigo) return '';
-  const url = new URL(window.location.href);
-  url.search = '';
-  url.hash = '';
-  url.searchParams.set('convite', codigo);
-  return url.toString();
-}
-
-function renderConfigConviteAdmin() {
-  const b = state.bolaoAdminConfig;
-  if (!b) return;
-  document.getElementById('codigoConviteAdmin').textContent = b.codigo_convite || '—';
-  document.getElementById('linkConviteAdmin').textContent = montarLinkConviteAdmin() || 'Indisponível';
-  document.getElementById('conviteAtivoAdmin').checked = Boolean(b.convite_ativo);
-  const inpPasta = document.getElementById('cfgBolaoPasta');
-  if (inpPasta && b.pasta_drive) inpPasta.value = b.pasta_drive;
-}
-
-async function copiarLinkConviteAdmin() {
-  const link = montarLinkConviteAdmin();
-  if (!link) return showMsg('feedbackConviteAdmin', 'Código indisponível.', 'err');
-  try {
-    await navigator.clipboard.writeText(link);
-    showMsg('feedbackConviteAdmin', 'Link copiado.', 'ok');
-  } catch (_) {
-    window.prompt('Copie o link:', link);
-  }
-}
-
-function compartilharConviteWhatsApp() {
-  const link = montarLinkConviteAdmin();
-  if (!link) return showMsg('feedbackConviteAdmin', 'Código indisponível.', 'err');
-  const nome = (state.bolaoAdminConfig && state.bolaoAdminConfig.nome) || 'o bolão';
-  const texto = `Convite para ${nome}: ${link}`;
-  window.open('https://wa.me/?text=' + encodeURIComponent(texto), '_blank', 'noopener');
-}
-
-async function salvarConfigConviteAdmin(payload, mensagem) {
-  try {
-    const res = await apiPost({ action: 'atualizarConviteBolao', bolao_id: state.bolaoId, ...payload });
-    if (!res.success) throw new Error(res.message || 'Erro ao atualizar convite.');
-    state.bolaoAdminConfig = { ...(state.bolaoAdminConfig || {}), ...(res.bolao || {}) };
-    renderConfigConviteAdmin();
-    showMsg('feedbackConviteAdmin', mensagem || res.message || 'Atualizado.', 'ok');
-  } catch (err) {
-    showMsg('feedbackConviteAdmin', err.message || String(err), 'err');
-    await carregarConfigConviteAdmin();
-  }
-}
-
-async function alterarStatusConviteAdmin(ativo) {
-  await salvarConfigConviteAdmin({ convite_ativo: Boolean(ativo) }, ativo ? 'Convite ativo.' : 'Convite pausado.');
-}
-
-async function regenerarCodigoConviteAdmin() {
-  if (!confirm('Gerar um novo código? O link antigo deixará de funcionar.')) return;
-  await salvarConfigConviteAdmin({ regenerar_codigo: true }, 'Novo código gerado.');
-}
-
-async function carregarMembrosBolaoAdmin() {
-  const alvo = document.getElementById('listaMembrosBolaoAdmin');
-  if (!state.bolaoId || !usuarioEhAdminNoBolao()) return;
-  if (alvo) alvo.innerHTML = '<div class="muted">Carregando...</div>';
-  try {
-    const res = await apiPost({ action: 'listarMembrosBolao', bolao_id: state.bolaoId });
-    if (!res.success) throw new Error(res.message || 'Erro ao listar membros.');
-    renderMembrosBolaoAdmin(res.membros || []);
-  } catch (err) {
-    if (alvo) alvo.innerHTML = `<div class="alert alert-err">${escapeHtml(err.message || err)}</div>`;
-  }
-}
-
-function renderMembrosBolaoAdmin(lista) {
-  const alvo = document.getElementById('listaMembrosBolaoAdmin');
-  if (!alvo) return;
-  if (!lista.length) {
-    alvo.innerHTML = '<div class="muted">Nenhum membro neste bolão.</div>';
-    return;
-  }
-  alvo.innerHTML = lista.map(m => {
-    const id = encodeURIComponent(String(m.id_usuario || ''));
-    const status = String(m.status_membro || '').toUpperCase();
-    const aprovado = status === 'APROVADO';
-    const papel = String(m.papel || 'participante').toLowerCase();
-    const podeEditar = aprovado && status !== 'REMOVIDO';
-    return `
-      <div class="admin-item">
-        <div class="admin-item-top">
-          <div>
-            <strong>${escapeHtml(m.nome || 'Participante')}</strong>
-            <div class="admin-item-meta">${escapeHtml(m.telefone || '—')} • ${escapeHtml(m.data_solicitacao || '—')}</div>
-          </div>
-          <span class="badge ${aprovado ? 'badge-green' : (status === 'PENDENTE' ? 'badge-amber' : 'badge-red')}">${escapeHtml(status)}</span>
-        </div>
-        ${podeEditar ? `
-          <label for="papelMembro_${id}">Papel</label>
-          <select id="papelMembro_${id}" onchange="alterarPapelMembroAdmin('${id}',this.value)">
-            <option value="participante" ${papel === 'participante' ? 'selected' : ''}>Participante</option>
-            <option value="admin_bolao" ${papel === 'admin_bolao' ? 'selected' : ''}>Administrador</option>
-          </select>
-          <div class="admin-item-actions">
-            <button class="btn-danger btn-sm" onclick="removerMembroBolaoAdmin('${id}')">Remover</button>
-          </div>
-        ` : ''}
-      </div>`;
-  }).join('');
-}
-
-async function alterarPapelMembroAdmin(idEncoded, papel) {
-  await executarGerenciamentoMembroAdmin(idEncoded, 'papel', papel);
-}
-
-async function removerMembroBolaoAdmin(idEncoded) {
-  if (!confirm('Remover esta pessoa deste bolão?')) return;
-  await executarGerenciamentoMembroAdmin(idEncoded, 'remover');
-}
-
-async function executarGerenciamentoMembroAdmin(idEncoded, acao, papel) {
-  try {
-    const res = await apiPost({
-      action: 'gerenciarMembroBolao',
-      bolao_id: state.bolaoId,
-      id_usuario_alvo: decodeURIComponent(String(idEncoded || '')),
-      acao,
-      papel
+// =========================================================================
+// MODAL DE CRIAR NOVO BOLÃO
+// =========================================================================
+function abrirModalCriarBolao() {
+  if (!usuarioEhSuperAdmin()) return;
+  ['novoBolaoNome', 'novoBolaoAdminTelefone', 'novoBolaoRecebedor', 'novoBolaoPix', 'novoBolaoPasta']
+    .forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
     });
-    if (!res.success) throw new Error(res.message || 'Erro ao atualizar membro.');
-    showMsg('feedbackMembrosAdmin', res.message || 'Membro atualizado.', 'ok');
-    await carregarMembrosBolaoAdmin();
-  } catch (err) {
-    showMsg('feedbackMembrosAdmin', err.message || String(err), 'err');
-    await carregarMembrosBolaoAdmin();
-  }
+  const corEl = document.getElementById('novoBolaoCor');
+  if (corEl) corEl.value = '#10b981';
+  const fb = document.getElementById('feedbackCriarBolaoAdmin');
+  if (fb) fb.innerHTML = '';
+  document.getElementById('criarBolaoModal')?.classList.remove('hidden');
+}
+
+function fecharModalCriarBolao() {
+  document.getElementById('criarBolaoModal')?.classList.add('hidden');
 }
 
 async function criarBolaoAdmin() {
@@ -459,20 +276,32 @@ async function criarBolaoAdmin() {
     chave_pix: document.getElementById('novoBolaoPix').value.trim(),
     pasta_drive: document.getElementById('novoBolaoPasta').value.trim()
   };
+
+  const btn = document.getElementById('btnConfirmarCriarBolao');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Criando...';
+  }
+
   try {
     const res = await apiPost(payload);
     if (!res.success) throw new Error(res.message || 'Erro ao criar bolão.');
+
+    fecharModalCriarBolao();
     showMsg(
-      'feedbackCriarBolaoAdmin',
-      `${escapeHtml(res.message || 'Criado.')} Código: <strong>${escapeHtml((res.bolao && res.bolao.codigo_convite) || '')}</strong>`,
+      'feedbackEditarBolaoAdmin',
+      `✅ ${escapeHtml(res.message || 'Bolão criado.')} Código: <strong>${escapeHtml((res.bolao && res.bolao.codigo_convite) || '')}</strong>`,
       'ok'
     );
-    ['novoBolaoNome', 'novoBolaoAdminTelefone', 'novoBolaoRecebedor', 'novoBolaoPix', 'novoBolaoPasta']
-      .forEach(id => { document.getElementById(id).value = ''; });
     await atualizarListaBoloesUsuario();
     await carregarBoloesAdmin();
   } catch (err) {
     showMsg('feedbackCriarBolaoAdmin', err.message || String(err), 'err');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Criar bolão';
+    }
   }
 }
 
@@ -484,15 +313,61 @@ async function atualizarListaBoloesUsuario() {
   }
 }
 
+// =========================================================================
+// LISTA ÚNICA DE BOLÕES (COM CONFIG, PIX, CONVITE E MEMBROS DENTRO DE CADA UM)
+// =========================================================================
+function montarLinkConvitePorCodigo(codigo) {
+  if (!codigo) return '';
+  const url = new URL(window.location.href);
+  url.search = '';
+  url.hash = '';
+  url.searchParams.set('convite', codigo);
+  return url.toString();
+}
+
 async function carregarBoloesAdmin() {
   const alvo = document.getElementById('listaBoloesAdmin');
-  if (!state.user || !(state.user.super_admin === true || String(state.user.super_admin || '').toUpperCase() === 'SIM')) return;
+  if (!usuarioEhAdminNoBolao()) return;
   if (alvo) alvo.innerHTML = '<div class="muted">Carregando...</div>';
+
   try {
+    let lista = [];
     const res = await apiPost({ action: 'listarBoloesAdmin' });
-    if (!res.success) throw new Error(res.message || 'Erro ao listar bolões.');
-    state.boloesAdmin = res.boloes || [];
+
+    if (res && res.success && Array.isArray(res.boloes)) {
+      lista = res.boloes;
+    } else {
+      // Fallback compatível caso o GAS ainda restrinja listarBoloesAdmin ao super_admin
+      const meusAdmin = (state.boloes || []).filter(b =>
+        String(b.status_membro || '').toUpperCase() === 'APROVADO' &&
+        String(b.papel || '').toLowerCase() === 'admin_bolao'
+      );
+      const detalhes = await Promise.all(
+        meusAdmin.map(b => apiPost({ action: 'obterConfigAdminBolao', bolao_id: b.bolao_id }).catch(() => null))
+      );
+      lista = detalhes.filter(d => d && d.success && d.bolao).map(d => d.bolao);
+    }
+
+    // Ordena: bolão selecionado primeiro, depois ativos por nome, depois encerrados/arquivados
+    lista.sort((a, b) => {
+      const aAtivo = String(a.bolao_id) === String(state.bolaoId) ? 0 : 1;
+      const bAtivo = String(b.bolao_id) === String(state.bolaoId) ? 0 : 1;
+      if (aAtivo !== bAtivo) return aAtivo - bAtivo;
+      const aSt = String(a.status || 'ATIVO').toUpperCase() === 'ATIVO' ? 0 : 1;
+      const bSt = String(b.status || 'ATIVO').toUpperCase() === 'ATIVO' ? 0 : 1;
+      if (aSt !== bSt) return aSt - bSt;
+      return String(a.nome || '').localeCompare(String(b.nome || ''));
+    });
+
+    state.boloesAdmin = lista;
     renderBoloesAdmin();
+
+    // Carrega automaticamente os membros do bolão ativo (que inicia expandido)
+    if (lista.some(b => String(b.bolao_id) === String(state.bolaoId))) {
+      await carregarMembrosDoBolao(state.bolaoId, true);
+    } else if (lista.length > 0) {
+      await carregarMembrosDoBolao(lista[0].bolao_id, true);
+    }
   } catch (err) {
     if (alvo) alvo.innerHTML = `<div class="alert alert-err">${escapeHtml(err.message || err)}</div>`;
   }
@@ -502,33 +377,110 @@ function renderBoloesAdmin() {
   const alvo = document.getElementById('listaBoloesAdmin');
   if (!alvo) return;
   if (!state.boloesAdmin.length) {
-    alvo.innerHTML = '<div class="muted">Nenhum bolão cadastrado.</div>';
+    alvo.innerHTML = '<div class="muted">Nenhum bolão disponível para edição.</div>';
     return;
   }
-  alvo.innerHTML = state.boloesAdmin.map(b => {
-    const id = encodeURIComponent(String(b.bolao_id || ''));
+
+  const isSuper = usuarioEhSuperAdmin();
+
+  alvo.innerHTML = state.boloesAdmin.map((b, idx) => {
+    const idEnc = encodeURIComponent(String(b.bolao_id || ''));
     const cor = normalizarHexCor6(b.cor_tema, '#10b981');
+    const isAtual = String(b.bolao_id) === String(state.bolaoId);
+    const iniciarAberto = isAtual || (idx === 0 && !state.boloesAdmin.some(x => String(x.bolao_id) === String(state.bolaoId)));
+    const statusUpper = String(b.status || 'ATIVO').toUpperCase();
+    const linkConvite = montarLinkConvitePorCodigo(b.codigo_convite);
+
+    const badgeAtual = isAtual ? `<span class="badge badge-blue">ATUAL</span>` : '';
+    const badgeStatus = `<span class="badge ${statusUpper === 'ATIVO' ? 'badge-green' : 'badge-amber'}">${escapeHtml(statusUpper)}</span>`;
+
     return `
-      <div class="admin-item bolao-admin-card" style="--card-accent:${escapeHtml(cor)}">
-        <div class="admin-item-top">
-          <strong>${escapeHtml(b.nome)}</strong>
-          <span class="badge ${String(b.status).toUpperCase() === 'ATIVO' ? 'badge-green' : 'badge-amber'}">${escapeHtml(b.status)}</span>
+      <details id="accordionBolao_${idEnc}" class="bolao-config-accordion" style="--card-accent:${escapeHtml(cor)}" ${iniciarAberto ? 'open' : ''} ontoggle="aoAlternarAcordeaoBolao(this, '${idEnc}')">
+        <summary>
+          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+            <span class="concurso-chevron">▸</span>
+            <strong>🍀 ${escapeHtml(b.nome)}</strong>
+          </div>
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+            ${badgeAtual}
+            ${badgeStatus}
+          </div>
+        </summary>
+
+        <div class="bolao-config-body">
+          <div class="admin-form-grid">
+            <div><label>Nome</label><input id="editBolaoNome_${idEnc}" value="${escapeHtml(b.nome)}" /></div>
+            <div>
+              <label>Tipo</label>
+              <select id="editBolaoTipo_${idEnc}">
+                <option value="FREQUENTE" ${String(b.tipo).toUpperCase() === 'FREQUENTE' ? 'selected' : ''}>Frequente</option>
+                <option value="COMEMORATIVO" ${String(b.tipo).toUpperCase() === 'COMEMORATIVO' ? 'selected' : ''}>Comemorativo</option>
+              </select>
+            </div>
+            <div>
+              <label>Cor do Card</label>
+              <input id="editBolaoCor_${idEnc}" type="color" value="${escapeHtml(cor)}" oninput="atualizarPreviewCorCardBolao('${idEnc}', this.value)" />
+            </div>
+            <div><label>Recebedor</label><input id="editBolaoRecebedor_${idEnc}" value="${escapeHtml(b.recebedor_nome || '')}" /></div>
+            <div><label>Chave Pix</label><input id="editBolaoPix_${idEnc}" value="${escapeHtml(b.chave_pix || '')}" /></div>
+            <div><label>Pasta Drive</label><input id="editBolaoPasta_${idEnc}" value="${escapeHtml(b.pasta_drive || '')}" /></div>
+          </div>
+
+          <div class="admin-item-actions">
+            <button type="button" class="btn-primary btn-sm" onclick="salvarEdicaoBolaoAdmin('${idEnc}')">Salvar</button>
+            ${!isAtual ? `<button type="button" class="btn-secondary btn-sm" onclick="trocarBolaoAtivo('${idEnc}', true)">Selecionar</button>` : ''}
+            ${isSuper && statusUpper === 'ATIVO' ? `<button type="button" class="btn-danger btn-sm" onclick="arquivarBolaoAdmin('${idEnc}')">Arquivar</button>` : ''}
+          </div>
+          <div id="feedbackBolaoItem_${idEnc}"></div>
+
+          <!-- CONVITE DESTE BOLÃO -->
+          <div class="bolao-subbox">
+            <div class="bolao-subbox-title">
+              <span>🔗 Convite</span>
+              <strong id="codigoConvite_${idEnc}" class="admin-code" style="font-size:0.8rem;">${escapeHtml(b.codigo_convite || '—')}</strong>
+            </div>
+            <div id="linkConvite_${idEnc}" class="admin-code" style="font-size:0.78rem;">${escapeHtml(linkConvite || 'Link indisponível')}</div>
+            <div class="admin-item-actions">
+              <button type="button" class="btn-primary btn-sm" onclick="copiarLinkConviteBolao('${idEnc}')">📋 Copiar</button>
+              <button type="button" class="btn-secondary btn-sm" onclick="compartilharConviteBolaoWhatsApp('${idEnc}')">WhatsApp</button>
+              <button type="button" class="btn-warning btn-sm" onclick="regenerarCodigoConviteBolao('${idEnc}')">Novo código</button>
+            </div>
+            <label class="admin-inline" style="margin-top:10px;">
+              <input id="conviteAtivo_${idEnc}" type="checkbox" ${b.convite_ativo ? 'checked' : ''} onchange="alterarStatusConviteBolao('${idEnc}', this.checked)" />
+              <span style="color:var(--text); font-size:0.84rem;">Aceitar novos participantes</span>
+            </label>
+            <div id="feedbackConvite_${idEnc}"></div>
+          </div>
+
+          <!-- MEMBROS DESTE BOLÃO -->
+          <div class="bolao-subbox">
+            <div class="bolao-subbox-title">
+              <span>🧑‍🤝‍🧑 Membros <span id="qtdMembros_${idEnc}" class="badge badge-blue">...</span></span>
+              <button type="button" class="btn-secondary icon-action-btn" onclick="carregarMembrosDoBolao(decodeURIComponent('${idEnc}'), true)">↻</button>
+            </div>
+            <div id="membrosBolaoLista_${idEnc}"><div class="muted">Carregando membros...</div></div>
+            <div id="feedbackMembros_${idEnc}"></div>
+          </div>
+
+          <div class="admin-item-meta" style="margin-top:10px;">ID: ${escapeHtml(b.bolao_id)}</div>
         </div>
-        <div class="admin-form-grid">
-          <div><label>Nome</label><input id="editBolaoNome_${id}" value="${escapeHtml(b.nome)}" /></div>
-          <div><label>Tipo</label><select id="editBolaoTipo_${id}"><option value="FREQUENTE" ${b.tipo === 'FREQUENTE' ? 'selected' : ''}>Frequente</option><option value="COMEMORATIVO" ${b.tipo === 'COMEMORATIVO' ? 'selected' : ''}>Comemorativo</option></select></div>
-          <div><label>Cor do Card</label><input id="editBolaoCor_${id}" type="color" value="${escapeHtml(cor)}" /></div>
-          <div><label>Recebedor</label><input id="editBolaoRecebedor_${id}" value="${escapeHtml(b.recebedor_nome || '')}" /></div>
-          <div><label>Chave Pix</label><input id="editBolaoPix_${id}" value="${escapeHtml(b.chave_pix || '')}" /></div>
-          <div><label>Pasta Drive</label><input id="editBolaoPasta_${id}" value="${escapeHtml(b.pasta_drive || '')}" /></div>
-        </div>
-        <div class="admin-item-actions">
-          <button class="btn-primary btn-sm" onclick="salvarEdicaoBolaoAdmin('${id}')">Salvar</button>
-          ${String(b.status).toUpperCase() === 'ATIVO' ? `<button class="btn-danger btn-sm" onclick="arquivarBolaoAdmin('${id}')">Arquivar</button>` : ''}
-        </div>
-        <div class="admin-item-meta">ID: ${escapeHtml(b.bolao_id)} • Convite: ${escapeHtml(b.codigo_convite || '—')}</div>
-      </div>`;
+      </details>
+    `;
   }).join('');
+}
+
+function atualizarPreviewCorCardBolao(idEnc, novaCor) {
+  const cor = normalizarHexCor6(novaCor, '#10b981');
+  const detailsEl = document.getElementById('accordionBolao_' + idEnc);
+  if (detailsEl) detailsEl.style.setProperty('--card-accent', cor);
+}
+
+function aoAlternarAcordeaoBolao(detailsEl, idEnc) {
+  if (!detailsEl || !detailsEl.open) return;
+  const bolaoId = decodeURIComponent(String(idEnc || ''));
+  if (!state.membrosPorBolao[bolaoId]) {
+    carregarMembrosDoBolao(bolaoId, false);
+  }
 }
 
 async function salvarEdicaoBolaoAdmin(idEncoded) {
@@ -536,6 +488,7 @@ async function salvarEdicaoBolaoAdmin(idEncoded) {
   const recebedor = document.getElementById('editBolaoRecebedor_' + idEncoded).value.trim();
   const chavePix = document.getElementById('editBolaoPix_' + idEncoded).value.trim();
   const pastaDrive = document.getElementById('editBolaoPasta_' + idEncoded).value.trim();
+  const corTema = normalizarHexCor6(document.getElementById('editBolaoCor_' + idEncoded).value, '#10b981');
 
   try {
     const res = await apiPost({
@@ -543,23 +496,25 @@ async function salvarEdicaoBolaoAdmin(idEncoded) {
       bolao_id: id,
       nome: document.getElementById('editBolaoNome_' + idEncoded).value.trim(),
       tipo: document.getElementById('editBolaoTipo_' + idEncoded).value,
-      cor_tema: normalizarHexCor6(document.getElementById('editBolaoCor_' + idEncoded).value, '#10b981'),
+      cor_tema: corTema,
       recebedor_nome: recebedor,
       chave_pix: chavePix,
       pasta_drive: pastaDrive
     });
     if (!res.success) throw new Error(res.message || 'Erro ao salvar.');
-    showMsg('feedbackEditarBolaoAdmin', res.message || 'Bolão atualizado.', 'ok');
+
     if (id === state.bolaoId) {
+      localStorage.removeItem('bolao_ameba_pix_override');
       state.configPix.NOME_RECEBEDOR = recebedor;
       state.configPix.CHAVE_PIX = chavePix;
-      if (state.bolaoAdminConfig) state.bolaoAdminConfig.pasta_drive = pastaDrive;
+      aplicarConfigPixNaInterface();
     }
-    await carregarBoloesAdmin();
+
     await atualizarListaBoloesUsuario();
-    aplicarConfigPixNaInterface();
+    await carregarBoloesAdmin();
+    showMsg('feedbackBolaoItem_' + idEncoded, `✅ ${res.message || 'Bolão atualizado.'}`, 'ok');
   } catch (err) {
-    showMsg('feedbackEditarBolaoAdmin', err.message || String(err), 'err');
+    showMsg('feedbackBolaoItem_' + idEncoded, err.message || String(err), 'err');
   }
 }
 
@@ -570,16 +525,168 @@ async function arquivarBolaoAdmin(idEncoded) {
     const res = await apiPost({ action: 'arquivarBolao', bolao_id: id });
     if (!res.success) throw new Error(res.message || 'Erro ao arquivar.');
     showMsg('feedbackEditarBolaoAdmin', res.message || 'Bolão arquivado.', 'ok');
-    await carregarBoloesAdmin();
     await atualizarListaBoloesUsuario();
     if (id === state.bolaoId) {
       const proximo = state.boloes.find(b => String(b.status_membro).toUpperCase() === 'APROVADO' && b.bolao_id !== id);
       if (proximo) {
-        await trocarBolaoAtivo(encodeURIComponent(proximo.bolao_id));
+        await trocarBolaoAtivo(encodeURIComponent(proximo.bolao_id), true);
+        return;
       }
     }
+    await carregarBoloesAdmin();
   } catch (err) {
     showMsg('feedbackEditarBolaoAdmin', err.message || String(err), 'err');
+  }
+}
+
+// --- CONVITES POR BOLÃO ---
+function obterBolaoAdminPorEncoded(idEnc) {
+  const id = decodeURIComponent(String(idEnc || ''));
+  return (state.boloesAdmin || []).find(b => String(b.bolao_id) === id) || null;
+}
+
+async function copiarLinkConviteBolao(idEnc) {
+  const b = obterBolaoAdminPorEncoded(idEnc);
+  const link = montarLinkConvitePorCodigo(b && b.codigo_convite);
+  if (!link) return showMsg('feedbackConvite_' + idEnc, 'Código indisponível.', 'err');
+  try {
+    await navigator.clipboard.writeText(link);
+    showMsg('feedbackConvite_' + idEnc, 'Link copiado.', 'ok');
+  } catch (_) {
+    window.prompt('Copie o link:', link);
+  }
+}
+
+function compartilharConviteBolaoWhatsApp(idEnc) {
+  const b = obterBolaoAdminPorEncoded(idEnc);
+  const link = montarLinkConvitePorCodigo(b && b.codigo_convite);
+  if (!link) return showMsg('feedbackConvite_' + idEnc, 'Código indisponível.', 'err');
+  const texto = `Convite para ${(b && b.nome) || 'o bolão'}: ${link}`;
+  window.open('https://wa.me/?text=' + encodeURIComponent(texto), '_blank', 'noopener');
+}
+
+async function atualizarConvitePorBolao(idEnc, payload, mensagemOk) {
+  const bolaoId = decodeURIComponent(String(idEnc || ''));
+  try {
+    const res = await apiPost({ action: 'atualizarConviteBolao', bolao_id: bolaoId, ...payload });
+    if (!res.success) throw new Error(res.message || 'Erro ao atualizar convite.');
+
+    const b = obterBolaoAdminPorEncoded(idEnc);
+    if (b && res.bolao) {
+      b.codigo_convite = res.bolao.codigo_convite;
+      b.convite_ativo = Boolean(res.bolao.convite_ativo);
+    }
+    const codEl = document.getElementById('codigoConvite_' + idEnc);
+    const linkEl = document.getElementById('linkConvite_' + idEnc);
+    const chkEl = document.getElementById('conviteAtivo_' + idEnc);
+    if (codEl && b) codEl.textContent = b.codigo_convite || '—';
+    if (linkEl && b) linkEl.textContent = montarLinkConvitePorCodigo(b.codigo_convite) || 'Indisponível';
+    if (chkEl && b) chkEl.checked = Boolean(b.convite_ativo);
+
+    showMsg('feedbackConvite_' + idEnc, mensagemOk || res.message || 'Atualizado.', 'ok');
+  } catch (err) {
+    showMsg('feedbackConvite_' + idEnc, err.message || String(err), 'err');
+  }
+}
+
+async function alterarStatusConviteBolao(idEnc, ativo) {
+  await atualizarConvitePorBolao(idEnc, { convite_ativo: Boolean(ativo) }, ativo ? 'Convite ativo.' : 'Convite pausado.');
+}
+
+async function regenerarCodigoConviteBolao(idEnc) {
+  if (!confirm('Gerar um novo código? O link antigo deixará de funcionar.')) return;
+  await atualizarConvitePorBolao(idEnc, { regenerar_codigo: true }, 'Novo código gerado.');
+}
+
+// --- MEMBROS DENTRO DE CADA BOLÃO ---
+async function carregarMembrosDoBolao(bolaoId, forcar) {
+  const id = String(bolaoId || '').trim();
+  if (!id) return;
+  const idEnc = encodeURIComponent(id);
+  const listaEl = document.getElementById('membrosBolaoLista_' + idEnc);
+  if (!forcar && state.membrosPorBolao[id] && listaEl) {
+    renderMembrosDoBolao(id, state.membrosPorBolao[id]);
+    return;
+  }
+  if (listaEl) listaEl.innerHTML = '<div class="muted">Carregando...</div>';
+  try {
+    const res = await apiPost({ action: 'listarMembrosBolao', bolao_id: id });
+    if (!res.success) throw new Error(res.message || 'Erro ao listar membros.');
+    state.membrosPorBolao[id] = res.membros || [];
+    renderMembrosDoBolao(id, state.membrosPorBolao[id]);
+  } catch (err) {
+    if (listaEl) listaEl.innerHTML = `<div class="alert alert-err">${escapeHtml(err.message || err)}</div>`;
+  }
+}
+
+function renderMembrosDoBolao(bolaoId, lista) {
+  const idEnc = encodeURIComponent(String(bolaoId || ''));
+  const alvo = document.getElementById('membrosBolaoLista_' + idEnc);
+  const qtdBadge = document.getElementById('qtdMembros_' + idEnc);
+  if (qtdBadge) qtdBadge.textContent = String(lista.length);
+  if (!alvo) return;
+
+  if (!lista.length) {
+    alvo.innerHTML = '<div class="muted">Nenhum membro vinculado a este bolão.</div>';
+    return;
+  }
+
+  alvo.innerHTML = lista.map(m => {
+    const uidEnc = encodeURIComponent(String(m.id_usuario || ''));
+    const status = String(m.status_membro || '').toUpperCase();
+    const aprovado = status === 'APROVADO';
+    const papel = String(m.papel || 'participante').toLowerCase();
+    const podeEditar = aprovado && status !== 'REMOVIDO';
+
+    return `
+      <div class="member-mini-item">
+        <div class="admin-item-top">
+          <div>
+            <strong>${escapeHtml(m.nome || 'Participante')}</strong>
+            <div class="admin-item-meta">${escapeHtml(m.telefone || '—')}</div>
+          </div>
+          <span class="badge ${aprovado ? 'badge-green' : (status === 'PENDENTE' ? 'badge-amber' : 'badge-red')}">${escapeHtml(status)}</span>
+        </div>
+        ${podeEditar ? `
+          <div class="toolbar-inline" style="margin-top:8px;">
+            <select style="flex:1; min-width:140px; padding:7px 9px; font-size:0.84rem;" onchange="alterarPapelMembroNoBolao('${idEnc}','${uidEnc}',this.value)">
+              <option value="participante" ${papel === 'participante' ? 'selected' : ''}>Participante</option>
+              <option value="admin_bolao" ${papel === 'admin_bolao' ? 'selected' : ''}>Administrador</option>
+            </select>
+            <button type="button" class="btn-danger btn-sm" onclick="removerMembroNoBolao('${idEnc}','${uidEnc}')">Remover</button>
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }).join('');
+}
+
+async function alterarPapelMembroNoBolao(bolaoIdEnc, uidEnc, papel) {
+  await executarGerenciamentoMembroNoBolao(bolaoIdEnc, uidEnc, 'papel', papel);
+}
+
+async function removerMembroNoBolao(bolaoIdEnc, uidEnc) {
+  if (!confirm('Remover esta pessoa deste bolão?')) return;
+  await executarGerenciamentoMembroNoBolao(bolaoIdEnc, uidEnc, 'remover');
+}
+
+async function executarGerenciamentoMembroNoBolao(bolaoIdEnc, uidEnc, acao, papel) {
+  const bolaoId = decodeURIComponent(String(bolaoIdEnc || ''));
+  try {
+    const res = await apiPost({
+      action: 'gerenciarMembroBolao',
+      bolao_id: bolaoId,
+      id_usuario_alvo: decodeURIComponent(String(uidEnc || '')),
+      acao,
+      papel
+    });
+    if (!res.success) throw new Error(res.message || 'Erro ao atualizar membro.');
+    showMsg('feedbackMembros_' + bolaoIdEnc, res.message || 'Membro atualizado.', 'ok');
+    await carregarMembrosDoBolao(bolaoId, true);
+    if (bolaoId === state.bolaoId) await carregarDashboard();
+  } catch (err) {
+    showMsg('feedbackMembros_' + bolaoIdEnc, err.message || String(err), 'err');
+    await carregarMembrosDoBolao(bolaoId, true);
   }
 }
 
@@ -608,7 +715,6 @@ function abrirModalEditarRodada(idRodada) {
   const mapaCotas = {};
   partsDaRodada.forEach(p => { mapaCotas[String(p.id_usuario)] = String(p.fracao_cota); });
 
-  // Garante que ex-membros presentes na rodada não sejam perdidos ao editar
   const usuariosCombinados = [...state.usuarios];
   const idsPresentes = new Set(usuariosCombinados.map(u => String(u.id_usuario)));
   partsDaRodada.forEach(p => {
