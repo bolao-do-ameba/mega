@@ -10,7 +10,9 @@ window.tourState = {
 
 function obterPassosTour() {
   const isAdmin = usuarioEhAdminNoBolao();
-  const carrosselVisivel = !document.getElementById('boloesCarouselSection')?.classList.contains('hidden');
+  const temBoloes = (state.boloes || []).some(b =>
+    ['APROVADO', 'PENDENTE'].includes(String(b.status_membro || '').toUpperCase())
+  );
 
   const passos = [
     {
@@ -22,7 +24,7 @@ function obterPassosTour() {
     }
   ];
 
-  if (carrosselVisivel) {
+  if (temBoloes) {
     passos.push({
       id: 'boloes',
       tab: 'tabPagar',
@@ -85,9 +87,9 @@ function obterPassosTour() {
     {
       id: 'conta',
       tab: 'tabCadastro',
-      selector: '#cardMinhasTransferencias',
-      titulo: '💳 Minha Conta',
-      texto: 'Consulte seu saldo total, histórico de pagamentos e comprovantes (📄).'
+      selector: '#cardMeusBoloesPerfil',
+      titulo: '🎯 Meus Bolões & Conta',
+      texto: 'Veja todos os bolões em que você participa, consulte seu saldo total, histórico de pagamentos e comprovantes (📄).'
     },
     {
       id: 'perfil',
@@ -115,11 +117,11 @@ function obterPassosTour() {
         texto: 'Use a câmera ou foto do canhoto da Caixa para ler jogos, concurso inicial/final, valor total e data do bilhete automaticamente.'
       },
       {
-        id: 'admin_pix',
+        id: 'admin_boloes',
         tab: 'tabAdmin',
-        selector: '#cardConfigPix',
-        titulo: '💸 Admin: Configurar Pix',
-        texto: 'Atualize o recebedor e a chave Pix deste bolão diretamente pelo portal.'
+        selector: '#cardGerenciarBoloes',
+        titulo: '🛠️ Admin: Bolões, Pix, Convite & Membros',
+        texto: 'Cada bolão aparece uma única vez aqui com suas configurações, cor do card, Pix, link de convite e lista de membros.'
       }
     );
   }
