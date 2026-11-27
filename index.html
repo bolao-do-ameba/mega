@@ -13,7 +13,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Bolão Ameba" />
 
-  <link rel="stylesheet" href="./css/styles.css?v=4" />
+  <link rel="stylesheet" href="./css/styles.css?v=5" />
 
   <script src="./config.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -267,7 +267,7 @@
         <div id="previewIntervaloConcursos" class="muted" style="margin-top:6px;"></div>
 
         <label for="rodadaValorTotal">Valor Total (R$)</label>
-        <input id="rodadaValorTotal" type="number" inputmode="decimal" step="0.01" min="0" placeholder="72.00" oninput="recalcularPreviewRodada()" />
+        <input id="rodadaValorTotal" type="text" inputmode="decimal" placeholder="72,00" oninput="recalcularPreviewRodada()" />
 
         <div class="row-between" style="margin-top:14px; margin-bottom:6px;">
           <div class="card-title-row" style="margin-bottom:0;">
@@ -301,7 +301,14 @@
         <textarea id="rodadaJogosTexto" class="hidden" oninput="atualizarPreviewJogos()"></textarea>
         <div id="previewJogosInfo" class="muted" style="margin-top:6px;">0 jogos</div>
 
-        <h3 style="margin-top:16px;">Participantes</h3>
+        <div class="row-between" style="margin-top:16px; margin-bottom:8px;">
+          <h3 style="margin:0; color:var(--text);">👥 Participantes</h3>
+          <div class="toolbar-inline" style="gap:6px;">
+            <button type="button" class="btn-secondary btn-sm" onclick="definirCotaTodosAdmin('1')">Todos: 1</button>
+            <button type="button" class="btn-secondary btn-sm" onclick="definirCotaTodosAdmin('0')">Zerar</button>
+            <button type="button" class="btn-secondary btn-sm" onclick="recarregarParticipantesCadastro()" title="Recarregar participantes">↻</button>
+          </div>
+        </div>
         <div id="listaParticipantesAdmin"></div>
 
         <div class="summary-strip" id="previewRodadaBox">
@@ -310,6 +317,7 @@
           <div>Inteira: <strong id="prevValorInteira">R$ 0,00</strong></div>
           <div>Meia: <strong id="prevValorMeia">R$ 0,00</strong></div>
         </div>
+        <div id="prevSalvarHint" class="muted" style="margin:-4px 0 10px; font-size:0.8rem;"></div>
 
         <div class="toolbar-inline">
           <button id="btnCancelarRodada" type="button" class="btn-danger" style="flex:1; min-width:110px;" onclick="cancelarCadastroRodada()">Cancelar</button>
@@ -691,7 +699,7 @@
     <div class="grid-2">
       <div>
         <label for="editRodadaValorTotal">Valor Total (R$)</label>
-        <input id="editRodadaValorTotal" type="number" inputmode="decimal" step="0.01" min="0" oninput="recalcularPreviewEdicaoRodada()" />
+        <input id="editRodadaValorTotal" type="text" inputmode="decimal" oninput="recalcularPreviewEdicaoRodada()" />
       </div>
       <div>
         <label for="editRodadaStatus">Status</label>
@@ -703,7 +711,7 @@
     </div>
 
     <div class="row-between" style="margin-top:12px; margin-bottom:6px;">
-      <label style="margin:0;">Jogos (toque na dezena para alterar)</label>
+      <label style="margin:0;">Jogos (toque em qualquer número para editar o jogo)</label>
       <button type="button" class="btn-secondary btn-sm" onclick="adicionarJogoBuilder('editar')">＋ Jogo</button>
     </div>
     <div id="editJogosBuilderList" class="jogos-builder-list"></div>
@@ -787,20 +795,25 @@
   </div>
 </div>
 
-<!-- MODAL SELETOR DE DEZENA (01 A 60 — ESTILO CALENDÁRIO) -->
+<!-- MODAL SELETOR DE DEZENAS DO JOGO (01 A 60 — MULTI-SELEÇÃO ESTILO VOLANTE/CALENDÁRIO) -->
 <div id="dezenaPickerModal" class="info-modal-backdrop dezena-picker-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="dezenaPickerTitle" onclick="if(event.target===this) fecharSeletorDezena()">
   <div class="dezena-picker-card">
     <div class="info-modal-head">
       <div>
-        <h3 id="dezenaPickerTitle">Escolher Dezena</h3>
+        <h3 id="dezenaPickerTitle">Escolher Dezenas</h3>
         <div id="dezenaPickerSub" class="muted" style="font-size:0.78rem; margin-top:2px;"></div>
       </div>
       <button type="button" class="tour-close-btn" onclick="fecharSeletorDezena()" aria-label="Fechar">✕</button>
     </div>
+    <div id="dezenaPickerSelectedBar" class="dezena-selected-bar"></div>
     <div id="dezenaPickerGrid" class="dezena-calendar-grid"></div>
+    <div id="dezenaPickerAviso" class="muted" style="margin-top:8px; font-size:0.78rem;"></div>
     <div class="toolbar-inline" style="margin-top:14px; justify-content:space-between;">
-      <button type="button" class="btn-danger btn-sm" onclick="limparDezenaSelecionada()">Limpar</button>
-      <button type="button" class="btn-secondary btn-sm" onclick="fecharSeletorDezena()">Fechar</button>
+      <button type="button" class="btn-danger btn-sm" onclick="limparDezenaSelecionada()">Limpar tudo</button>
+      <div class="toolbar-inline" style="gap:6px;">
+        <button type="button" class="btn-secondary btn-sm" onclick="fecharSeletorDezena()">Cancelar</button>
+        <button id="btnConfirmarDezenasModal" type="button" class="btn-primary btn-sm" onclick="confirmarDezenasSelecionadas()">Confirmar</button>
+      </div>
     </div>
   </div>
 </div>
@@ -840,12 +853,12 @@
 </div>
 
 <!-- MÓDULOS JAVASCRIPT (CARREGADOS EM ORDEM) -->
-<script src="./js/core.js?v=4"></script>
-<script src="./js/convite.js?v=4"></script>
-<script src="./js/ocr-pix.js?v=4"></script>
-<script src="./js/ocr-bilhete.js?v=4"></script>
-<script src="./js/abas-membro.js?v=4"></script>
-<script src="./js/abas-admin.js?v=4"></script>
-<script src="./js/tour.js?v=4"></script>
+<script src="./js/core.js?v=5"></script>
+<script src="./js/convite.js?v=5"></script>
+<script src="./js/ocr-pix.js?v=5"></script>
+<script src="./js/ocr-bilhete.js?v=5"></script>
+<script src="./js/abas-membro.js?v=5"></script>
+<script src="./js/abas-admin.js?v=5"></script>
+<script src="./js/tour.js?v=5"></script>
 </body>
 </html>
