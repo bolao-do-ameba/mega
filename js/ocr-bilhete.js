@@ -1,14 +1,16 @@
 // =========================================================================
-// OCR DE BILHETE CAIXA (FOTO + CÂMERA AO VIVO + TEIMOSINHA + VALOR + DATA)
+// OCR DE BILHETE CAIXA (FOTO + CÂMERA AO VIVO + ARQUIVO/PDF + SELETOR 01-60)
 // =========================================================================
 function acionarCameraBilhete() {
   const inp = document.getElementById('inputCameraBilhete');
+  if (!inp) return;
   inp.value = '';
   inp.click();
 }
 
 function acionarGaleriaBilhete() {
   const inp = document.getElementById('inputGaleriaBilhete');
+  if (!inp) return;
   inp.value = '';
   inp.click();
 }
@@ -52,7 +54,6 @@ async function capturarFrameCamera() {
   const video = document.getElementById('cameraLiveVideo');
   if (!video || !video.videoWidth) return;
 
-  // Recorta proporcionalmente à moldura guia (.camera-guide-frame: inset 8% 7%)
   const vw = video.videoWidth;
   const vh = video.videoHeight;
   const sx = Math.round(vw * 0.04);
@@ -76,12 +77,47 @@ async function lerFotoBilhete(event) {
   await executarOcrBilheteDeFonte(file);
 }
 
-// =========================================================================
-// PRÉ-PROCESSAMENTO OTIMIZADO PARA PAPEL TÉRMICO DA CAIXA
-// - Usa predominância do canal AZUL para eliminar a marca d'água azul "loterias CAIXA"
-// - Modo 'adaptive': binarização local (Bradley) resistente a sombras
-// - Modo 'soft': contraste suave em tons de cinza (fallback)
-// =========================================================================
+async function extrairTextoOuCanvasDePDFBilhete(file) {
+  if (!window.pdfjsLib) {
+    throw new Error('Biblioteca PDF.js não carregada.');
+  }
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+
+  let textoPdf = '';
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    let ultimaY = null;
+    let linha = [];
+    content.items.forEach(item => {
+      const y = item.transform ? Math.round(item.transform[5]) : null;
+      if (ultimaY !== null && y !== null && Math.abs(y - ultimaY) > 4) {
+        textoPdf += linha.join(' ') + '\n';
+        linha = [];
+      }
+      linha.push(item.str);
+      ultimaY = y;
+    });
+    if (linha.length) textoPdf += linha.join(' ') + '\n';
+  }
+
+  const parsedTexto = parsearBilheteCaixaLocal(textoPdf);
+  if (parsedTexto.jogos.length > 0) {
+    return { modo: 'texto', texto: textoPdf, parsed: parsedTexto };
+  }
+
+  // Fallback para PDF escaneado como imagem: renderiza a página 1 em canvas para OCR
+  const page1 = await pdf.getPage(1);
+  const viewport = page1.getViewport({ scale: 2.2 });
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(viewport.width);
+  canvas.height = Math.round(viewport.height);
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  await page1.render({ canvasContext: ctx, viewport }).promise;
+  return { modo: 'canvas', canvas };
+}
+
 function carregarImagemEmCanvasBase(fonte) {
   return new Promise((resolve, reject) => {
     const montar = (imgSource, w, h) => {
@@ -113,7 +149,7 @@ function carregarImagemEmCanvasBase(fonte) {
       img.onerror = () => reject(new Error('Não foi possível abrir a imagem do bilhete.'));
       img.src = reader.result;
     };
-    reader.onerror = () => reject(new Error('Falha ao ler a foto.'));
+    reader.onerror = () => reject(new Error('Falha ao ler o arquivo.'));
     reader.readAsDataURL(fonte);
   });
 }
@@ -150,7 +186,7 @@ function gerarCanvasProcessadoBilhete(baseCanvas, modo) {
     return out;
   }
 
-  // Binarização adaptativa local (Integral Image / Bradley) — excelente sob luz irregular
+  // Binarização adaptativa local (Integral Image / Bradley)
   const integral = new Float64Array(totalPixels);
   for (let y = 0; y < h; y++) {
     let somaLinha = 0;
@@ -162,7 +198,7 @@ function gerarCanvasProcessadoBilhete(baseCanvas, modo) {
   }
 
   const raio = Math.max(12, Math.floor(w / 32));
-  const fatorT = 0.86; // tolerância para tinta térmica um pouco clara
+  const fatorT = 0.86;
 
   for (let y = 0; y < h; y++) {
     const y1 = Math.max(0, y - raio);
@@ -188,9 +224,6 @@ function gerarCanvasProcessadoBilhete(baseCanvas, modo) {
   return out;
 }
 
-// =========================================================================
-// PARSER LOCAL DO PADRÃO DE BILHETE MEGA-SENA DA CAIXA
-// =========================================================================
 function corrigirDigitosTokenBilhete(str) {
   return String(str || '')
     .toUpperCase()
@@ -220,7 +253,6 @@ function normalizarDataBilheteCaixa(textoBruto) {
     DEZ: '12', DEC: '12'
   };
 
-  // Ex: 17NOV2026, 17N0V2026, 17 NOV 2026, 17/NOV/2026
   const mCaixa = textoNorm.match(
     /\b([0-3OQØD][0-9OQØD]|[0-9])\s*[\/.-]?\s*(JAN|FEV|FEB|MAR|ABR|APR|MAI|MAY|JUN|JUL|AG[O0]|AUG|SET|SEP|[O0]UT|[O0]CT|N[O0]V|DEZ|DEC)\s*[\/.-]?\s*([12][0-9OQØD]{3})\b/
   );
@@ -273,7 +305,6 @@ function extrairConcursosBilheteLocal(textoBruto) {
     };
   };
 
-  // Intervalo Teimosinha: "CONC 3087 ATÉ 3090", "CONC. 3087 A 3090", "CONC 3087 - 3090"
   const mFaixa = textoNorm.match(
     /C[O0]NC(?:URS[O0])?\.?\s*[:#-]?\s*([0-9OQØDIL|]{3,5})\s*(?:AT[E3]|A|-|–|\/)\s*([0-9OQØDIL|]{3,5})/
   );
@@ -282,14 +313,12 @@ function extrairConcursosBilheteLocal(textoBruto) {
     if (res) return res;
   }
 
-  // Fallback se "CONC" falhar mas "3087 ATE 3090" aparecer
   const mAte = textoNorm.match(/\b([0-9OQØD]{4})\s+AT[E3]\s+([0-9OQØD]{4})\b/);
   if (mAte) {
     const res = montarFaixa(mAte[1], mAte[2]);
     if (res) return res;
   }
 
-  // Concurso único: "CONC 3087"
   const mUnico = textoNorm.match(/C[O0]NC(?:URS[O0])?\.?\s*[:#-]?\s*([0-9OQØDIL|]{3,5})/);
   if (mUnico) {
     const res = montarFaixa(mUnico[1], mUnico[1]);
@@ -308,7 +337,6 @@ function extrairValorTotalBilheteLocal(textoBruto) {
   const ehPromo = norm => /\b(BILH|MILH|VALEND|PREMI|ESTIMAD|ACUMULAD|VIRADA)\b/.test(norm);
   const regexMoeda = /(?:R\s*[\$S5]\s*)?([0-9OQØD]{1,3}(?:\.[0-9OQØD]{3})*|[0-9OQØD]+)\s*[,.]\s*([0-9OQØD]{2})\b/g;
 
-  // Prioridade 1: linha do rodapé com TOTAL / VALOR
   for (let i = linhas.length - 1; i >= 0; i--) {
     const norm = linhas[i].normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
     if (ehPromo(norm)) continue;
@@ -326,7 +354,6 @@ function extrairValorTotalBilheteLocal(textoBruto) {
     if (ultimo !== null) return Number(ultimo.toFixed(2));
   }
 
-  // Prioridade 2: último "R$ XX,XX" fora de frase promocional
   const regexComRS = /R\s*[\$S5]\s*([0-9OQØD]{1,3}(?:\.[0-9OQØD]{3})*|[0-9OQØD]+)\s*[,.]\s*([0-9OQØD]{2})\b/g;
   for (let i = linhas.length - 1; i >= 0; i--) {
     const norm = linhas[i].normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
@@ -396,7 +423,6 @@ function extrairJogosBilheteLocal(textoBruto) {
       return;
     }
 
-    // Identifica início de nova aposta (A, B, C... ou "JOGO 1")
     const temPrefixo = /^\s*(?:(?:JOGO|APOSTA)\s*)?[A-J]\s*[:.)\-]?\s+/.test(norm);
     const tratada = norm
       .replace(/^\s*(?:JOGO|APOSTA)\s*\d+\s*[:.)\-]\s*/i, ' ')
@@ -412,7 +438,6 @@ function extrairJogosBilheteLocal(textoBruto) {
       }
     });
 
-    // Corrige caso em que a letra "B" do canhoto é lida como "8" antes de 6+ dezenas de 2 dígitos
     if (
       tokensNum.length >= 7 &&
       tokensNum[0].length === 1 &&
@@ -486,9 +511,6 @@ function mesclarResultadosOCR(r1, r2) {
   };
 }
 
-// =========================================================================
-// EXECUÇÃO DO OCR (2 PASSADAS INTELIGENTES) E PREENCHIMENTO DA RODADA
-// =========================================================================
 async function rodarTesseractBilhete(canvas, onProgresso) {
   const res = await Tesseract.recognize(canvas, 'por', {
     tessedit_pageseg_mode: '6',
@@ -568,48 +590,70 @@ async function executarOcrBilheteDeFonte(fonte) {
 
   progWrap.classList.remove('hidden');
   progBar.style.width = '10%';
-  progTxt.textContent = 'Tratando imagem do bilhete...';
+  progTxt.textContent = 'Tratando arquivo do bilhete...';
   feedback.innerHTML = '';
   if (resumoChips) resumoChips.classList.add('hidden');
 
   try {
-    const baseCanvas = await carregarImagemEmCanvasBase(fonte);
-    const canvasAdapt = gerarCanvasProcessadoBilhete(baseCanvas, 'adaptive');
+    let resultado = null;
+    let textoFinalExibicao = '';
+    let fonteImagem = fonte;
 
-    progBar.style.width = '20%';
-    progTxt.textContent = 'Lendo bilhete (1/2)...';
+    const ehPdf = !(fonte instanceof HTMLCanvasElement) && (
+      fonte.type === 'application/pdf' ||
+      String(fonte.name || '').toLowerCase().endsWith('.pdf')
+    );
 
-    const texto1 = await rodarTesseractBilhete(canvasAdapt, p => {
-      progBar.style.width = Math.round(20 + p * 45) + '%';
-      progTxt.textContent = `OCR Bilhete: ${Math.round(p * 100)}%`;
-    });
+    if (ehPdf) {
+      progTxt.textContent = 'Lendo PDF do bilhete...';
+      progBar.style.width = '40%';
+      const pdfRes = await extrairTextoOuCanvasDePDFBilhete(fonte);
+      if (pdfRes.modo === 'texto') {
+        resultado = pdfRes.parsed;
+        textoFinalExibicao = pdfRes.texto;
+        progBar.style.width = '95%';
+      } else {
+        fonteImagem = pdfRes.canvas;
+      }
+    }
 
-    let resultado = parsearBilheteCaixaLocal(texto1);
-    let textoFinalExibicao = texto1;
+    if (!resultado) {
+      const baseCanvas = await carregarImagemEmCanvasBase(fonteImagem);
+      const canvasAdapt = gerarCanvasProcessadoBilhete(baseCanvas, 'adaptive');
 
-    // Se algum dado importante ficou faltando, executa passada 2 em contraste suave e mescla
-    const faltouAlgo =
-      resultado.jogos.length === 0 ||
-      !resultado.concursoInicio ||
-      resultado.valorTotal === null ||
-      !resultado.dataBilhete;
+      progBar.style.width = '20%';
+      progTxt.textContent = 'Lendo bilhete (1/2)...';
 
-    if (faltouAlgo) {
-      progTxt.textContent = 'Refinando leitura (2/2)...';
-      const canvasSoft = gerarCanvasProcessadoBilhete(baseCanvas, 'soft');
-      const texto2 = await rodarTesseractBilhete(canvasSoft, p => {
-        progBar.style.width = Math.round(65 + p * 30) + '%';
-        progTxt.textContent = `Refinando OCR: ${Math.round(p * 100)}%`;
+      const texto1 = await rodarTesseractBilhete(canvasAdapt, p => {
+        progBar.style.width = Math.round(20 + p * 45) + '%';
+        progTxt.textContent = `OCR Bilhete: ${Math.round(p * 100)}%`;
       });
-      const res2 = parsearBilheteCaixaLocal(texto2);
-      resultado = mesclarResultadosOCR(resultado, res2);
-      textoFinalExibicao = `--- PASSADA 1 ---\n${texto1}\n\n--- PASSADA 2 ---\n${texto2}`;
+
+      resultado = parsearBilheteCaixaLocal(texto1);
+      textoFinalExibicao = texto1;
+
+      const faltouAlgo =
+        resultado.jogos.length === 0 ||
+        !resultado.concursoInicio ||
+        resultado.valorTotal === null ||
+        !resultado.dataBilhete;
+
+      if (faltouAlgo) {
+        progTxt.textContent = 'Refinando leitura (2/2)...';
+        const canvasSoft = gerarCanvasProcessadoBilhete(baseCanvas, 'soft');
+        const texto2 = await rodarTesseractBilhete(canvasSoft, p => {
+          progBar.style.width = Math.round(65 + p * 30) + '%';
+          progTxt.textContent = `Refinando OCR: ${Math.round(p * 100)}%`;
+        });
+        const res2 = parsearBilheteCaixaLocal(texto2);
+        resultado = mesclarResultadosOCR(resultado, res2);
+        textoFinalExibicao = `--- PASSADA 1 ---\n${texto1}\n\n--- PASSADA 2 ---\n${texto2}`;
+      }
     }
 
     document.getElementById('textoBilheteBruto').textContent = textoFinalExibicao;
     document.getElementById('detalhesBilheteBruto').classList.remove('hidden');
 
-    // Preenche automaticamente os campos da Nova Rodada
     if (resultado.concursoInicio) {
       document.getElementById('rodadaConcurso').value = resultado.concursoInicio;
       document.getElementById('rodadaConcursoFim').value = resultado.concursoFim || resultado.concursoInicio;
@@ -633,11 +677,15 @@ async function executarOcrBilheteDeFonte(fonte) {
     }
 
     if (resultado.jogos.length > 0) {
-      const ta = document.getElementById('rodadaJogosTexto');
-      const existentes = ta.value.trim();
-      const novasLinhas = resultado.jogos.map(j => j.join(' ')).join('\n');
-      ta.value = existentes ? `${existentes}\n${novasLinhas}` : novasLinhas;
-      atualizarPreviewJogos();
+      if (typeof importarJogosNoBuilder === 'function') {
+        importarJogosNoBuilder('novo', resultado.jogos, false);
+      } else {
+        const ta = document.getElementById('rodadaJogosTexto');
+        const existentes = ta.value.trim();
+        const novasLinhas = resultado.jogos.map(j => j.join(' ')).join('\n');
+        ta.value = existentes ? `${existentes}\n${novasLinhas}` : novasLinhas;
+        atualizarPreviewJogos();
+      }
     }
 
     renderizarResumoChipsOCR(resultado);
@@ -649,17 +697,17 @@ async function executarOcrBilheteDeFonte(fonte) {
     if (!resultado.dataBilhete) faltantes.push('data');
 
     if (faltantes.length === 0) {
-      showMsg('bilheteOcrFeedback', '✅ Bilhete lido por completo! Confira os campos antes de lançar.', 'ok');
+      showMsg('bilheteOcrFeedback', '✅ Bilhete lido! Toque em qualquer dezena acima se precisar ajustar algum número (01 a 60).', 'ok');
     } else if (resultado.jogos.length > 0 || resultado.concursoInicio || resultado.valorTotal !== null) {
       showMsg(
         'bilheteOcrFeedback',
-        `⚠️ Leitura parcial. Não identificado automaticamente: <strong>${faltantes.join(', ')}</strong>. Complete manualmente se necessário.`,
+        `⚠️ Leitura parcial. Não identificado automaticamente: <strong>${faltantes.join(', ')}</strong>. Complete manualmente tocando nos campos.`,
         'warn'
       );
     } else {
       showMsg(
         'bilheteOcrFeedback',
-        'Não foi possível ler o bilhete. Tente fotografar mais de perto, sem brilho e com o canhoto reto.',
+        'Não foi possível ler o bilhete. Tente fotografar mais de perto, sem brilho e com o canhoto reto, ou preencha tocando nas dezenas.',
         'err'
       );
     }
