@@ -58,14 +58,14 @@ body {
 .divider { height: 1px; background: var(--border); margin: 16px 0; }
 
 /* =========================================================================
-   HEADER + BOTÃO SANDUÍCHE NO TOPO ESQUERDO
+   HEADER + BOTÃO SANDUÍCHE (RESPEITANDO SAFE AREA / BARRA DE STATUS DO CELULAR)
    ========================================================================= */
 header {
   width: 100%;
-  min-height: var(--header-height);
+  min-height: calc(var(--header-height) + env(safe-area-inset-top, 0px));
   background: linear-gradient(135deg, #064e3b, #0f172a);
   border-bottom: 1px solid var(--border);
-  padding: 10px 16px;
+  padding: calc(14px + env(safe-area-inset-top, 0px)) 16px 12px;
   position: sticky;
   top: 0;
   z-index: 30;
@@ -154,7 +154,7 @@ header {
   box-shadow: 12px 0 36px rgba(0, 0, 0, 0.65);
   display: flex;
   flex-direction: column;
-  padding: calc(16px + env(safe-area-inset-top, 0px)) 14px calc(18px + env(safe-area-inset-bottom, 0px));
+  padding: max(20px, calc(16px + env(safe-area-inset-top, 0px))) 14px calc(18px + env(safe-area-inset-bottom, 0px));
   animation: drawerSlideIn 0.2s ease-out;
 }
 @keyframes drawerSlideIn {
@@ -228,9 +228,7 @@ header {
   stroke-linejoin: round;
   flex-shrink: 0;
 }
-.drawer-nav-btn:hover {
-  background: rgba(255, 255, 255, 0.05);
-}
+.drawer-nav-btn:hover { background: rgba(255, 255, 255, 0.05); }
 .drawer-nav-btn.active {
   background: rgba(16, 185, 129, 0.15);
   border-color: rgba(16, 185, 129, 0.45);
@@ -246,7 +244,7 @@ header {
    PÁGINA INICIAL: CARROSSEL DE BOLÕES EM TELA CHEIA
    ========================================================================= */
 .inicio-fullscreen {
-  min-height: calc(100dvh - var(--header-height) - 48px);
+  min-height: calc(100dvh - var(--header-height) - env(safe-area-inset-top, 0px) - 56px);
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -277,7 +275,7 @@ header {
 
 .bolao-hero-card {
   flex: 0 0 min(84vw, 420px);
-  min-height: min(60dvh, 420px);
+  min-height: min(58dvh, 420px);
   scroll-snap-align: center;
   background:
     linear-gradient(
@@ -314,10 +312,7 @@ header {
     var(--surface);
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45), 0 0 0 1px color-mix(in srgb, var(--card-accent, var(--bolao-accent)) 45%, transparent);
 }
-.bolao-hero-card.pending {
-  opacity: 0.9;
-  border-style: dashed;
-}
+.bolao-hero-card.pending { opacity: 0.9; border-style: dashed; }
 .bolao-hero-top {
   display: flex;
   align-items: center;
@@ -381,7 +376,9 @@ header {
 }
 .carousel-dot.active { width: 24px; border-radius: 99px; background: var(--primary); }
 
-/* BARRA DE FILTRO DA PÁGINA UNIFICADA JOGOS & RODADAS */
+/* =========================================================================
+   PÁGINA UNIFICADA JOGOS & CONCURSOS + CONSTRUTOR DE DEZENAS (01 A 60)
+   ========================================================================= */
 .unified-top-bar {
   display: flex;
   align-items: center;
@@ -389,6 +386,111 @@ header {
   gap: 10px;
   flex-wrap: wrap;
   margin-bottom: 12px;
+}
+.cadastro-jogos-card {
+  border-left: 4px solid var(--primary);
+}
+.jogos-builder-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 8px;
+}
+.jogo-builder-card {
+  background: #0f172a;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.jogo-builder-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.jogo-builder-title {
+  font-size: 0.84rem;
+  font-weight: 800;
+  color: var(--text);
+}
+.dezena-slots-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 7px;
+}
+.dezena-slot-btn {
+  height: 44px;
+  padding: 0;
+  border-radius: 10px;
+  font-size: 0.96rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-2);
+  color: var(--muted);
+  border: 1.5px dashed var(--border);
+  transition: transform 0.12s ease, border-color 0.15s ease, background 0.15s ease;
+}
+.dezena-slot-btn:active { transform: scale(0.95); }
+.dezena-slot-btn.filled {
+  background: rgba(16, 185, 129, 0.18);
+  border: 1.5px solid var(--primary);
+  color: #ecfdf5;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.2);
+}
+
+/* MODAL SELETOR DE DEZENAS ESTILO CALENDÁRIO (01 A 60) */
+.dezena-picker-backdrop {
+  z-index: 980;
+}
+.dezena-picker-card {
+  width: min(390px, 100%);
+  max-height: 88vh;
+  overflow-y: auto;
+  background: #101b2e;
+  border: 1px solid rgba(16, 185, 129, 0.5);
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 22px 54px rgba(0, 0, 0, 0.78);
+}
+.dezena-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 7px;
+  margin-top: 10px;
+}
+.dezena-cal-btn {
+  height: 42px;
+  padding: 0;
+  border-radius: 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 0.92rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.dezena-cal-btn:hover:not(:disabled) {
+  border-color: var(--primary);
+  background: rgba(16, 185, 129, 0.16);
+}
+.dezena-cal-btn.selected {
+  background: var(--primary);
+  border-color: #34d399;
+  color: #052e16;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.55);
+}
+.dezena-cal-btn.used {
+  background: rgba(148, 163, 184, 0.1);
+  border-color: rgba(148, 163, 184, 0.25);
+  color: #64748b;
+  opacity: 0.55;
+  text-decoration: line-through;
 }
 
 /* CARD DE BOLÃO NA LISTA DO PERFIL */
@@ -1011,14 +1113,28 @@ pre {
 .admin-form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; }
 .admin-form-grid label { margin-top: 4px; }
 
+/* AJUSTE EXTRA PARA APP INSTALADO NA TELA DE INÍCIO (PWA STANDALONE) */
+@media (display-mode: standalone) {
+  header {
+    padding-top: max(48px, calc(16px + env(safe-area-inset-top, 0px)));
+  }
+  .side-drawer {
+    padding-top: max(50px, calc(18px + env(safe-area-inset-top, 0px)));
+  }
+}
+
 @media (max-width: 520px) {
-  header { padding: 10px 12px; }
+  header {
+    padding: max(22px, calc(14px + env(safe-area-inset-top, 0px))) 12px 12px;
+  }
   .brand { font-size: 0.94rem; }
   .container { padding: 12px; }
   .card { padding: 14px; }
   #userNameTop { display: none; }
   .input-conc-manual { width: 118px; }
   .boloes-carousel-full { margin: 0 -12px; padding: 8px 6vw 14px; }
-  .bolao-hero-card { flex: 0 0 86vw; min-height: 58dvh; padding: 20px 16px; }
+  .bolao-hero-card { flex: 0 0 86vw; min-height: 56dvh; padding: 20px 16px; }
   .bolao-hero-name { font-size: 1.32rem; }
+  .dezena-slot-btn { height: 42px; font-size: 0.92rem; }
+  .dezena-cal-btn { height: 40px; font-size: 0.88rem; }
 }
