@@ -1,5 +1,5 @@
 // =========================================================================
-// MOTOR DE TOUR INTERATIVO COM SPOTLIGHT (MENU SANDUÍCHE + INÍCIO TELA CHEIA)
+// MOTOR DE TOUR INTERATIVO COM SPOTLIGHT (MENU SANDUÍCHE + JOGOS & CONCURSOS)
 // =========================================================================
 window.tourState = {
   ativo: false,
@@ -24,7 +24,7 @@ function obterPassosTour() {
       tab: 'tabInicio',
       selector: '#btnMenuToggle',
       titulo: '☰ Menu Principal',
-      texto: 'Toque no ícone sanduíche no topo esquerdo para abrir todos os menus: Meus Bolões, Pagar, Jogos & Rodadas, Resumo, Perfil, Tour e Admin.'
+      texto: 'Toque no ícone sanduíche no topo esquerdo para abrir todos os menus: Meus Bolões, Pagar, Jogos & Concursos, Resumo, Perfil, Tour e Admin.'
     },
     {
       id: 'resultado',
@@ -58,15 +58,15 @@ function obterPassosTour() {
       id: 'jogos_rodadas',
       tab: 'tabJogosRodadas',
       selector: '#cardJogosConcursos',
-      titulo: '🎟️ Jogos & Rodadas (Unificados)',
-      texto: 'Veja os jogos agrupados por concurso — inclusive bilhetes de Teimosinha — e filtre no topo entre Tudo, Jogos ou Rodadas.'
+      titulo: '🎟️ Jogos & Concursos',
+      texto: 'Veja os jogos agrupados por concurso — inclusive bilhetes de Teimosinha — e filtre no topo entre Tudo, Jogos ou Concursos.'
     },
     {
       id: 'rodadas',
       tab: 'tabJogosRodadas',
       selector: '#cardRodadas',
-      titulo: '📄 Rodadas & Rateios',
-      texto: 'Logo abaixo dos jogos ficam os rateios de cada rodada, a data do bilhete, o ícone 📄 do comprovante no Drive e a conferência das dezenas.'
+      titulo: '📄 Concursos & Rateios',
+      texto: 'Logo abaixo dos jogos ficam os rateios de cada concurso, a data do bilhete, o ícone 📄 do comprovante no Drive e a conferência das dezenas.'
     },
     {
       id: 'resumo',
@@ -101,11 +101,11 @@ function obterPassosTour() {
         texto: 'Busque o último concurso, um número específico ou um intervalo (ex.: 3087-3090).'
       },
       {
-        id: 'admin',
-        tab: 'tabAdmin',
-        selector: '#cardAdminRodada',
-        titulo: '⚙️ Admin: Nova Rodada & OCR',
-        texto: 'Use a câmera ou foto do canhoto da Caixa para ler jogos, concurso inicial/final, valor total e data do bilhete automaticamente.'
+        id: 'admin_cadastrar',
+        tab: 'tabJogosRodadas',
+        selector: '#btnAbrirCadastroJogos',
+        titulo: '➕ Admin: Cadastrar Jogos',
+        texto: 'Toque neste botão para abrir o cadastro de jogos e concursos com leitura por Foto, Câmera ao Vivo ou Arquivo e seletor individual de dezenas (01 a 60).'
       },
       {
         id: 'admin_boloes',
