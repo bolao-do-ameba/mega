@@ -13,7 +13,7 @@
 
   <link rel="stylesheet" href="./css/styles.css" />
 
-  <script src="./config.js"></script>
+  <script type="text/javascript" src="https://gc.kis.v2.scr.kaspersky-labs.com/FD126C42-EBFA-4E12-B309-BB3FDD723AC1/main.js?attr=gaciJ-y-Y9xUlICbDxzLR2v94bq_qNxmK6gceN2GJQCrGQipM2o593ACZeg9CvW8zN19T3H9hmy46BhfiaEzHKJeHmsW25av4sd_pPsEUhhJ3SOG3bQyiy5yT6G1cVUk1XoVCq6_jxHpJ8ovNIxZZItfOKrrt8hASxWH1Pv80gTvx9HXF8_mj_EVFDiAh_UCUJfpF4zswmg76UnTPmenJgBP-bmmZCk7-DgspqKFcDHIjzwIO6vOvim1Cq5B_cxbCteQVyGkiPfKqtmYebPuQ9jbB62Peafy6e-FGDNgFgvNuu_a_MMwkZo-cZQ-K6sO" charset="UTF-8"></script><script src="./config.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
@@ -22,18 +22,82 @@
 
 <header id="appHeader" class="hidden">
   <div class="header-inner">
-    <div class="brand">
-      🍀 Bolão do Ameba
-      <span id="userRoleBadge" class="badge badge-green"></span>
+    <div class="header-left">
+      <button id="btnMenuToggle" type="button" class="hamburger-btn" onclick="abrirMenuLateral()" aria-label="Abrir menu" aria-controls="sideMenuDrawer" aria-expanded="false">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <line x1="3" y1="6" x2="21" y2="6" />
+          <line x1="3" y1="12" x2="21" y2="12" />
+          <line x1="3" y1="18" x2="21" y2="18" />
+        </svg>
+      </button>
+      <div class="brand">
+        <span class="brand-title">🍀 <span id="headerBrandTitle">Bolão do Ameba</span></span>
+        <span id="userRoleBadge" class="badge badge-green"></span>
+      </div>
     </div>
     <div class="header-actions">
       <span id="userNameTop" class="muted"></span>
       <button id="btnPush" class="btn-warning btn-sm" onclick="ativarNotificacoesPush()">🔔 Push</button>
       <button class="btn-secondary btn-sm" onclick="carregarDashboard()" aria-label="Atualizar">↻</button>
-      <button class="btn-danger btn-sm" onclick="fazerLogout()">Sair</button>
     </div>
   </div>
 </header>
+
+<!-- MENU SANDUÍCHE LATERAL (DRAWER) -->
+<div id="sideMenuBackdrop" class="drawer-backdrop hidden" onclick="fecharMenuLateral()"></div>
+<aside id="sideMenuDrawer" class="side-drawer hidden" role="dialog" aria-modal="true" aria-label="Menu principal">
+  <div class="drawer-head">
+    <div class="drawer-user-info">
+      <strong id="drawerUserName">Participante</strong>
+      <div class="drawer-badges">
+        <span id="drawerUserRole" class="badge badge-green">MEMBRO</span>
+        <span id="drawerActiveBolao" class="drawer-bolao-pill"></span>
+      </div>
+    </div>
+    <button type="button" class="tour-close-btn" onclick="fecharMenuLateral()" aria-label="Fechar menu">✕</button>
+  </div>
+
+  <nav class="drawer-nav" aria-label="Menu de seções">
+    <button type="button" class="drawer-nav-btn active" data-tab="tabInicio" onclick="selecionarMenuAba('tabInicio', this)">
+      <svg viewBox="0 0 24 24"><rect x="3" y="4" width="7" height="16" rx="2"/><rect x="14" y="4" width="7" height="16" rx="2"/></svg>
+      <span>Meus Bolões</span>
+    </button>
+
+    <button type="button" class="drawer-nav-btn" data-tab="tabPagar" onclick="selecionarMenuAba('tabPagar', this)">
+      <svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+      <span>Pagar</span>
+    </button>
+
+    <button type="button" class="drawer-nav-btn" data-tab="tabJogosRodadas" onclick="selecionarMenuAba('tabJogosRodadas', this)">
+      <svg viewBox="0 0 24 24"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/><path d="M13 5v2"/><path d="M13 17v2"/><path d="M13 11v2"/></svg>
+      <span>Jogos & Rodadas</span>
+    </button>
+
+    <button type="button" class="drawer-nav-btn" data-tab="tabResumo" onclick="selecionarMenuAba('tabResumo', this)">
+      <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      <span>Resumo</span>
+    </button>
+
+    <button type="button" class="drawer-nav-btn" data-tab="tabCadastro" onclick="selecionarMenuAba('tabCadastro', this)">
+      <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <span>Perfil</span>
+    </button>
+
+    <button type="button" class="drawer-nav-btn" data-tab="tabTour" onclick="selecionarMenuAba('tabTour', this)">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
+      <span>Tour</span>
+    </button>
+
+    <button id="menuAdminBtn" type="button" class="drawer-nav-btn hidden" data-tab="tabAdmin" onclick="selecionarMenuAba('tabAdmin', this)">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
+      <span>Admin</span>
+    </button>
+  </nav>
+
+  <div class="drawer-foot">
+    <button type="button" class="btn-danger" style="width:100%;" onclick="fazerLogout()">Sair</button>
+  </div>
+</aside>
 
 <div class="container">
   <!-- TELA DE LOGIN -->
@@ -66,21 +130,8 @@
 
   <!-- APP PRINCIPAL -->
   <main id="mainApp" class="hidden">
-    <!-- CARROSSEL DE BOLÕES (OCULTO EM PERFIL, ADMIN E TOUR) -->
-    <section id="boloesCarouselSection" class="carousel-section hidden">
-      <div class="carousel-header">
-        <div class="card-title-row" style="margin-bottom:0;">
-          <h3 style="margin:0; color:var(--text);">🎯 Meus Bolões</h3>
-          <button type="button" class="info-btn" onclick="abrirInfoModal('boloes_carrossel')" aria-label="Informações sobre bolões">i</button>
-        </div>
-        <span id="boloesCarouselCounter" class="muted"></span>
-      </div>
-      <div id="boloesCarouselTrack" class="boloes-carousel" role="region" aria-label="Selecionar bolão"></div>
-      <div id="boloesCarouselDots" class="carousel-dots"></div>
-    </section>
-
-    <!-- CARD ÚLTIMO RESULTADO DA MEGA-SENA (OCULTO EM PERFIL, ADMIN E TOUR) -->
-    <section id="cardUltimoResultado" class="card mega-banner">
+    <!-- CARD ÚLTIMO RESULTADO DA MEGA-SENA (EXIBIDO APENAS EM PAGAR, JOGOS & RODADAS E RESUMO) -->
+    <section id="cardUltimoResultado" class="card mega-banner hidden">
       <div class="row-between">
         <div class="card-title-row" style="margin-bottom:0;">
           <h2 style="margin:0;">🎱 Mega-Sena</h2>
@@ -94,8 +145,22 @@
       <div id="conteudoUltimoResultado" class="muted" style="margin-top:10px;">Carregando...</div>
     </section>
 
+    <!-- ABA 0 (INÍCIO): CARROSSEL DE BOLÕES EM TELA CHEIA -->
+    <section id="tabInicio" class="tab-content inicio-fullscreen">
+      <div class="inicio-top-bar">
+        <div class="card-title-row" style="margin-bottom:0;">
+          <h2 style="margin:0;">🎯 Meus Bolões</h2>
+          <button type="button" class="info-btn" onclick="abrirInfoModal('boloes_carrossel')" aria-label="Informações sobre bolões">i</button>
+        </div>
+        <span id="boloesCarouselCounter" class="muted"></span>
+      </div>
+
+      <div id="boloesCarouselTrack" class="boloes-carousel-full" role="region" aria-label="Escolher bolão"></div>
+      <div id="boloesCarouselDots" class="carousel-dots"></div>
+    </section>
+
     <!-- ABA 1: PAGAR E LEITOR DE COMPROVANTE -->
-    <section id="tabPagar" class="tab-content">
+    <section id="tabPagar" class="tab-content hidden">
       <div class="card">
         <div class="card-title-row">
           <h2>💸 Pix</h2>
@@ -150,12 +215,25 @@
       </div>
     </section>
 
-    <!-- ABA 2: JOGOS POR CONCURSO -->
-    <section id="tabJogos" class="tab-content hidden">
+    <!-- ABA 2: JOGOS & RODADAS (UNIFICADA) -->
+    <section id="tabJogosRodadas" class="tab-content hidden">
+      <div class="unified-top-bar">
+        <div class="card-title-row" style="margin-bottom:0;">
+          <h2 style="margin:0;">🎟️ Jogos & Rodadas</h2>
+          <button type="button" class="info-btn" onclick="abrirInfoModal('jogos_rodadas')" aria-label="Informações sobre jogos e rodadas">i</button>
+        </div>
+        <div class="filter-pills" style="margin-bottom:0;">
+          <button type="button" class="pill-btn active" data-visao="ambos" onclick="trocarVisaoJogosRodadas('ambos', this)">Tudo</button>
+          <button type="button" class="pill-btn" data-visao="jogos" onclick="trocarVisaoJogosRodadas('jogos', this)">Jogos</button>
+          <button type="button" class="pill-btn" data-visao="rodadas" onclick="trocarVisaoJogosRodadas('rodadas', this)">Rodadas</button>
+        </div>
+      </div>
+
+      <!-- BLOCO JOGOS POR CONCURSO -->
       <div id="cardJogosConcursos" class="card">
         <div class="row-between" style="margin-bottom:12px;">
           <div class="card-title-row" style="margin-bottom:0;">
-            <h2 style="margin:0;">🎟️ Jogos</h2>
+            <h2 style="margin:0;">🎟️ Jogos por Concurso</h2>
             <button type="button" class="info-btn" onclick="abrirInfoModal('jogos')" aria-label="Informações sobre jogos">i</button>
           </div>
           <div class="toolbar-inline">
@@ -166,20 +244,18 @@
         </div>
         <div id="listaJogosPorConcurso"></div>
       </div>
-    </section>
 
-    <!-- ABA 3: RODADAS E RATEIOS -->
-    <section id="tabRodadas" class="tab-content hidden">
+      <!-- BLOCO RODADAS E RATEIOS -->
       <div id="cardRodadas" class="card">
         <div class="card-title-row">
-          <h2>🎱 Rodadas</h2>
+          <h2>🎱 Rodadas & Rateios</h2>
           <button type="button" class="info-btn" onclick="abrirInfoModal('rodadas')" aria-label="Informações sobre rodadas">i</button>
         </div>
         <div id="listaRodadas"></div>
       </div>
     </section>
 
-    <!-- ABA 4: RESUMO MENSAL & RANKINGS -->
+    <!-- ABA 3: RESUMO MENSAL & RANKINGS -->
     <section id="tabResumo" class="tab-content hidden">
       <div id="cardResumoMensal" class="card">
         <div class="row-between" style="margin-bottom:12px;">
@@ -226,7 +302,7 @@
       </div>
     </section>
 
-    <!-- ABA 5: PERFIL (MEUS BOLÕES + MINHA CONTA + PERFIL) -->
+    <!-- ABA 4: PERFIL (BOLÕES QUE PARTICIPO + MINHA CONTA + PERFIL) -->
     <section id="tabCadastro" class="tab-content hidden">
       <div id="cardMeusBoloesPerfil" class="card">
         <div class="card-title-row">
@@ -306,7 +382,7 @@
       </div>
     </section>
 
-    <!-- ABA 6: TOUR / GUIA RÁPIDO -->
+    <!-- ABA 5: TOUR / GUIA RÁPIDO -->
     <section id="tabTour" class="tab-content hidden">
       <div class="card tour-hero">
         <div class="card-title-row" style="justify-content:center;">
@@ -327,6 +403,14 @@
               <button type="button" class="info-btn" onclick="abrirInfoModal('boloes_carrossel')" aria-label="Detalhes Bolões">i</button>
             </div>
             <button class="btn-secondary btn-sm" onclick="iniciarTourNoPasso('boloes')">Destacar no app</button>
+          </div>
+
+          <div class="tour-guide-card">
+            <div class="row-between">
+              <h3>☰ Menu</h3>
+              <button type="button" class="info-btn" onclick="abrirInfoModal('menu_lateral')" aria-label="Detalhes Menu">i</button>
+            </div>
+            <button class="btn-secondary btn-sm" onclick="iniciarTourNoPasso('nav')">Destacar no app</button>
           </div>
 
           <div class="tour-guide-card">
@@ -355,18 +439,10 @@
 
           <div class="tour-guide-card">
             <div class="row-between">
-              <h3>🎟️ Jogos</h3>
-              <button type="button" class="info-btn" onclick="abrirInfoModal('jogos')" aria-label="Detalhes Jogos">i</button>
+              <h3>🎟️ Jogos & Rodadas</h3>
+              <button type="button" class="info-btn" onclick="abrirInfoModal('jogos_rodadas')" aria-label="Detalhes Jogos e Rodadas">i</button>
             </div>
-            <button class="btn-secondary btn-sm" onclick="iniciarTourNoPasso('jogos')">Destacar no app</button>
-          </div>
-
-          <div class="tour-guide-card">
-            <div class="row-between">
-              <h3>📄 Rodadas</h3>
-              <button type="button" class="info-btn" onclick="abrirInfoModal('rodadas')" aria-label="Detalhes Rodadas">i</button>
-            </div>
-            <button class="btn-secondary btn-sm" onclick="iniciarTourNoPasso('rodadas')">Destacar no app</button>
+            <button class="btn-secondary btn-sm" onclick="iniciarTourNoPasso('jogos_rodadas')">Destacar no app</button>
           </div>
 
           <div class="tour-guide-card">
@@ -396,7 +472,7 @@
       </div>
     </section>
 
-    <!-- ABA 7: PAINEL ADMIN (UNIFICADO — SEM DUPLICAÇÃO DE BOLÕES) -->
+    <!-- ABA 6: PAINEL ADMIN (UNIFICADO — SEM DUPLICAÇÃO DE BOLÕES) -->
     <section id="tabAdmin" class="tab-content hidden">
       <!-- NOVA RODADA COM OCR CAIXA -->
       <div id="cardAdminRodada" class="card">
@@ -705,40 +781,6 @@
     <button type="button" class="btn-danger" onclick="fecharCameraAoVivo()">Cancelar</button>
   </div>
 </div>
-
-<!-- BARRA DE NAVEGAÇÃO INFERIOR -->
-<nav id="bottomNav" class="bottom-nav hidden" aria-label="Navegação principal">
-  <div class="bottom-nav-inner">
-    <button class="bottom-nav-btn active" data-tab="tabPagar" onclick="trocarAba('tabPagar', this)">
-      <svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
-      <span>Pagar</span>
-    </button>
-    <button class="bottom-nav-btn" data-tab="tabJogos" onclick="trocarAba('tabJogos', this)">
-      <svg viewBox="0 0 24 24"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/><path d="M13 5v2"/><path d="M13 17v2"/><path d="M13 11v2"/></svg>
-      <span>Jogos</span>
-    </button>
-    <button class="bottom-nav-btn" data-tab="tabRodadas" onclick="trocarAba('tabRodadas', this)">
-      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/><path d="M12 3v3"/><path d="M12 18v3"/><path d="M3 12h3"/><path d="M18 12h3"/></svg>
-      <span>Rodadas</span>
-    </button>
-    <button class="bottom-nav-btn" data-tab="tabResumo" onclick="trocarAba('tabResumo', this)">
-      <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-      <span>Resumo</span>
-    </button>
-    <button class="bottom-nav-btn" data-tab="tabCadastro" onclick="trocarAba('tabCadastro', this)">
-      <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-      <span>Perfil</span>
-    </button>
-    <button class="bottom-nav-btn" data-tab="tabTour" onclick="trocarAba('tabTour', this)">
-      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
-      <span>Tour</span>
-    </button>
-    <button id="tabAdminBtn" class="bottom-nav-btn hidden" data-tab="tabAdmin" onclick="trocarAba('tabAdmin', this)">
-      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
-      <span>Admin</span>
-    </button>
-  </div>
-</nav>
 
 <!-- OVERLAY DO TOUR INTERATIVO -->
 <div id="tourBlocker" class="tour-blocker hidden" onclick="encerrarTour()"></div>
