@@ -32,6 +32,9 @@ let state = {
   boloesAdmin: [],
   membrosPorBolao: {},
   dashboardCarregado: false,
+  pushSincronizado: false,
+  pushBannerDispensado: false,
+  pushAutoTentado: false,
   jogosBuilderNovo: [['', '', '', '', '', '']],
   jogosBuilderEditar: [],
   dezenaPickerAlvo: null,
@@ -197,9 +200,126 @@ function selecionarMenuAba(tabId, btnEl) {
 }
 
 // =========================================================================
-// ONESIGNAL v16 — INICIALIZAÇÃO E PUSH
+// ONESIGNAL v16 — PUSH SEMPRE ATIVO E SINCRONIZAÇÃO AUTOMÁTICA
 // =========================================================================
 window.OneSignalDeferred = window.OneSignalDeferred || [];
+
+function obterStatusPermissaoPush() {
+  if (typeof Notification === 'undefined') return 'unsupported';
+  return Notification.permission || 'default';
+}
+
+function ehDispositivoIOS() {
+  const ua = navigator.userAgent || '';
+  return /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+}
+
+function ocultarBannerPushSessao() {
+  state.pushBannerDispensado = true;
+  document.getElementById('pushAutoBanner')?.classList.add('hidden');
+}
+
+function atualizarInterfaceStatusPush() {
+  const btn = document.getElementById('btnPush');
+  const banner = document.getElementById('pushAutoBanner');
+  const bannerTxt = document.getElementById('pushAutoBannerTexto');
+  const btnBanner = document.getElementById('btnPushAutoAtivar');
+  const status = obterStatusPermissaoPush();
+  const configurado = Boolean(ONESIGNAL_APP_ID && !ONESIGNAL_APP_ID.includes('COLE_AQUI'));
+
+  if (btn) {
+    if (status === 'granted') {
+      btn.textContent = '🔔 Ativo';
+      btn.className = 'btn-secondary btn-sm';
+    } else {
+      btn.textContent = '🔔 Push';
+      btn.className = 'btn-warning btn-sm';
+    }
+  }
+
+  if (!banner) return;
+  if (!state.user || !configurado || status === 'granted' || state.pushBannerDispensado) {
+    banner.classList.add('hidden');
+    return;
+  }
+
+  banner.classList.remove('hidden');
+  if (status === 'unsupported') {
+    if (bannerTxt) {
+      bannerTxt.innerHTML = ehDispositivoIOS()
+        ? '🔔 Para receber notificações no iPhone, toque em <strong>Compartilhar → Adicionar à Tela de Início</strong> e abra o app pelo ícone.'
+        : '🔔 Este navegador não suporta notificações Push. Abra no Chrome ou Safari para receber avisos.';
+    }
+    if (btnBanner) btnBanner.classList.add('hidden');
+  } else if (status === 'denied') {
+    if (bannerTxt) {
+      bannerTxt.innerHTML = '🔕 As notificações foram bloqueadas neste navegador. Libere nas configurações do site para receber resultados e cobranças.';
+    }
+    if (btnBanner) btnBanner.classList.add('hidden');
+  } else {
+    if (bannerTxt) {
+      bannerTxt.innerHTML = '🔔 Ative as notificações para receber resultados da Mega-Sena e avisos de cobrança automaticamente.';
+    }
+    if (btnBanner) btnBanner.classList.remove('hidden');
+  }
+}
+
+async function sincronizarPushUsuarioAtual(OneSignal) {
+  if (!state.user || !state.user.id_usuario) return;
+  const externalId = 'mega_' + state.user.id_usuario;
+
+  try {
+    await OneSignal.login(externalId);
+  } catch (_) {}
+
+  if (obterStatusPermissaoPush() === 'granted') {
+    try {
+      if (OneSignal.User && OneSignal.User.PushSubscription && typeof OneSignal.User.PushSubscription.optIn === 'function') {
+        await OneSignal.User.PushSubscription.optIn();
+      }
+    } catch (_) {}
+
+    if (!state.pushSincronizado && state.sessionToken) {
+      state.pushSincronizado = true;
+      try {
+        await apiPost({
+          action: 'salvarPushSubscription',
+          id_usuario: state.user.id_usuario,
+          subscriptionJson: 'ONESIGNAL:' + externalId
+        });
+      } catch (_) {
+        state.pushSincronizado = false;
+      }
+    }
+  }
+
+  atualizarInterfaceStatusPush();
+}
+
+function garantirPushSempreAtivo() {
+  atualizarInterfaceStatusPush();
+  if (!state.user || !state.user.id_usuario) return;
+  if (!ONESIGNAL_APP_ID || ONESIGNAL_APP_ID.includes('COLE_AQUI')) return;
+
+  window.OneSignalDeferred.push(async function(OneSignal) {
+    const status = obterStatusPermissaoPush();
+
+    if (status === 'granted') {
+      await sincronizarPushUsuarioAtual(OneSignal);
+      return;
+    }
+
+    // Em Android/Desktop, tenta pedir permissão automaticamente na primeira entrada da sessão
+    if (status === 'default' && !ehDispositivoIOS() && !state.pushAutoTentado) {
+      state.pushAutoTentado = true;
+      try {
+        await OneSignal.Notifications.requestPermission();
+      } catch (_) {}
+    }
+
+    await sincronizarPushUsuarioAtual(OneSignal);
+  });
+}
 
 if (ONESIGNAL_APP_ID && !ONESIGNAL_APP_ID.includes('COLE_AQUI')) {
   window.OneSignalDeferred.push(async function(OneSignal) {
@@ -215,8 +335,14 @@ if (ONESIGNAL_APP_ID && !ONESIGNAL_APP_ID.includes('COLE_AQUI')) {
 
     await OneSignal.init(initConfig);
 
+    try {
+      OneSignal.Notifications.addEventListener('permissionChange', async function() {
+        await sincronizarPushUsuarioAtual(OneSignal);
+      });
+    } catch (_) {}
+
     if (state.user && state.user.id_usuario) {
-      await OneSignal.login('mega_' + state.user.id_usuario);
+      await garantirPushSempreAtivo();
     }
   });
 }
@@ -227,34 +353,50 @@ async function ativarNotificacoesPush() {
     return;
   }
 
+  if (obterStatusPermissaoPush() === 'unsupported') {
+    alert(ehDispositivoIOS()
+      ? 'No iPhone, toque em Compartilhar → Adicionar à Tela de Início pelo Safari e abra pelo ícone do app para ativar o Push.'
+      : 'Este navegador não suporta notificações Push.');
+    return;
+  }
+
   const btn = document.getElementById('btnPush');
-  btn.disabled = true;
-  btn.textContent = 'Ativando...';
+  const btnBanner = document.getElementById('btnPushAutoAtivar');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Ativando...';
+  }
+  if (btnBanner) {
+    btnBanner.disabled = true;
+    btnBanner.textContent = 'Ativando...';
+  }
 
   window.OneSignalDeferred.push(async function(OneSignal) {
     try {
-      await OneSignal.Notifications.requestPermission();
-      if (Notification.permission !== 'granted') {
+      const jaPermitido = obterStatusPermissaoPush() === 'granted';
+      if (!jaPermitido) {
+        await OneSignal.Notifications.requestPermission();
+      }
+
+      if (obterStatusPermissaoPush() !== 'granted') {
         alert('Permissão não concedida. No iPhone, adicione o site à Tela de Início pelo Safari antes de ativar.');
         return;
       }
 
-      const externalId = 'mega_' + state.user.id_usuario;
-      await OneSignal.login(externalId);
-
-      const res = await apiPost({
-        action: 'salvarPushSubscription',
-        id_usuario: state.user.id_usuario,
-        subscriptionJson: 'ONESIGNAL:' + externalId
-      });
-
-      btn.textContent = '🔔 Ativo';
-      alert(res.message || 'Notificações Push ativadas!');
+      state.pushSincronizado = false;
+      await sincronizarPushUsuarioAtual(OneSignal);
+      alert(jaPermitido
+        ? 'Notificações Push já estão ativas e sincronizadas neste dispositivo!'
+        : 'Notificações Push ativadas! A partir de agora ficarão sempre ativas neste dispositivo.');
     } catch (err) {
       alert('Erro ao ativar Push: ' + (err.message || err));
     } finally {
-      btn.disabled = false;
-      if (btn.textContent === 'Ativando...') btn.textContent = '🔔 Push';
+      if (btn) btn.disabled = false;
+      if (btnBanner) {
+        btnBanner.disabled = false;
+        btnBanner.textContent = 'Ativar agora';
+      }
+      atualizarInterfaceStatusPush();
     }
   });
 }
@@ -968,6 +1110,9 @@ function fazerLogout() {
   state.boloesAdmin = [];
   state.membrosPorBolao = {};
   state.dashboardCarregado = false;
+  state.pushSincronizado = false;
+  state.pushBannerDispensado = false;
+  state.pushAutoTentado = false;
   state.convitePendente = null;
 
   document.getElementById('cardAdminRodada')?.classList.add('hidden');
@@ -1019,11 +1164,7 @@ function entrarNoApp() {
   atualizarBadgesEPermissoes();
   atualizarIdentidadeBolao();
 
-  if (ONESIGNAL_APP_ID && !ONESIGNAL_APP_ID.includes('COLE_AQUI')) {
-    window.OneSignalDeferred.push(async function(OneSignal) {
-      try { await OneSignal.login('mega_' + state.user.id_usuario); } catch (_) {}
-    });
-  }
+  garantirPushSempreAtivo();
 
   // Abre na tela inicial com o carrossel em tela cheia para escolher o bolão
   trocarAba('tabInicio');
