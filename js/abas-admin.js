@@ -1,27 +1,46 @@
 // =========================================================================
-// ADMIN & CADASTRO DE JOGOS — CONSTRUTOR DE DEZENAS (01 A 60),
-// MODAL CALENDÁRIO, PENDENTES, GESTÃO UNIFICADA DE BOLÕES E MODAIS DE EDIÇÃO
+// ADMIN & CADASTRO DE JOGOS v4 — MULTI-SELEÇÃO DE DEZENAS (01 A 60),
+// VALOR BR (VÍRGULA/PONTO), AUTO-CARGA DE PARTICIPANTES E GESTÃO DE BOLÕES
 // =========================================================================
+
+// Converte entrada monetária com vírgula ou ponto ("72,00", "R$ 1.250,50", "72.00") em Number
+function parseNumeroBR(valor) {
+  if (typeof valor === 'number') return isNaN(valor) ? 0 : valor;
+  const limpo = String(valor || '').trim().replace(/R\$/gi, '').replace(/\s+/g, '');
+  if (!limpo) return 0;
+  if (limpo.includes(',')) {
+    const num = parseFloat(limpo.replace(/\./g, '').replace(',', '.'));
+    return isNaN(num) ? 0 : num;
+  }
+  const num = parseFloat(limpo);
+  return isNaN(num) ? 0 : num;
+}
 
 // =========================================================================
 // ABERTURA / FECHAMENTO DO PAINEL "CADASTRAR JOGOS" (EM JOGOS & CONCURSOS)
 // =========================================================================
-function abrirCadastroJogos() {
+async function abrirCadastroJogos() {
   if (!usuarioEhAdminNoBolao()) return;
 
   const card = document.getElementById('cardAdminRodada');
   if (!card) return;
 
   if (!Array.isArray(state.jogosBuilderNovo) || state.jogosBuilderNovo.length === 0) {
-    state.jogosBuilderNovo = [['', '', '', '', '', '']];
+    state.jogosBuilderNovo = [[]];
   }
 
   card.classList.remove('hidden');
   renderAdminFormRodada();
   renderJogosBuilder('novo');
+
   setTimeout(() => {
     card.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, 40);
+
+  // Se os participantes ainda não estiverem carregados no estado, busca automaticamente
+  if (!Array.isArray(state.usuarios) || state.usuarios.length === 0) {
+    await recarregarParticipantesCadastro();
+  }
 }
 
 function fecharCadastroJogos() {
@@ -29,52 +48,97 @@ function fecharCadastroJogos() {
   document.getElementById('cardAdminRodada')?.classList.add('hidden');
 }
 
+async function recarregarParticipantesCadastro() {
+  const container = document.getElementById('listaParticipantesAdmin');
+  if (container) {
+    container.innerHTML = '<div class="muted">Carregando participantes do bolão...</div>';
+  }
+  try {
+    if (state.bolaoId) {
+      const resMembros = await apiPost({ action: 'listarMembrosBolao', bolao_id: state.bolaoId });
+      if (resMembros && resMembros.success && Array.isArray(resMembros.membros)) {
+        const aprovados = resMembros.membros
+          .filter(m => String(m.status_membro || '').toUpperCase() === 'APROVADO')
+          .map(m => ({
+            id_usuario: m.id_usuario,
+            nome: m.nome || 'Participante',
+            papel_bolao: m.papel || 'participante'
+          }));
+        if (aprovados.length > 0) {
+          state.usuarios = aprovados;
+        }
+      }
+    }
+
+    if ((!Array.isArray(state.usuarios) || state.usuarios.length === 0) && state.user) {
+      state.usuarios = [{
+        id_usuario: state.user.id_usuario,
+        nome: state.user.nome || 'Administrador',
+        papel_bolao: 'admin_bolao'
+      }];
+    }
+  } catch (err) {
+    if (container) {
+      container.innerHTML = `<div class="alert alert-err">Erro ao carregar participantes: ${escapeHtml(err.message || err)}</div>`;
+    }
+  }
+  renderAdminFormRodada();
+}
+
+function definirCotaTodosAdmin(valor) {
+  const v = String(valor || '0');
+  document.querySelectorAll('.select-cota-admin').forEach(s => {
+    s.value = v;
+  });
+  recalcularPreviewRodada();
+}
+
 // =========================================================================
-// CONSTRUTOR VISUAL DE DEZENAS + MODAL CALENDÁRIO (01 A 60)
+// CONSTRUTOR DE JOGOS + MODAL DE MULTI-SELEÇÃO (01 A 60 — 6 A 20 DEZENAS)
 // =========================================================================
 function obterListaJogosBuilder(modo) {
   if (modo === 'editar') {
     if (!Array.isArray(state.jogosBuilderEditar)) state.jogosBuilderEditar = [];
     return state.jogosBuilderEditar;
   }
-  if (!Array.isArray(state.jogosBuilderNovo) || state.jogosBuilderNovo.length === 0) {
-    state.jogosBuilderNovo = [['', '', '', '', '', '']];
+  if (!Array.isArray(state.jogosBuilderNovo)) {
+    state.jogosBuilderNovo = [[]];
   }
   return state.jogosBuilderNovo;
 }
 
+function normalizarDezenasJogo(arr) {
+  const nums = [...new Set(
+    (Array.isArray(arr) ? arr : [])
+      .map(v => parseInt(String(v || '').replace(/\D/g, ''), 10))
+      .filter(n => !isNaN(n) && n >= 1 && n <= 60)
+  )].sort((a, b) => a - b).slice(0, 20);
+  return nums.map(n => String(n).padStart(2, '0'));
+}
+
 function definirListaJogosBuilder(modo, lista) {
   const normalizada = Array.isArray(lista)
-    ? lista.map(j => (Array.isArray(j) ? j.map(v => {
-        const n = parseInt(String(v || '').replace(/\D/g, ''), 10);
-        return (!isNaN(n) && n >= 1 && n <= 60) ? String(n).padStart(2, '0') : '';
-      }) : ['', '', '', '', '', '']))
+    ? lista.map(j => normalizarDezenasJogo(j))
     : [];
 
   if (modo === 'editar') {
     state.jogosBuilderEditar = normalizada;
   } else {
-    state.jogosBuilderNovo = normalizada.length > 0 ? normalizada : [['', '', '', '', '', '']];
+    state.jogosBuilderNovo = normalizada.length > 0 ? normalizada : [[]];
   }
 }
 
 function importarJogosNoBuilder(modo, jogosArrays, substituir = false) {
   const novos = (Array.isArray(jogosArrays) ? jogosArrays : [])
-    .map(j => {
-      const limpos = (Array.isArray(j) ? j : [])
-        .map(v => parseInt(String(v || '').replace(/\D/g, ''), 10))
-        .filter(n => !isNaN(n) && n >= 1 && n <= 60);
-      const unicos = [...new Set(limpos)].sort((a, b) => a - b).slice(0, 20);
-      const formatados = unicos.map(n => String(n).padStart(2, '0'));
-      while (formatados.length < 6) formatados.push('');
-      return formatados;
-    })
-    .filter(j => j.some(v => v !== ''));
+    .map(j => normalizarDezenasJogo(j))
+    .filter(j => j.length > 0);
 
   if (substituir) {
     definirListaJogosBuilder(modo, novos);
   } else {
-    const atuais = obterListaJogosBuilder(modo).filter(j => j.some(v => v !== ''));
+    const atuais = obterListaJogosBuilder(modo)
+      .map(j => normalizarDezenasJogo(j))
+      .filter(j => j.length > 0);
     definirListaJogosBuilder(modo, [...atuais, ...novos]);
   }
   renderJogosBuilder(modo);
@@ -82,8 +146,10 @@ function importarJogosNoBuilder(modo, jogosArrays, substituir = false) {
 
 function adicionarJogoBuilder(modo) {
   const lista = obterListaJogosBuilder(modo);
-  lista.push(['', '', '', '', '', '']);
+  lista.push([]);
+  const novoIdx = lista.length - 1;
   renderJogosBuilder(modo);
+  abrirSeletorDezena(modo, novoIdx, '');
 }
 
 function removerJogoBuilder(modo, jogoIdx) {
@@ -91,7 +157,7 @@ function removerJogoBuilder(modo, jogoIdx) {
   if (jogoIdx < 0 || jogoIdx >= lista.length) return;
 
   if (modo === 'novo' && lista.length === 1) {
-    lista[0] = ['', '', '', '', '', ''];
+    lista[0] = [];
   } else {
     lista.splice(jogoIdx, 1);
   }
@@ -101,21 +167,7 @@ function removerJogoBuilder(modo, jogoIdx) {
 function limparJogoBuilder(modo, jogoIdx) {
   const lista = obterListaJogosBuilder(modo);
   if (!lista[jogoIdx]) return;
-  lista[jogoIdx] = new Array(lista[jogoIdx].length).fill('');
-  renderJogosBuilder(modo);
-}
-
-function alterarQtdDezenasJogo(modo, jogoIdx, novaQtd) {
-  const qtd = Math.max(6, Math.min(20, parseInt(novaQtd, 10) || 6));
-  const lista = obterListaJogosBuilder(modo);
-  if (!lista[jogoIdx]) return;
-  const atual = [...lista[jogoIdx]];
-  if (atual.length < qtd) {
-    while (atual.length < qtd) atual.push('');
-  } else if (atual.length > qtd) {
-    atual.length = qtd;
-  }
-  lista[jogoIdx] = atual;
+  lista[jogoIdx] = [];
   renderJogosBuilder(modo);
 }
 
@@ -127,48 +179,57 @@ function renderJogosBuilder(modo) {
   const lista = obterListaJogosBuilder(modo);
 
   if (lista.length === 0) {
-    container.innerHTML = `<div class="muted">Nenhum jogo adicionado. Toque em <strong>＋ Jogo</strong> para incluir dezenas.</div>`;
+    container.innerHTML = `<div class="muted">Nenhum jogo adicionado. Toque em <strong>＋ Jogo</strong> para escolher dezenas.</div>`;
     sincronizarJogosBuilderParaTexto(modo);
     return;
   }
 
-  container.innerHTML = lista.map((jogo, jIdx) => {
-    const qtdAtual = Math.max(6, Math.min(20, jogo.length || 6));
-    const preenchidos = jogo.filter(v => v !== '').length;
+  container.innerHTML = lista.map((jogoRaw, jIdx) => {
+    const jogo = normalizarDezenasJogo(jogoRaw);
+    lista[jIdx] = jogo;
+    const qtd = jogo.length;
+    const statusBadge = qtd >= 6
+      ? `<span class="badge badge-green">${qtd} dez.</span>`
+      : (qtd > 0 ? `<span class="badge badge-amber">${qtd}/6 dez.</span>` : `<span class="badge badge-blue">Vazio</span>`);
 
-    let opcoesQtd = '';
-    for (let q = 6; q <= 20; q++) {
-      opcoesQtd += `<option value="${q}" ${q === qtdAtual ? 'selected' : ''}>${q} dez.</option>`;
-    }
-
-    const slotsHtml = jogo.map((val, sIdx) => {
-      const filled = val !== '';
-      const label = filled ? escapeHtml(val) : '__';
-      return `
-        <button type="button"
-          class="dezena-slot-btn ${filled ? 'filled' : ''}"
-          onclick="abrirSeletorDezena('${modo}', ${jIdx}, ${sIdx})"
-          aria-label="Jogo ${jIdx + 1}, dezena ${sIdx + 1}: ${filled ? val : 'vazia'}">
-          ${label}
+    let corpoHtml;
+    if (qtd === 0) {
+      corpoHtml = `
+        <button type="button" class="dezena-slot-empty-cta" onclick="abrirSeletorDezena('${modo}', ${jIdx}, '')">
+          ＋ Toque para escolher as dezenas (01 a 60)
         </button>
       `;
-    }).join('');
+    } else {
+      const botoesDezenas = jogo.map(num => `
+        <button type="button"
+          class="dezena-slot-btn filled"
+          onclick="abrirSeletorDezena('${modo}', ${jIdx}, '${escapeHtml(num)}')"
+          title="Toque para editar as dezenas deste jogo">
+          ${escapeHtml(num)}
+        </button>
+      `).join('');
+
+      const btnMais = qtd < 20
+        ? `<button type="button" class="dezena-slot-btn" onclick="abrirSeletorDezena('${modo}', ${jIdx}, '')" title="Adicionar ou editar dezenas">＋</button>`
+        : '';
+
+      corpoHtml = `<div class="dezena-slots-flex">${botoesDezenas}${btnMais}</div>`;
+    }
 
     return `
       <div class="jogo-builder-card">
         <div class="jogo-builder-head">
-          <span class="jogo-builder-title">Jogo #${jIdx + 1} <span class="muted">(${preenchidos}/${qtdAtual})</span></span>
           <div class="toolbar-inline" style="gap:6px;">
-            <select style="width:auto; padding:4px 8px; font-size:0.78rem;" aria-label="Quantidade de dezenas do jogo ${jIdx + 1}" onchange="alterarQtdDezenasJogo('${modo}', ${jIdx}, this.value)">
-              ${opcoesQtd}
-            </select>
+            <span class="jogo-builder-title">Jogo #${jIdx + 1}</span>
+            ${statusBadge}
+          </div>
+          <div class="toolbar-inline" style="gap:6px;">
+            <button type="button" class="btn-secondary icon-action-btn" onclick="abrirSeletorDezena('${modo}', ${jIdx}, '')">✏️ Dezenas</button>
             <button type="button" class="btn-secondary icon-action-btn" title="Limpar dezenas" onclick="limparJogoBuilder('${modo}', ${jIdx})">Limpar</button>
             <button type="button" class="btn-danger icon-action-btn" title="Remover jogo" onclick="removerJogoBuilder('${modo}', ${jIdx})">🗑️</button>
           </div>
         </div>
-        <div class="dezena-slots-grid">
-          ${slotsHtml}
-        </div>
+        ${corpoHtml}
       </div>
     `;
   }).join('');
@@ -181,25 +242,16 @@ function extrairJogosDoBuilder(modo) {
   const jogosValidos = [];
   const erros = [];
 
-  lista.forEach((jogo, idx) => {
-    const preenchidos = jogo.filter(v => v !== '');
-    if (preenchidos.length === 0) return;
+  lista.forEach((jogoRaw, idx) => {
+    const nums = normalizarDezenasJogo(jogoRaw);
+    if (nums.length === 0) return;
 
-    const nums = [...new Set(
-      preenchidos
-        .map(v => parseInt(v, 10))
-        .filter(n => !isNaN(n) && n >= 1 && n <= 60)
-    )].sort((a, b) => a - b);
-
-    if (preenchidos.length < jogo.length) {
-      const faltam = jogo.length - preenchidos.length;
-      erros.push(`Jogo #${idx + 1}: falta escolher ${faltam} dezena(s).`);
-    } else if (nums.length < 6 || nums.length > 20) {
-      erros.push(`Jogo #${idx + 1}: precisa ter entre 6 e 20 dezenas únicas.`);
-    } else if (nums.length !== preenchidos.length) {
-      erros.push(`Jogo #${idx + 1}: há dezenas repetidas.`);
+    if (nums.length < 6) {
+      erros.push(`Jogo #${idx + 1}: tem ${nums.length} dezena(s) (mínimo 6).`);
+    } else if (nums.length > 20) {
+      erros.push(`Jogo #${idx + 1}: máximo de 20 dezenas.`);
     } else {
-      jogosValidos.push(nums.map(n => String(n).padStart(2, '0')));
+      jogosValidos.push(nums);
     }
   });
 
@@ -219,7 +271,7 @@ function sincronizarJogosBuilderParaTexto(modo) {
   const infoEl = document.getElementById(infoId);
   if (infoEl) {
     if (jogosValidos.length === 0 && erros.length === 0) {
-      infoEl.innerHTML = 'Toque em cada campo acima para escolher as dezenas (01 a 60) ou use Foto / Câmera / Arquivo.';
+      infoEl.innerHTML = 'Toque em um jogo acima para selecionar de 6 a 20 dezenas (01 a 60) ou use Foto / Câmera / Arquivo.';
     } else {
       let html = `<span style="color:#34d399;"><strong>${jogosValidos.length}</strong> jogo(s) completo(s)</span>`;
       if (erros.length > 0) {
@@ -228,41 +280,73 @@ function sincronizarJogosBuilderParaTexto(modo) {
       infoEl.innerHTML = html;
     }
   }
+
+  if (modo === 'editar') recalcularPreviewEdicaoRodada();
+  else recalcularPreviewRodada();
 }
 
-function abrirSeletorDezena(modo, jogoIdx, slotIdx) {
+// =========================================================================
+// MODAL DE MULTI-SELEÇÃO DO JOGO INTEIRO (01 A 60)
+// =========================================================================
+function abrirSeletorDezena(modo, jogoIdx, focoValor = '') {
   const lista = obterListaJogosBuilder(modo);
-  const jogo = lista[jogoIdx];
-  if (!jogo || slotIdx < 0 || slotIdx >= jogo.length) return;
+  if (jogoIdx < 0 || jogoIdx >= lista.length) return;
 
-  state.dezenaPickerAlvo = { modo, jogoIdx, slotIdx };
+  const selecionadas = normalizarDezenasJogo(lista[jogoIdx]);
+  state.dezenaPickerAlvo = {
+    modo,
+    jogoIdx,
+    selecionadas,
+    focoValor: focoValor ? String(focoValor).padStart(2, '0') : ''
+  };
 
-  const valorAtual = jogo[slotIdx] || '';
-  const usadasOutrosSlots = new Set(
-    jogo.filter((v, i) => i !== slotIdx && v !== '')
-  );
+  renderModalSeletorDezenas();
+  document.getElementById('dezenaPickerModal')?.classList.remove('hidden');
+}
+
+function renderModalSeletorDezenas() {
+  const alvo = state.dezenaPickerAlvo;
+  if (!alvo) return;
+
+  const selecionadas = normalizarDezenasJogo(alvo.selecionadas);
+  alvo.selecionadas = selecionadas;
+  const setSel = new Set(selecionadas);
+  const qtd = selecionadas.length;
 
   const titleEl = document.getElementById('dezenaPickerTitle');
   const subEl = document.getElementById('dezenaPickerSub');
+  const barEl = document.getElementById('dezenaPickerSelectedBar');
   const gridEl = document.getElementById('dezenaPickerGrid');
-  if (titleEl) titleEl.textContent = `Jogo #${jogoIdx + 1} • Dezena ${slotIdx + 1}`;
+  const avisoEl = document.getElementById('dezenaPickerAviso');
+  const btnOk = document.getElementById('btnConfirmarDezenasModal');
+
+  if (titleEl) titleEl.textContent = `Jogo #${alvo.jogoIdx + 1} • Dezenas (${qtd})`;
   if (subEl) {
-    subEl.textContent = valorAtual
-      ? `Atual: ${valorAtual} — toque em outro número de 01 a 60 para trocar`
-      : 'Toque em um número de 01 a 60';
+    subEl.textContent = 'Toque nos números para marcar ou desmarcar (de 6 até 20 dezenas)';
+  }
+
+  if (barEl) {
+    if (qtd === 0) {
+      barEl.innerHTML = '<span class="muted" style="font-size:0.8rem;">Nenhuma dezena selecionada ainda</span>';
+    } else {
+      barEl.innerHTML = selecionadas.map(n => `
+        <button type="button" class="dezena-selected-pill" onclick="alternarDezenaModal('${n}')" title="Toque para remover ${n}">
+          ${n}
+        </button>
+      `).join('');
+    }
   }
 
   if (gridEl) {
     let botoes = '';
     for (let n = 1; n <= 60; n++) {
       const numStr = String(n).padStart(2, '0');
-      const isSelected = numStr === valorAtual;
-      const isUsed = usadasOutrosSlots.has(numStr);
+      const isSelected = setSel.has(numStr);
+      const isFocus = alvo.focoValor && alvo.focoValor === numStr;
       botoes += `
         <button type="button"
-          class="dezena-cal-btn ${isSelected ? 'selected' : ''} ${isUsed ? 'used' : ''}"
-          ${isUsed ? 'disabled' : ''}
-          onclick="selecionarDezenaCalendario('${numStr}')">
+          class="dezena-cal-btn ${isSelected ? 'selected' : ''} ${isFocus ? 'active-focus' : ''}"
+          onclick="alternarDezenaModal('${numStr}')">
           ${numStr}
         </button>
       `;
@@ -270,22 +354,54 @@ function abrirSeletorDezena(modo, jogoIdx, slotIdx) {
     gridEl.innerHTML = botoes;
   }
 
-  document.getElementById('dezenaPickerModal')?.classList.remove('hidden');
+  if (avisoEl) {
+    if (qtd === 0) {
+      avisoEl.innerHTML = 'Escolha 6 dezenas (jogo simples) ou mais dezenas (até 20).';
+    } else if (qtd < 6) {
+      avisoEl.innerHTML = `<span style="color:#fbbf24;">Falta(m) <strong>${6 - qtd}</strong> dezena(s) para completar um jogo mínimo de 6.</span>`;
+    } else {
+      avisoEl.innerHTML = `<span style="color:#34d399;">✓ Jogo de <strong>${qtd} dezenas</strong> pronto. Toque em <strong>Confirmar</strong>.</span>`;
+    }
+  }
+
+  if (btnOk) {
+    btnOk.disabled = qtd > 0 && qtd < 6;
+    btnOk.textContent = qtd >= 6 ? `Confirmar (${qtd})` : 'Confirmar';
+  }
 }
 
-function selecionarDezenaCalendario(numStr) {
+function alternarDezenaModal(numStr) {
   const alvo = state.dezenaPickerAlvo;
   if (!alvo) return;
-  const lista = obterListaJogosBuilder(alvo.modo);
-  const jogo = lista[alvo.jogoIdx];
-  if (!jogo) return;
+  const n = String(numStr).padStart(2, '0');
+  const idx = alvo.selecionadas.indexOf(n);
 
-  jogo[alvo.slotIdx] = String(numStr).padStart(2, '0');
-
-  // Quando todas as dezenas do jogo estiverem preenchidas, ordena automaticamente (01 -> 60)
-  if (jogo.every(v => v !== '')) {
-    jogo.sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
+  if (idx >= 0) {
+    alvo.selecionadas.splice(idx, 1);
+  } else {
+    if (alvo.selecionadas.length >= 20) {
+      const avisoEl = document.getElementById('dezenaPickerAviso');
+      if (avisoEl) {
+        avisoEl.innerHTML = '<span style="color:#f87171;">Limite máximo de 20 dezenas por jogo atingido.</span>';
+      }
+      return;
+    }
+    alvo.selecionadas.push(n);
   }
+
+  alvo.focoValor = '';
+  renderModalSeletorDezenas();
+}
+
+function confirmarDezenasSelecionadas() {
+  const alvo = state.dezenaPickerAlvo;
+  if (!alvo) return;
+
+  const selecionadas = normalizarDezenasJogo(alvo.selecionadas);
+  if (selecionadas.length > 0 && selecionadas.length < 6) return;
+
+  const lista = obterListaJogosBuilder(alvo.modo);
+  lista[alvo.jogoIdx] = selecionadas;
 
   fecharSeletorDezena();
   renderJogosBuilder(alvo.modo);
@@ -294,12 +410,9 @@ function selecionarDezenaCalendario(numStr) {
 function limparDezenaSelecionada() {
   const alvo = state.dezenaPickerAlvo;
   if (!alvo) return;
-  const lista = obterListaJogosBuilder(alvo.modo);
-  const jogo = lista[alvo.jogoIdx];
-  if (jogo) jogo[alvo.slotIdx] = '';
-
-  fecharSeletorDezena();
-  renderJogosBuilder(alvo.modo);
+  alvo.selecionadas = [];
+  alvo.focoValor = '';
+  renderModalSeletorDezenas();
 }
 
 function fecharSeletorDezena() {
@@ -318,11 +431,21 @@ function renderAdminFormRodada() {
   const badgeRodada = document.getElementById('adminRodadaBolaoBadge');
   if (badgeRodada) badgeRodada.textContent = bolao ? bolao.nome : '';
 
-  // Preserva cotas já selecionadas se o formulário estiver aberto
   const mapaSelecionadas = {};
   container.querySelectorAll('.select-cota-admin').forEach(s => {
     mapaSelecionadas[s.dataset.uid] = s.value;
   });
+
+  if (!Array.isArray(state.usuarios) || state.usuarios.length === 0) {
+    container.innerHTML = `
+      <div class="alert alert-warn" style="margin-top:0;">
+        Nenhum participante carregado para este bolão ainda.
+        <button type="button" class="btn-secondary btn-sm" style="margin-left:8px;" onclick="recarregarParticipantesCadastro()">↻ Carregar participantes</button>
+      </div>
+    `;
+    recalcularPreviewRodada();
+    return;
+  }
 
   container.innerHTML = state.usuarios.map(u => {
     const val = mapaSelecionadas[u.id_usuario] || '0';
@@ -335,40 +458,55 @@ function renderAdminFormRodada() {
           <option value="1" ${val === '1' ? 'selected' : ''}>1 (Inteira)</option>
           <option value="1.5" ${val === '1.5' ? 'selected' : ''}>1,5</option>
           <option value="2" ${val === '2' ? 'selected' : ''}>2</option>
+          <option value="3" ${val === '3' ? 'selected' : ''}>3</option>
         </select>
       </div>
     `;
   }).join('');
 
-  renderJogosBuilder('novo');
   recalcularPreviewRodada();
 }
 
 function recalcularPreviewRodada() {
   const selects = [...document.querySelectorAll('.select-cota-admin')];
-  const valorTotal = parseFloat(document.getElementById('rodadaValorTotal')?.value) || 0;
+  const valorTotal = parseNumeroBR(document.getElementById('rodadaValorTotal')?.value);
   const totalCotas = selects.reduce((acc, s) => acc + parseFloat(s.value || 0), 0);
   const ehInteiro = totalCotas > 0 && (Math.round(totalCotas * 100) % 100 === 0);
 
   const totalEl = document.getElementById('prevTotalCotas');
   const statusEl = document.getElementById('prevStatusCotas');
   const btn = document.getElementById('btnCriarRodada');
+  const hintEl = document.getElementById('prevSalvarHint');
   if (!totalEl || !statusEl || !btn) return;
 
   totalEl.textContent = totalCotas.toString().replace('.', ',');
 
+  let motivoBloqueio = '';
   if (totalCotas === 0) {
     statusEl.className = 'badge badge-red';
     statusEl.textContent = 'Selecione';
+    motivoBloqueio = 'Selecione a cota de pelo menos 1 participante acima (ou toque em "Todos: 1") para liberar o botão Salvar Concurso.';
     btn.disabled = true;
   } else if (!ehInteiro) {
     statusEl.className = 'badge badge-amber';
     statusEl.textContent = 'Meia sem par';
+    motivoBloqueio = 'A soma das cotas está fracionada. Adicione outra meia cota (0,5) para fechar um número inteiro.';
+    btn.disabled = true;
+  } else if (valorTotal <= 0) {
+    statusEl.className = 'badge badge-amber';
+    statusEl.textContent = 'Sem valor';
+    motivoBloqueio = 'Informe o Valor Total do bilhete (ex.: 72,00) para liberar o botão Salvar Concurso.';
     btn.disabled = true;
   } else {
     statusEl.className = 'badge badge-green';
     statusEl.textContent = 'OK ✓';
-    btn.disabled = valorTotal <= 0;
+    btn.disabled = false;
+  }
+
+  if (hintEl) {
+    hintEl.innerHTML = motivoBloqueio
+      ? `<span style="color:#fbbf24;">💡 ${motivoBloqueio}</span>`
+      : '';
   }
 
   const valorCota = ehInteiro && valorTotal > 0 ? valorTotal / totalCotas : 0;
@@ -393,7 +531,7 @@ function limparFormularioRodada() {
   document.getElementById('detalhesBilheteBruto')?.classList.add('hidden');
   document.querySelectorAll('.select-cota-admin').forEach(s => { s.value = '0'; });
 
-  state.jogosBuilderNovo = [['', '', '', '', '', '']];
+  state.jogosBuilderNovo = [[]];
   renderJogosBuilder('novo');
   recalcularPreviewRodada();
 }
@@ -404,7 +542,7 @@ function cancelarCadastroRodada() {
   const concFim = document.getElementById('rodadaConcursoFim').value.trim();
   const dataBil = document.getElementById('rodadaDataBilhete').value.trim();
   const val = document.getElementById('rodadaValorTotal').value.trim();
-  const temDezena = obterListaJogosBuilder('novo').some(j => j.some(v => v !== ''));
+  const temDezena = obterListaJogosBuilder('novo').some(j => j.length > 0);
   const temCota = [...document.querySelectorAll('.select-cota-admin')].some(s => parseFloat(s.value) > 0);
 
   if ((desc || conc || concFim || dataBil || val || temDezena || temCota) && !confirm('Cancelar e limpar os campos deste concurso?')) {
@@ -421,7 +559,7 @@ async function criarNovaRodada() {
   const concursoIniRaw = document.getElementById('rodadaConcurso').value.trim();
   const concursoFimRaw = document.getElementById('rodadaConcursoFim').value.trim();
   const dataBilhete = document.getElementById('rodadaDataBilhete').value.trim();
-  const valorTotal = parseFloat(document.getElementById('rodadaValorTotal').value);
+  const valorTotal = parseNumeroBR(document.getElementById('rodadaValorTotal').value);
 
   const { jogosValidos, erros } = extrairJogosDoBuilder('novo');
   if (erros.length > 0) {
@@ -457,7 +595,7 @@ async function criarNovaRodada() {
     .map(s => ({ id_usuario: s.dataset.uid, nome_usuario: s.dataset.nome, fracao_cota: parseFloat(s.value) }))
     .filter(p => p.fracao_cota > 0);
 
-  if (!descricao || !valorTotal || participantes.length === 0) {
+  if (!descricao || valorTotal <= 0 || participantes.length === 0) {
     showMsg('adminRodadaFeedback', 'Preencha descrição, valor total e participantes.', 'err');
     return;
   }
@@ -1014,7 +1152,7 @@ async function executarGerenciamentoMembroNoBolao(bolaoIdEnc, uidEnc, acao, pape
 }
 
 // =========================================================================
-// MODAIS DE EDIÇÃO ADMIN — CONCURSOS, JOGOS (COM SELETOR 01-60) E PAGAMENTOS
+// MODAIS DE EDIÇÃO ADMIN — CONCURSOS, JOGOS (MULTI-SELEÇÃO 01-60) E PAGAMENTOS
 // =========================================================================
 function abrirModalEditarRodada(idRodada) {
   if (!usuarioEhAdminNoBolao()) return;
@@ -1027,7 +1165,7 @@ function abrirModalEditarRodada(idRodada) {
   document.getElementById('editRodadaConcurso').value = concursos[0] || r.concurso || '';
   document.getElementById('editRodadaConcursoFim').value = concursos.length ? concursos[concursos.length - 1] : (r.concurso_fim || '');
   document.getElementById('editRodadaDataBilhete').value = r.data_bilhete || '';
-  document.getElementById('editRodadaValorTotal').value = Number(r.valor_total || 0).toFixed(2);
+  document.getElementById('editRodadaValorTotal').value = Number(r.valor_total || 0).toFixed(2).replace('.', ',');
   document.getElementById('editRodadaStatus').value = String(r.status || 'ABERTA').toUpperCase();
   document.getElementById('editRodadaFeedback').innerHTML = '';
 
@@ -1079,13 +1217,16 @@ function atualizarPreviewJogosEdicao() {
 
 function recalcularPreviewEdicaoRodada() {
   const selects = [...document.querySelectorAll('.select-cota-edit')];
-  const valorTotal = parseFloat(document.getElementById('editRodadaValorTotal')?.value) || 0;
+  const valorTotal = parseNumeroBR(document.getElementById('editRodadaValorTotal')?.value);
   const totalCotas = selects.reduce((acc, s) => acc + parseFloat(s.value || 0), 0);
   const ehInteiro = totalCotas > 0 && (Math.round(totalCotas * 100) % 100 === 0);
 
-  document.getElementById('editPrevTotalCotas').textContent = totalCotas.toString().replace('.', ',');
+  const totalEl = document.getElementById('editPrevTotalCotas');
   const statusEl = document.getElementById('editPrevStatusCotas');
   const btn = document.getElementById('btnSalvarEdicaoRodada');
+  if (!totalEl || !statusEl || !btn) return;
+
+  totalEl.textContent = totalCotas.toString().replace('.', ',');
 
   if (totalCotas === 0) {
     statusEl.className = 'badge badge-red';
@@ -1112,7 +1253,7 @@ async function salvarEdicaoRodada() {
   const concIniRaw = document.getElementById('editRodadaConcurso').value.trim();
   const concFimRaw = document.getElementById('editRodadaConcursoFim').value.trim();
   const dataBilhete = document.getElementById('editRodadaDataBilhete').value.trim();
-  const valorTotal = parseFloat(document.getElementById('editRodadaValorTotal').value);
+  const valorTotal = parseNumeroBR(document.getElementById('editRodadaValorTotal').value);
   const status = document.getElementById('editRodadaStatus').value;
 
   const { jogosValidos, erros } = extrairJogosDoBuilder('editar');
@@ -1219,9 +1360,9 @@ async function salvarEdicaoPagamento() {
     const res = await apiPost({
       action: 'editarParticipacao',
       id_participacao: idPart,
-      fracao_cota: parseFloat(document.getElementById('editPagFracao').value) || 0,
-      valor_devido: parseFloat(document.getElementById('editPagDevido').value) || 0,
-      valor_pago: parseFloat(document.getElementById('editPagPago').value) || 0,
+      fracao_cota: parseNumeroBR(document.getElementById('editPagFracao').value),
+      valor_devido: parseNumeroBR(document.getElementById('editPagDevido').value),
+      valor_pago: parseNumeroBR(document.getElementById('editPagPago').value),
       status: document.getElementById('editPagStatus').value,
       data_pagamento: document.getElementById('editPagData').value.trim(),
       estornar_comprovantes: document.getElementById('editPagEstornarDocs').checked
