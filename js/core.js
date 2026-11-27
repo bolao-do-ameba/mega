@@ -32,6 +32,9 @@ let state = {
   boloesAdmin: [],
   membrosPorBolao: {},
   dashboardCarregado: false,
+  jogosBuilderNovo: [['', '', '', '', '', '']],
+  jogosBuilderEditar: [],
+  dezenaPickerAlvo: null,
   convite: {
     codigo: '',
     bolao: null,
@@ -60,11 +63,11 @@ const INFO_MODAL_CONTENT = {
   },
   menu_lateral: {
     titulo: '☰ Menu Principal',
-    html: '<p>Toque no ícone <strong>☰</strong> no canto superior esquerdo para abrir todos os menus do aplicativo: <strong>Meus Bolões</strong>, <strong>Pagar</strong>, <strong>Jogos & Rodadas</strong>, <strong>Resumo</strong>, <strong>Perfil</strong>, <strong>Tour</strong> e <strong>Admin</strong>.</p>'
+    html: '<p>Toque no ícone <strong>☰</strong> no canto superior esquerdo para abrir todos os menus do aplicativo: <strong>Meus Bolões</strong>, <strong>Pagar</strong>, <strong>Jogos & Concursos</strong>, <strong>Resumo</strong>, <strong>Perfil</strong>, <strong>Tour</strong> e <strong>Admin</strong>.</p>'
   },
   boloes_carrossel: {
     titulo: '🎯 Meus Bolões',
-    html: '<p>Arraste os cartões para a <strong>esquerda ou direita</strong> para navegar entre os bolões em que você participa e toque em um cartão para entrar.</p><p style="margin-top:8px;">Cada bolão possui seus próprios jogos, rodadas, participantes e chave Pix isolados.</p>'
+    html: '<p>Arraste os cartões para a <strong>esquerda ou direita</strong> para navegar entre os bolões em que você participa e toque em um cartão para entrar.</p><p style="margin-top:8px;">Cada bolão possui seus próprios jogos, concursos, participantes e chave Pix isolados.</p>'
   },
   boloes_perfil: {
     titulo: '🎯 Bolões que Participo',
@@ -84,23 +87,23 @@ const INFO_MODAL_CONTENT = {
   },
   pendencias: {
     titulo: '📌 Pendências em Aberto',
-    html: '<p>Lista todas as rodadas em que você ainda possui saldo a pagar neste bolão. Toque em <strong>Anexar</strong> para enviar o comprovante e dar baixa automática.</p>'
+    html: '<p>Lista todos os concursos em que você ainda possui saldo a pagar neste bolão. Toque em <strong>Anexar</strong> para enviar o comprovante e dar baixa automática.</p>'
   },
   comprovante: {
     titulo: '🧾 Leitor de Comprovante Pix',
     html: '<p>Envie o PDF ou print do comprovante (até 10 MB). A leitura roda localmente no seu aparelho (sem IA) e valida:</p><ul><li>Valor exato da pendência;</li><li>Nome do recebedor ou chave Pix;</li><li>ID único da transação (antifraude);</li><li>Bloqueio automático de agendamentos.</li></ul><p style="margin-top:8px;">Aprovado, o sistema registra a baixa na hora e guarda uma cópia no Google Drive do bolão.</p>'
   },
   jogos_rodadas: {
-    titulo: '🎟️ Jogos & Rodadas',
-    html: '<p>Reúne em uma única tela os <strong>Jogos por Concurso</strong> e as <strong>Rodadas & Rateios</strong> do bolão selecionado.</p><p style="margin-top:8px;">Use os botões no topo (<strong>Tudo</strong>, <strong>Jogos</strong> ou <strong>Rodadas</strong>) para filtrar a visualização.</p>'
+    titulo: '🎟️ Jogos & Concursos',
+    html: '<p>Reúne em uma única tela os <strong>Jogos por Concurso</strong>, os <strong>Concursos & Rateios</strong> e o botão <strong>＋ Cadastrar Jogos</strong> (para administradores).</p><p style="margin-top:8px;">Use os botões no topo (<strong>Tudo</strong>, <strong>Jogos</strong> ou <strong>Concursos</strong>) para filtrar a visualização.</p>'
   },
   jogos: {
     titulo: '🎟️ Jogos por Concurso',
     html: '<p>Agrupa todos os jogos apostados por número de concurso. Bilhetes de <strong>Teimosinha</strong> (vários concursos seguidos) aparecem automaticamente em cada concurso em que valem.</p><p style="margin-top:8px;">Quando o resultado daquele concurso é publicado, os acertos acendem em verde e destacam <strong>Quadra</strong>, <strong>Quina</strong> e <strong>Sena</strong>. Administradores podem tocar em <strong>✏️</strong> para corrigir dezenas ou concursos.</p>'
   },
   rodadas: {
-    titulo: '🎱 Rodadas & Rateios',
-    html: '<p>Mostra cada rodada lançada, a data do bilhete, o intervalo de concursos, o valor por cota, o status de cada participante e o link <strong>📄</strong> para abrir o comprovante salvo no Drive.</p><p style="margin-top:8px;">Administradores podem editar rodadas, jogos, cotas e pagamentos usando os botões <strong>✏️</strong> e <strong>🗑️</strong>.</p>'
+    titulo: '🎱 Concursos & Rateios',
+    html: '<p>Mostra cada concurso lançado, a data do bilhete, o intervalo de concursos, o valor por cota, o status de cada participante e o link <strong>📄</strong> para abrir o comprovante salvo no Drive.</p><p style="margin-top:8px;">Administradores podem editar concursos, jogos, cotas e pagamentos usando os botões <strong>✏️</strong> e <strong>🗑️</strong>.</p>'
   },
   resumo: {
     titulo: '📊 Resumo Mensal & Situação Atual',
@@ -112,7 +115,7 @@ const INFO_MODAL_CONTENT = {
   },
   ranking: {
     titulo: '📜 Ranking Histórico',
-    html: '<p>Total acumulado de cotas assumidas por cada participante ao longo de todas as rodadas deste bolão.</p>'
+    html: '<p>Total acumulado de cotas assumidas por cada participante ao longo de todos os concursos deste bolão.</p>'
   },
   minha_conta: {
     titulo: '💳 Minha Conta',
@@ -127,12 +130,12 @@ const INFO_MODAL_CONTENT = {
     html: '<p>Faz um passeio guiado destacando na tela cada função principal do aplicativo, passo a passo.</p>'
   },
   admin_rodada: {
-    titulo: '⚙️ Nova Rodada',
-    html: '<p>Cadastre uma rodada no bolão selecionado definindo descrição, concurso inicial e final (para Teimosinha), data do bilhete, valor total, dezenas e cotas dos participantes.</p><p style="margin-top:8px;">A soma das cotas precisa fechar um <strong>número inteiro</strong> (quem escolhe 0,5 precisa formar par com outro 0,5). Depois de lançada, qualquer dado pode ser editado em Jogos & Rodadas.</p>'
+    titulo: '➕ Cadastrar Jogos',
+    html: '<p>Cadastre um concurso definindo descrição, concurso inicial e final (para Teimosinha), data do bilhete, valor total, dezenas e cotas dos participantes.</p><p style="margin-top:8px;">A soma das cotas precisa fechar um <strong>número inteiro</strong> (quem escolhe 0,5 precisa formar par com outro 0,5). Depois de salvo, qualquer dado pode ser editado tocando em <strong>✏️</strong>.</p>'
   },
   admin_ocr: {
-    titulo: '📷 Leitura OCR de Bilhete Caixa',
-    html: '<p>Aponte a câmera ou escolha uma foto do canhoto da Mega-Sena da Caixa. O leitor identifica automaticamente:</p><ul><li>Todos os jogos separados pelas linhas horizontais;</li><li>Concurso único ou intervalo (ex.: <code>CONC 3087 ATÉ 3090</code>);</li><li>Valor total do bilhete (ex.: <code>R$ 72,00</code>);</li><li>Data impressa no bilhete (ex.: <code>17NOV2026</code>).</li></ul><p style="margin-top:8px;">Dica: enquadre o bilhete inteiro com boa luz e confira os números antes de lançar.</p>'
+    titulo: '📷 Leitura OCR & Seletor de Dezenas',
+    html: '<p>Você pode preencher os jogos de duas formas (ou combinar as duas):</p><ul><li><strong>Automático (Foto, Câmera ao Vivo ou Arquivo):</strong> lê os jogos do canhoto da Caixa, intervalo de concursos (ex.: <code>3087 ATÉ 3090</code>), valor total e data;</li><li><strong>Manual (01 a 60):</strong> toque diretamente em qualquer campo de dezena para abrir o seletor estilo calendário e escolher ou corrigir o número.</li></ul>'
   },
   admin_pendentes: {
     titulo: '👥 Solicitações Pendentes',
@@ -148,7 +151,7 @@ const INFO_MODAL_CONTENT = {
   },
   pendente_tela: {
     titulo: '⏳ Aguardando Aprovação',
-    html: '<p>Por privacidade, jogos, rodadas, participantes e chave Pix só ficam visíveis depois que o administrador aprovar seu pedido. Toque em <strong>Verificar aprovação</strong> para consultar.</p>'
+    html: '<p>Por privacidade, jogos, concursos, participantes e chave Pix só ficam visíveis depois que o administrador aprovar seu pedido. Toque em <strong>Verificar aprovação</strong> para consultar.</p>'
   }
 };
 
@@ -398,7 +401,7 @@ function parsearJogosTexto(texto) {
     if (unicos.length >= 6 && unicos.length <= 20) {
       jogosValidos.push(unicos.map(n => String(n).padStart(2, '0')));
     } else {
-      erros.push(`Linha ${idx + 1}: ${unicos.length} dezena(s) válida(s) (precisa entre 6 e 20).`);
+      erros.push(`Jogo ${idx + 1}: ${unicos.length} dezena(s) válida(s) (precisa entre 6 e 20).`);
     }
   });
 
@@ -410,7 +413,7 @@ function atualizarPreviewJogos() {
   const infoEl = document.getElementById('previewJogosInfo');
   if (!infoEl) return;
   if (!txt.trim()) {
-    infoEl.innerHTML = '0 jogos';
+    infoEl.innerHTML = '0 jogos completos';
     return;
   }
   const { jogosValidos, erros } = parsearJogosTexto(txt);
@@ -791,6 +794,10 @@ function atualizarBadgesEPermissoes() {
   }
 
   document.getElementById('menuAdminBtn')?.classList.toggle('hidden', !isAdmin);
+  document.getElementById('btnAbrirCadastroJogos')?.classList.toggle('hidden', !isAdmin);
+  if (!isAdmin) {
+    document.getElementById('cardAdminRodada')?.classList.add('hidden');
+  }
   document.getElementById('adminBuscaResultadoWrap')?.classList.toggle('hidden', !isAdmin);
   document.getElementById('tourAdminGuideCard')?.classList.toggle('hidden', !isAdmin);
   document.getElementById('btnAbrirModalCriarBolao')?.classList.toggle('hidden', !ehSuper);
@@ -888,6 +895,11 @@ window.addEventListener('DOMContentLoaded', async () => {
 
 window.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
+    const dezenaModal = document.getElementById('dezenaPickerModal');
+    if (dezenaModal && !dezenaModal.classList.contains('hidden')) {
+      if (typeof fecharSeletorDezena === 'function') fecharSeletorDezena();
+      return;
+    }
     fecharMenuLateral();
     fecharInfoModal();
     if (typeof fecharModalCriarBolao === 'function') fecharModalCriarBolao();
@@ -939,6 +951,7 @@ async function fazerLogin() {
 function fazerLogout() {
   fecharMenuLateral();
   if (typeof encerrarTour === 'function') encerrarTour();
+  if (typeof fecharSeletorDezena === 'function') fecharSeletorDezena();
   if (typeof fecharCameraAoVivo === 'function') fecharCameraAoVivo();
   if (typeof fecharModalCriarBolao === 'function') fecharModalCriarBolao();
   if (typeof fecharModalEditarRodada === 'function') fecharModalEditarRodada();
@@ -957,6 +970,7 @@ function fazerLogout() {
   state.dashboardCarregado = false;
   state.convitePendente = null;
 
+  document.getElementById('cardAdminRodada')?.classList.add('hidden');
   document.getElementById('appHeader')?.classList.add('hidden');
   document.getElementById('mainApp')?.classList.add('hidden');
   document.getElementById('inviteSection')?.classList.add('hidden');
@@ -1019,7 +1033,6 @@ function entrarNoApp() {
 }
 
 function trocarAba(tabId, btnEl) {
-  // Compatibilidade caso algum fluxo antigo solicite tabJogos ou tabRodadas
   if (tabId === 'tabJogos') {
     tabId = 'tabJogosRodadas';
     if (typeof trocarVisaoJogosRodadas === 'function') trocarVisaoJogosRodadas('jogos');
