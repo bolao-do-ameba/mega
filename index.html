@@ -13,7 +13,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Bolão Ameba" />
 
-  <link rel="stylesheet" href="./css/styles.css?v=5" />
+  <link rel="stylesheet" href="./css/styles.css?v=6" />
 
   <script src="./config.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -132,6 +132,16 @@
 
   <!-- APP PRINCIPAL -->
   <main id="mainApp" class="hidden">
+    <!-- AVISO AUTOMÁTICO PARA MANTER PUSH SEMPRE ATIVO -->
+    <div id="pushAutoBanner" class="alert alert-warn row-between hidden" style="margin-top:0; margin-bottom:12px;">
+      <div id="pushAutoBannerTexto" style="flex:1; min-width:180px;">
+        🔔 Ative as notificações para receber resultados da Mega-Sena e avisos de cobrança automaticamente.
+      </div>
+      <div class="toolbar-inline" style="gap:6px;">
+        <button id="btnPushAutoAtivar" type="button" class="btn-primary btn-sm" onclick="ativarNotificacoesPush()">Ativar agora</button>
+        <button type="button" class="btn-secondary btn-sm" onclick="ocultarBannerPushSessao()" aria-label="Fechar aviso">✕</button>
+      </div>
+    </div>
     <!-- CARD ÚLTIMO RESULTADO DA MEGA-SENA (EXIBIDO APENAS EM PAGAR, JOGOS & CONCURSOS E RESUMO) -->
     <section id="cardUltimoResultado" class="card mega-banner hidden">
       <div class="row-between">
@@ -382,10 +392,14 @@
 
       <div class="grid-2">
         <div id="cardRankingAtual" class="card">
-          <div class="card-title-row">
-            <h2>🚨 Devedores Atuais</h2>
-            <button type="button" class="info-btn" onclick="abrirInfoModal('devedores')" aria-label="Informações sobre devedores">i</button>
+          <div class="row-between" style="margin-bottom:10px;">
+            <div class="card-title-row" style="margin-bottom:0;">
+              <h2 style="margin:0;">🚨 Devedores Atuais</h2>
+              <button type="button" class="info-btn" onclick="abrirInfoModal('devedores')" aria-label="Informações sobre devedores">i</button>
+            </div>
+            <button id="btnCobrarDevedoresPush" type="button" class="btn-warning btn-sm hidden" onclick="enviarPushTodosDevedores()">🔔 Cobrar Todos</button>
           </div>
+          <div id="feedbackCobrarDevedores"></div>
           <div id="rankingAtual"></div>
         </div>
 
@@ -853,12 +867,12 @@
 </div>
 
 <!-- MÓDULOS JAVASCRIPT (CARREGADOS EM ORDEM) -->
-<script src="./js/core.js?v=5"></script>
-<script src="./js/convite.js?v=5"></script>
-<script src="./js/ocr-pix.js?v=5"></script>
-<script src="./js/ocr-bilhete.js?v=5"></script>
-<script src="./js/abas-membro.js?v=5"></script>
-<script src="./js/abas-admin.js?v=5"></script>
-<script src="./js/tour.js?v=5"></script>
+<script src="./js/core.js?v=6"></script>
+<script src="./js/convite.js?v=6"></script>
+<script src="./js/ocr-pix.js?v=6"></script>
+<script src="./js/ocr-bilhete.js?v=6"></script>
+<script src="./js/abas-membro.js?v=6"></script>
+<script src="./js/abas-admin.js?v=6"></script>
+<script src="./js/tour.js?v=6"></script>
 </body>
 </html>
