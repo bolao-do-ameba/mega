@@ -14,7 +14,7 @@
   --text: #f1f5f9;
   --muted: #94a3b8;
   --radius: 12px;
-  --nav-height: 68px;
+  --header-height: 60px;
 }
 
 * {
@@ -42,7 +42,8 @@ body {
   background: var(--bg);
   color: var(--text);
   min-height: 100vh;
-  padding-bottom: calc(var(--nav-height) + 28px + env(safe-area-inset-bottom, 0px));
+  min-height: 100dvh;
+  padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -57,52 +58,211 @@ body {
 .hidden { display: none !important; }
 .divider { height: 1px; background: var(--border); margin: 16px 0; }
 
-/* HEADER */
+/* =========================================================================
+   HEADER + BOTÃO SANDUÍCHE NO TOPO ESQUERDO
+   ========================================================================= */
 header {
   width: 100%;
+  min-height: var(--header-height);
   background: linear-gradient(135deg, #064e3b, #0f172a);
   border-bottom: 1px solid var(--border);
-  padding: 12px 16px;
+  padding: 10px 16px;
   position: sticky;
   top: 0;
-  z-index: 20;
+  z-index: 30;
 }
 .header-inner {
   max-width: 960px;
   margin: 0 auto;
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 8px;
   align-items: center;
   justify-content: space-between;
+}
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+.hamburger-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  padding: 0;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: var(--text);
+}
+.hamburger-btn:hover {
+  background: rgba(16, 185, 129, 0.22);
+  border-color: var(--primary);
+}
+.hamburger-btn svg {
+  width: 22px;
+  height: 22px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2.2;
+  stroke-linecap: round;
 }
 .brand {
   display: flex;
   align-items: center;
   gap: 8px;
   font-weight: 800;
-  font-size: 1.05rem;
+  font-size: 1rem;
   min-width: 0;
+}
+.brand-title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .header-actions {
   display: flex;
   gap: 6px;
   align-items: center;
-  flex-wrap: wrap;
+  flex-shrink: 0;
 }
 
-/* CARROSSEL DE BOLÕES (GRADIENTE ESQUERDA -> TRANSPARENTE NA DIREITA) */
-.carousel-section { margin-bottom: 14px; }
-.carousel-header {
+/* =========================================================================
+   MENU SANDUÍCHE LATERAL (DRAWER)
+   ========================================================================= */
+.drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: rgba(4, 9, 20, 0.72);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+.side-drawer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  z-index: 90;
+  width: min(300px, 84vw);
+  background: #0f1a2d;
+  border-right: 1px solid var(--border);
+  box-shadow: 12px 0 36px rgba(0, 0, 0, 0.65);
+  display: flex;
+  flex-direction: column;
+  padding: calc(16px + env(safe-area-inset-top, 0px)) 14px calc(18px + env(safe-area-inset-bottom, 0px));
+  animation: drawerSlideIn 0.2s ease-out;
+}
+@keyframes drawerSlideIn {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+.drawer-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding-bottom: 14px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.drawer-user-info {
+  min-width: 0;
+  flex: 1;
+}
+.drawer-user-info strong {
+  display: block;
+  font-size: 1rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 6px;
+}
+.drawer-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.drawer-bolao-pill {
+  font-size: 0.72rem;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
+}
+.drawer-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  overflow-y: auto;
+}
+.drawer-nav-btn {
+  width: 100%;
+  background: transparent;
+  color: var(--text);
+  border: 1px solid transparent;
+  border-radius: 10px;
+  padding: 12px 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.94rem;
+  font-weight: 700;
+  text-align: left;
+  transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease;
+}
+.drawer-nav-btn svg {
+  width: 20px;
+  height: 20px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex-shrink: 0;
+}
+.drawer-nav-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+.drawer-nav-btn.active {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: rgba(16, 185, 129, 0.45);
+  color: #34d399;
+}
+.drawer-foot {
+  padding-top: 14px;
+  margin-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+/* =========================================================================
+   PÁGINA INICIAL: CARROSSEL DE BOLÕES EM TELA CHEIA
+   ========================================================================= */
+.inicio-fullscreen {
+  min-height: calc(100dvh - var(--header-height) - 48px);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 14px;
+}
+.inicio-top-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-.boloes-carousel {
-  display: flex;
   gap: 10px;
+  padding: 0 2px;
+}
+.boloes-carousel-full {
+  display: flex;
+  gap: 14px;
   overflow-x: auto;
   overflow-y: hidden;
   scroll-snap-type: x mandatory;
@@ -110,85 +270,127 @@ header {
   -webkit-overflow-scrolling: touch;
   touch-action: pan-x pan-y;
   overscroll-behavior-x: contain;
-  padding: 2px 2px 6px;
+  padding: 8px 6vw 14px;
+  margin: 0 -16px;
   scrollbar-width: none;
 }
-.boloes-carousel::-webkit-scrollbar { display: none; }
+.boloes-carousel-full::-webkit-scrollbar { display: none; }
 
-.bolao-slide-card {
-  flex: 0 0 min(82%, 300px);
+.bolao-hero-card {
+  flex: 0 0 min(84vw, 420px);
+  min-height: min(60dvh, 420px);
   scroll-snap-align: center;
   background:
     linear-gradient(
       90deg,
-      color-mix(in srgb, var(--card-accent, var(--bolao-accent)) 30%, transparent) 0%,
-      color-mix(in srgb, var(--card-accent, var(--bolao-accent)) 10%, transparent) 50%,
+      color-mix(in srgb, var(--card-accent, var(--bolao-accent)) 42%, transparent) 0%,
+      color-mix(in srgb, var(--card-accent, var(--bolao-accent)) 16%, transparent) 52%,
       transparent 100%
     ),
     var(--surface);
   border: 1.5px solid var(--border);
-  border-left: 5px solid var(--card-accent, var(--bolao-accent));
-  border-radius: 12px;
-  padding: 12px 14px;
-  text-align: left;
+  border-left: 6px solid var(--card-accent, var(--bolao-accent));
+  border-radius: 18px;
+  padding: 24px 20px;
   color: var(--text);
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  transition: border-color 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+  justify-content: space-between;
+  gap: 18px;
+  text-align: left;
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.35);
+  transition: transform 0.16s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
-.bolao-slide-card:active { transform: scale(0.98); }
-.bolao-slide-card.active {
-  border-color: color-mix(in srgb, var(--card-accent, var(--bolao-accent)) 65%, var(--border));
-  border-left: 5px solid var(--card-accent, var(--bolao-accent));
+.bolao-hero-card:active { transform: scale(0.985); }
+.bolao-hero-card.active {
+  border-color: color-mix(in srgb, var(--card-accent, var(--bolao-accent)) 72%, var(--border));
+  border-left: 6px solid var(--card-accent, var(--bolao-accent));
   background:
     linear-gradient(
       90deg,
-      color-mix(in srgb, var(--card-accent, var(--bolao-accent)) 48%, transparent) 0%,
-      color-mix(in srgb, var(--card-accent, var(--bolao-accent)) 18%, transparent) 52%,
+      color-mix(in srgb, var(--card-accent, var(--bolao-accent)) 54%, transparent) 0%,
+      color-mix(in srgb, var(--card-accent, var(--bolao-accent)) 20%, transparent) 54%,
       transparent 100%
     ),
     var(--surface);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--card-accent, var(--bolao-accent)) 40%, transparent);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45), 0 0 0 1px color-mix(in srgb, var(--card-accent, var(--bolao-accent)) 45%, transparent);
 }
-.bolao-slide-card.pending { opacity: 0.85; border-style: dashed; }
-.bolao-slide-top {
+.bolao-hero-card.pending {
+  opacity: 0.9;
+  border-style: dashed;
+}
+.bolao-hero-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  flex-wrap: wrap;
 }
-.bolao-slide-name {
+.bolao-hero-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.75rem;
+  background: color-mix(in srgb, var(--card-accent, var(--bolao-accent)) 22%, #0f172a);
+  border: 1px solid color-mix(in srgb, var(--card-accent, var(--bolao-accent)) 55%, transparent);
+}
+.bolao-hero-mid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.bolao-hero-name {
+  font-size: 1.45rem;
   font-weight: 800;
-  font-size: 0.96rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.22;
+  overflow-wrap: anywhere;
 }
-.bolao-slide-meta {
+.bolao-hero-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+.bolao-hero-cta {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 6px;
-  font-size: 0.75rem;
-  color: var(--muted);
+  gap: 10px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
+
 .carousel-dots {
   display: flex;
   justify-content: center;
-  gap: 6px;
+  gap: 8px;
   margin-top: 4px;
 }
 .carousel-dot {
-  width: 7px;
-  height: 7px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background: var(--border);
   border: none;
   padding: 0;
   transition: width 0.2s ease, background 0.2s ease;
 }
-.carousel-dot.active { width: 20px; border-radius: 99px; background: var(--primary); }
+.carousel-dot.active { width: 24px; border-radius: 99px; background: var(--primary); }
+
+/* BARRA DE FILTRO DA PÁGINA UNIFICADA JOGOS & RODADAS */
+.unified-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
 
 /* CARD DE BOLÃO NA LISTA DO PERFIL */
 .bolao-perfil-card {
@@ -679,69 +881,6 @@ pre {
 }
 .camera-controls { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
 
-/* NAVEGAÇÃO INFERIOR */
-.bottom-nav {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 40;
-  width: 100%;
-  background: rgba(13, 22, 38, 0.95);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  border-top: 1px solid var(--border);
-  padding: 6px 4px calc(8px + env(safe-area-inset-bottom, 0px));
-  box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.45);
-}
-.bottom-nav-inner {
-  max-width: 760px;
-  margin: 0 auto;
-  display: flex;
-  align-items: stretch;
-  justify-content: space-around;
-  gap: 2px;
-}
-.bottom-nav-btn {
-  flex: 1;
-  min-width: 0;
-  background: transparent;
-  color: var(--muted);
-  border: none;
-  border-radius: 12px;
-  padding: 6px 2px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-  font-size: 0.65rem;
-  font-weight: 600;
-  position: relative;
-}
-.bottom-nav-btn svg {
-  width: 21px;
-  height: 21px;
-  stroke: currentColor;
-  fill: none;
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-.bottom-nav-btn span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
-.bottom-nav-btn.active { color: var(--primary); background: rgba(16, 185, 129, 0.12); }
-.bottom-nav-btn.active::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 24px;
-  height: 3px;
-  border-radius: 0 0 99px 99px;
-  background: var(--primary);
-}
-
 /* TOUR E SPOTLIGHT */
 .tour-hero {
   background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(19, 30, 49, 0.96));
@@ -875,12 +1014,12 @@ pre {
 
 @media (max-width: 520px) {
   header { padding: 10px 12px; }
-  .brand { font-size: 0.96rem; }
+  .brand { font-size: 0.94rem; }
   .container { padding: 12px; }
   .card { padding: 14px; }
   #userNameTop { display: none; }
   .input-conc-manual { width: 118px; }
-  .bottom-nav-btn { font-size: 0.6rem; }
-  .bottom-nav-btn svg { width: 19px; height: 19px; }
-  .bolao-slide-card { flex: 0 0 86%; }
+  .boloes-carousel-full { margin: 0 -12px; padding: 8px 6vw 14px; }
+  .bolao-hero-card { flex: 0 0 86vw; min-height: 58dvh; padding: 20px 16px; }
+  .bolao-hero-name { font-size: 1.32rem; }
 }
