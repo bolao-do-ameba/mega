@@ -1,5 +1,5 @@
 // =========================================================================
-// ABAS DO MEMBRO — RESULTADO, PAGAR, JOGOS & RODADAS UNIFICADOS,
+// ABAS DO MEMBRO — RESULTADO, PAGAR, JOGOS & CONCURSOS UNIFICADOS,
 // RESUMO MENSAL, RANKINGS E PERFIL (COM BOLÕES QUE PARTICIPO)
 // =========================================================================
 
@@ -155,7 +155,7 @@ function irParaPagarParticipacao(idParticipacao) {
 }
 
 // =========================================================================
-// ABA 2 (UNIFICADA): JOGOS POR CONCURSO + RODADAS & RATEIOS
+// ABA 2 (UNIFICADA): JOGOS POR CONCURSO + CONCURSOS & RATEIOS
 // =========================================================================
 function trocarVisaoJogosRodadas(visao, btnEl) {
   const modo = ['ambos', 'jogos', 'rodadas'].includes(visao) ? visao : 'ambos';
@@ -245,7 +245,7 @@ function renderJogosPorConcurso() {
       const tagBilhete = meta.dataBilhete ? ` • ${escapeHtml(meta.dataBilhete)}` : '';
       const tagTeim = meta.ehTeimosinha ? ` (${escapeHtml(meta.concDisplay)})` : '';
       const btnEditJogo = isAdmin
-        ? `<button type="button" class="btn-secondary icon-action-btn" title="Editar jogos desta rodada" onclick="abrirModalEditarRodada('${escapeHtml(meta.idRodada)}')">✏️</button>`
+        ? `<button type="button" class="btn-secondary icon-action-btn" title="Editar jogos deste concurso" onclick="abrirModalEditarRodada('${escapeHtml(meta.idRodada)}')">✏️</button>`
         : '';
 
       return `
@@ -395,7 +395,7 @@ function renderRodadas() {
   const container = document.getElementById('listaRodadas');
   if (!container) return;
   if (state.rodadas.length === 0) {
-    container.innerHTML = `<p class="muted">Nenhuma rodada.</p>`;
+    container.innerHTML = `<p class="muted">Nenhum concurso cadastrado.</p>`;
     return;
   }
 
@@ -443,7 +443,7 @@ function renderRodadas() {
     const botoesRodadaAdmin = isAdmin
       ? `<div class="toolbar-inline" style="gap:6px;">
           <button type="button" class="btn-secondary btn-sm" onclick="abrirModalEditarRodada('${escapeHtml(r.id_rodada)}')">✏️ Editar</button>
-          <button type="button" class="btn-danger btn-sm" onclick="excluirRodadaAdmin('${escapeHtml(r.id_rodada)}')" aria-label="Excluir rodada">🗑️</button>
+          <button type="button" class="btn-danger btn-sm" onclick="excluirRodadaAdmin('${escapeHtml(r.id_rodada)}')" aria-label="Excluir concurso">🗑️</button>
         </div>`
       : '';
 
@@ -667,7 +667,7 @@ function renderRankings() {
       <div class="list-item row-between">
         <div>
           <strong>#${i + 1} ${escapeHtml(d.nome)}</strong>
-          <div class="muted">${d.rodadas_pendentes} rodada(s)</div>
+          <div class="muted">${d.rodadas_pendentes} concurso(s)</div>
         </div>
         <span class="badge badge-red">${formatBRL(d.divida_atual)}</span>
       </div>
