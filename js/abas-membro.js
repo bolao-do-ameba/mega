@@ -1,6 +1,6 @@
 // =========================================================================
-// ABAS DO MEMBRO — RESULTADO, PAGAR, JOGOS (MULTI-CONCURSO + EDIÇÃO ADMIN),
-// RODADAS (+ EDIÇÃO ADMIN), RESUMO MENSAL, RANKINGS, PERFIL (COM MEUS BOLÕES)
+// ABAS DO MEMBRO — RESULTADO, PAGAR, JOGOS & RODADAS UNIFICADOS,
+// RESUMO MENSAL, RANKINGS E PERFIL (COM BOLÕES QUE PARTICIPO)
 // =========================================================================
 
 function conferirListaJogos(jogos, resultadoObj) {
@@ -155,8 +155,21 @@ function irParaPagarParticipacao(idParticipacao) {
 }
 
 // =========================================================================
-// ABA 2: JOGOS POR CONCURSO (TEIMOSINHA + BOTÃO EDITAR PARA ADMIN)
+// ABA 2 (UNIFICADA): JOGOS POR CONCURSO + RODADAS & RATEIOS
 // =========================================================================
+function trocarVisaoJogosRodadas(visao, btnEl) {
+  const modo = ['ambos', 'jogos', 'rodadas'].includes(visao) ? visao : 'ambos';
+  state.visaoJogosRodadas = modo;
+
+  document.querySelectorAll('#tabJogosRodadas .unified-top-bar .pill-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.visao === modo);
+  });
+  if (btnEl) btnEl.classList.add('active');
+
+  document.getElementById('cardJogosConcursos')?.classList.toggle('hidden', modo === 'rodadas');
+  document.getElementById('cardRodadas')?.classList.toggle('hidden', modo === 'jogos');
+}
+
 function alternarOrdemConcursos() {
   state.ordemConcursosDesc = !state.ordemConcursosDesc;
   document.getElementById('btnOrdemConcursos').textContent =
@@ -293,9 +306,6 @@ function renderJogosPorConcurso() {
   }).join('');
 }
 
-// =========================================================================
-// ABA 3: RODADAS + CONFERÊNCIA MULTI-CONCURSO + EDIÇÃO ADMIN
-// =========================================================================
 function montarBlocoJogosConferencia(rodada) {
   const jogos = Array.isArray(rodada.jogos) ? rodada.jogos : [];
   if (jogos.length === 0) return '';
@@ -477,7 +487,7 @@ async function baixaManualAdmin(idParticipacao, idUsuario, saldo) {
 }
 
 // =========================================================================
-// ABA 4: RESUMO MENSAL & RANKINGS
+// ABA 3: RESUMO MENSAL & RANKINGS
 // =========================================================================
 function calcularDadosResumoMensal() {
   const mapaRodadaMes = {};
@@ -677,7 +687,7 @@ function renderRankings() {
 }
 
 // =========================================================================
-// ABA 5: PERFIL — LISTA DE BOLÕES QUE PARTICIPO + MINHA CONTA + PERFIL
+// ABA 4: PERFIL — BOLÕES QUE PARTICIPO + MINHA CONTA + PERFIL
 // =========================================================================
 function renderMeusBoloesPerfil() {
   const alvo = document.getElementById('listaMeusBoloesPerfil');

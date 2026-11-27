@@ -24,12 +24,12 @@ function conviteEstaAtivo() {
 }
 
 function ocultarTelasDoPortal() {
+  if (typeof fecharMenuLateral === 'function') fecharMenuLateral();
   ['loginSection', 'inviteSection', 'pendingSection', 'mainApp'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.classList.add('hidden');
   });
-  document.getElementById('appHeader').classList.add('hidden');
-  document.getElementById('bottomNav').classList.add('hidden');
+  document.getElementById('appHeader')?.classList.add('hidden');
 }
 
 function exibirTelaConvite() {

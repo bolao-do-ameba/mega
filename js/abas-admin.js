@@ -1,5 +1,5 @@
 // =========================================================================
-// ABA 7: ADMIN — NOVA RODADA, PENDENTES, GESTÃO UNIFICADA DE BOLÕES
+// ABA 6: ADMIN — NOVA RODADA, PENDENTES, GESTÃO UNIFICADA DE BOLÕES
 // (CONFIG + PIX + CONVITE + MEMBROS DENTRO DE CADA BOLÃO) E MODAIS DE EDIÇÃO
 // =========================================================================
 function renderAdminFormRodada() {
@@ -89,7 +89,8 @@ function cancelarCadastroRodada() {
 
   limparFormularioRodada();
   document.getElementById('adminRodadaFeedback').innerHTML = '';
-  trocarAba('tabRodadas');
+  if (typeof trocarVisaoJogosRodadas === 'function') trocarVisaoJogosRodadas('ambos');
+  trocarAba('tabJogosRodadas');
 }
 
 async function criarNovaRodada() {
@@ -337,7 +338,6 @@ async function carregarBoloesAdmin() {
     if (res && res.success && Array.isArray(res.boloes)) {
       lista = res.boloes;
     } else {
-      // Fallback compatível caso o GAS ainda restrinja listarBoloesAdmin ao super_admin
       const meusAdmin = (state.boloes || []).filter(b =>
         String(b.status_membro || '').toUpperCase() === 'APROVADO' &&
         String(b.papel || '').toLowerCase() === 'admin_bolao'
@@ -348,7 +348,6 @@ async function carregarBoloesAdmin() {
       lista = detalhes.filter(d => d && d.success && d.bolao).map(d => d.bolao);
     }
 
-    // Ordena: bolão selecionado primeiro, depois ativos por nome, depois encerrados/arquivados
     lista.sort((a, b) => {
       const aAtivo = String(a.bolao_id) === String(state.bolaoId) ? 0 : 1;
       const bAtivo = String(b.bolao_id) === String(state.bolaoId) ? 0 : 1;
@@ -362,7 +361,6 @@ async function carregarBoloesAdmin() {
     state.boloesAdmin = lista;
     renderBoloesAdmin();
 
-    // Carrega automaticamente os membros do bolão ativo (que inicia expandido)
     if (lista.some(b => String(b.bolao_id) === String(state.bolaoId))) {
       await carregarMembrosDoBolao(state.bolaoId, true);
     } else if (lista.length > 0) {

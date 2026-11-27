@@ -1,5 +1,5 @@
 // =========================================================================
-// MOTOR DE TOUR INTERATIVO COM SPOTLIGHT
+// MOTOR DE TOUR INTERATIVO COM SPOTLIGHT (MENU SANDUÍCHE + INÍCIO TELA CHEIA)
 // =========================================================================
 window.tourState = {
   ativo: false,
@@ -10,31 +10,22 @@ window.tourState = {
 
 function obterPassosTour() {
   const isAdmin = usuarioEhAdminNoBolao();
-  const temBoloes = (state.boloes || []).some(b =>
-    ['APROVADO', 'PENDENTE'].includes(String(b.status_membro || '').toUpperCase())
-  );
 
   const passos = [
     {
-      id: 'nav',
-      tab: 'tabPagar',
-      selector: '#bottomNav',
-      titulo: '📱 Navegação',
-      texto: 'Use a barra fixa na parte inferior para alternar entre Pagar, Jogos, Rodadas, Resumo, Perfil e Tour.'
-    }
-  ];
-
-  if (temBoloes) {
-    passos.push({
       id: 'boloes',
-      tab: 'tabPagar',
-      selector: '#boloesCarouselSection',
+      tab: 'tabInicio',
+      selector: '#boloesCarouselTrack',
       titulo: '🎯 Meus Bolões',
-      texto: 'Arraste os cartões para a esquerda ou direita e toque em um bolão para alternar entre suas sessões.'
-    });
-  }
-
-  passos.push(
+      texto: 'Esta é a tela inicial em tela cheia. Arraste os cartões para a esquerda ou direita e toque em um bolão para entrar.'
+    },
+    {
+      id: 'nav',
+      tab: 'tabInicio',
+      selector: '#btnMenuToggle',
+      titulo: '☰ Menu Principal',
+      texto: 'Toque no ícone sanduíche no topo esquerdo para abrir todos os menus: Meus Bolões, Pagar, Jogos & Rodadas, Resumo, Perfil, Tour e Admin.'
+    },
     {
       id: 'resultado',
       tab: 'tabPagar',
@@ -64,18 +55,18 @@ function obterPassosTour() {
       texto: 'Anexe o PDF ou print do comprovante Pix. A validação ocorre no aparelho e salva uma cópia no Google Drive.'
     },
     {
-      id: 'jogos',
-      tab: 'tabJogos',
+      id: 'jogos_rodadas',
+      tab: 'tabJogosRodadas',
       selector: '#cardJogosConcursos',
-      titulo: '🎟️ Jogos por Concurso',
-      texto: 'Mostra todos os jogos agrupados por concurso — inclusive bilhetes de Teimosinha em cada concurso correspondente.'
+      titulo: '🎟️ Jogos & Rodadas (Unificados)',
+      texto: 'Veja os jogos agrupados por concurso — inclusive bilhetes de Teimosinha — e filtre no topo entre Tudo, Jogos ou Rodadas.'
     },
     {
       id: 'rodadas',
-      tab: 'tabRodadas',
+      tab: 'tabJogosRodadas',
       selector: '#cardRodadas',
       titulo: '📄 Rodadas & Rateios',
-      texto: 'Acompanhe os rateios, a data do bilhete, o ícone 📄 do comprovante no Drive e a conferência das dezenas.'
+      texto: 'Logo abaixo dos jogos ficam os rateios de cada rodada, a data do bilhete, o ícone 📄 do comprovante no Drive e a conferência das dezenas.'
     },
     {
       id: 'resumo',
@@ -98,7 +89,7 @@ function obterPassosTour() {
       titulo: '👤 Perfil',
       texto: 'Ajuste seu Nome no comprovante para coincidir com o nome impresso pelo banco no Pix.'
     }
-  );
+  ];
 
   if (isAdmin) {
     passos.push(
@@ -131,6 +122,8 @@ function obterPassosTour() {
 
 function iniciarTour(indiceInicial = 0) {
   if (!state.user) return;
+  if (typeof fecharMenuLateral === 'function') fecharMenuLateral();
+
   window.tourState.passos = obterPassosTour();
   if (window.tourState.passos.length === 0) return;
 
@@ -181,6 +174,10 @@ function encerrarTour() {
 function renderPassoTour() {
   const passo = window.tourState.passos[window.tourState.indice];
   if (!passo) return;
+
+  if (passo.tab === 'tabJogosRodadas' && typeof trocarVisaoJogosRodadas === 'function') {
+    trocarVisaoJogosRodadas('ambos');
+  }
 
   if (passo.tab && state.abaAtual !== passo.tab) {
     trocarAba(passo.tab);

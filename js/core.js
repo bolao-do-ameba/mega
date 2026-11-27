@@ -1,5 +1,5 @@
 // =========================================================================
-// CORE — CONFIGURAÇÃO, ESTADO, API, CARROSSEL DE BOLÕES E MODAL "i"
+// CORE — CONFIGURAÇÃO, ESTADO, API, MENU SANDUÍCHE, CARROSSEL TELA CHEIA E MODAL "i"
 // =========================================================================
 const GAS_API_URL = (window.BOLAO_CONFIG && window.BOLAO_CONFIG.GAS_API_URL) || '';
 const ONESIGNAL_APP_ID = (window.BOLAO_CONFIG && window.BOLAO_CONFIG.ONESIGNAL_APP_ID) || '';
@@ -21,7 +21,8 @@ let state = {
   pendenciaSelecionada: null,
   arquivoAtual: null,
   sugestaoCadastroAtual: '',
-  abaAtual: 'tabPagar',
+  abaAtual: 'tabInicio',
+  visaoJogosRodadas: 'ambos',
   ordemConcursosDesc: true,
   filtroMinhasTransferencias: 'todas',
   cameraStream: null,
@@ -30,6 +31,7 @@ let state = {
   sessionToken: '',
   boloesAdmin: [],
   membrosPorBolao: {},
+  dashboardCarregado: false,
   convite: {
     codigo: '',
     bolao: null,
@@ -45,8 +47,8 @@ let state = {
   convitePendente: null
 };
 
-// Abas onde o carrossel de bolões e o card de resultados ficam ocultos
-const ABAS_SEM_TOPO_GLOBAL = new Set(['tabCadastro', 'tabAdmin', 'tabTour']);
+// Card de resultado da Mega-Sena aparece apenas nas telas operacionais do bolão
+const ABAS_COM_RESULTADO = new Set(['tabPagar', 'tabJogosRodadas', 'tabResumo']);
 
 // =========================================================================
 // DICIONÁRIO DE EXPLICAÇÕES DO BOTÃO "i" (MODAL DE INFORMAÇÃO)
@@ -56,9 +58,13 @@ const INFO_MODAL_CONTENT = {
     titulo: 'Acesso ao Portal',
     html: '<p>Entre com seu telefone (com DDD) e senha cadastrados.</p><p style="margin-top:8px;">O cadastro não é aberto nesta tela: para criar uma conta ou entrar em um novo bolão, acesse o <strong>link de convite</strong> enviado pelo administrador.</p>'
   },
+  menu_lateral: {
+    titulo: '☰ Menu Principal',
+    html: '<p>Toque no ícone <strong>☰</strong> no canto superior esquerdo para abrir todos os menus do aplicativo: <strong>Meus Bolões</strong>, <strong>Pagar</strong>, <strong>Jogos & Rodadas</strong>, <strong>Resumo</strong>, <strong>Perfil</strong>, <strong>Tour</strong> e <strong>Admin</strong>.</p>'
+  },
   boloes_carrossel: {
     titulo: '🎯 Meus Bolões',
-    html: '<p>Arraste os cartões para a <strong>esquerda ou direita</strong> e toque em um bolão para alternar entre suas sessões (ex.: bolão frequente e Mega da Virada).</p><p style="margin-top:8px;">Cada bolão possui seus próprios jogos, rodadas, participantes e chave Pix isolados.</p>'
+    html: '<p>Arraste os cartões para a <strong>esquerda ou direita</strong> para navegar entre os bolões em que você participa e toque em um cartão para entrar.</p><p style="margin-top:8px;">Cada bolão possui seus próprios jogos, rodadas, participantes e chave Pix isolados.</p>'
   },
   boloes_perfil: {
     titulo: '🎯 Bolões que Participo',
@@ -83,6 +89,10 @@ const INFO_MODAL_CONTENT = {
   comprovante: {
     titulo: '🧾 Leitor de Comprovante Pix',
     html: '<p>Envie o PDF ou print do comprovante (até 10 MB). A leitura roda localmente no seu aparelho (sem IA) e valida:</p><ul><li>Valor exato da pendência;</li><li>Nome do recebedor ou chave Pix;</li><li>ID único da transação (antifraude);</li><li>Bloqueio automático de agendamentos.</li></ul><p style="margin-top:8px;">Aprovado, o sistema registra a baixa na hora e guarda uma cópia no Google Drive do bolão.</p>'
+  },
+  jogos_rodadas: {
+    titulo: '🎟️ Jogos & Rodadas',
+    html: '<p>Reúne em uma única tela os <strong>Jogos por Concurso</strong> e as <strong>Rodadas & Rateios</strong> do bolão selecionado.</p><p style="margin-top:8px;">Use os botões no topo (<strong>Tudo</strong>, <strong>Jogos</strong> ou <strong>Rodadas</strong>) para filtrar a visualização.</p>'
   },
   jogos: {
     titulo: '🎟️ Jogos por Concurso',
@@ -118,7 +128,7 @@ const INFO_MODAL_CONTENT = {
   },
   admin_rodada: {
     titulo: '⚙️ Nova Rodada',
-    html: '<p>Cadastre uma rodada no bolão selecionado definindo descrição, concurso inicial e final (para Teimosinha), data do bilhete, valor total, dezenas e cotas dos participantes.</p><p style="margin-top:8px;">A soma das cotas precisa fechar um <strong>número inteiro</strong> (quem escolhe 0,5 precisa formar par com outro 0,5). Depois de lançada, qualquer dado pode ser editado na aba Rodadas ou Jogos.</p>'
+    html: '<p>Cadastre uma rodada no bolão selecionado definindo descrição, concurso inicial e final (para Teimosinha), data do bilhete, valor total, dezenas e cotas dos participantes.</p><p style="margin-top:8px;">A soma das cotas precisa fechar um <strong>número inteiro</strong> (quem escolhe 0,5 precisa formar par com outro 0,5). Depois de lançada, qualquer dado pode ser editado em Jogos & Rodadas.</p>'
   },
   admin_ocr: {
     titulo: '📷 Leitura OCR de Bilhete Caixa',
@@ -153,6 +163,34 @@ function abrirInfoModal(chave) {
 function fecharInfoModal() {
   const modal = document.getElementById('infoModal');
   if (modal) modal.classList.add('hidden');
+}
+
+// =========================================================================
+// MENU SANDUÍCHE LATERAL (DRAWER)
+// =========================================================================
+function abrirMenuLateral() {
+  const backdrop = document.getElementById('sideMenuBackdrop');
+  const drawer = document.getElementById('sideMenuDrawer');
+  const btn = document.getElementById('btnMenuToggle');
+  if (backdrop) backdrop.classList.remove('hidden');
+  if (drawer) drawer.classList.remove('hidden');
+  if (btn) btn.setAttribute('aria-expanded', 'true');
+  document.body.style.overflow = 'hidden';
+}
+
+function fecharMenuLateral() {
+  const backdrop = document.getElementById('sideMenuBackdrop');
+  const drawer = document.getElementById('sideMenuDrawer');
+  const btn = document.getElementById('btnMenuToggle');
+  if (backdrop) backdrop.classList.add('hidden');
+  if (drawer) drawer.classList.add('hidden');
+  if (btn) btn.setAttribute('aria-expanded', 'false');
+  document.body.style.overflow = '';
+}
+
+function selecionarMenuAba(tabId, btnEl) {
+  fecharMenuLateral();
+  trocarAba(tabId, btnEl);
 }
 
 // =========================================================================
@@ -460,7 +498,7 @@ function aplicarConfigPixNaInterface() {
 }
 
 // =========================================================================
-// IDENTIDADE, PERMISSÕES E CARROSSEL DE BOLÕES
+// IDENTIDADE, PERMISSÕES E CARROSSEL TELA CHEIA (MEUS BOLÕES)
 // =========================================================================
 function obterBolaoAtivoLocal() {
   return (state.boloes || []).find(b => String(b.bolao_id || '') === String(state.bolaoId || '')) || null;
@@ -482,34 +520,34 @@ function usuarioEhAdminNoBolao() {
 }
 
 function atualizarVisibilidadeTopoPorAba(tabId) {
-  const aba = tabId || state.abaAtual || 'tabPagar';
-  const ocultarTopo = ABAS_SEM_TOPO_GLOBAL.has(aba);
+  const aba = tabId || state.abaAtual || 'tabInicio';
+  const mostrarResultado = ABAS_COM_RESULTADO.has(aba);
 
   const bannerMega = document.getElementById('cardUltimoResultado');
   if (bannerMega) {
-    bannerMega.classList.toggle('hidden', ocultarTopo);
+    bannerMega.classList.toggle('hidden', !mostrarResultado);
   }
 
-  const carrossel = document.getElementById('boloesCarouselSection');
-  if (carrossel) {
-    const temBoloesVisiveis = (state.boloes || []).some(b =>
-      ['APROVADO', 'PENDENTE'].includes(String(b.status_membro || '').toUpperCase())
-    );
-    carrossel.classList.toggle('hidden', ocultarTopo || !temBoloesVisiveis);
+  const brandTitle = document.getElementById('headerBrandTitle');
+  const bolao = obterBolaoAtivoLocal();
+  if (brandTitle) {
+    brandTitle.textContent = (aba === 'tabInicio' || !bolao) ? 'Bolão do Ameba' : bolao.nome;
   }
 }
 
 function atualizarIdentidadeBolao() {
   const bolao = obterBolaoAtivoLocal();
   const corValida = normalizarHexCor6(bolao && bolao.cor_tema, '#10b981');
-  // Cor do bolão atua somente no preenchimento gradiente/borda dos cards (botões mantêm --primary fixo)
+  // Cor do bolão atua apenas no preenchimento gradiente/borda dos cards (botões mantêm --primary fixo)
   document.documentElement.style.setProperty('--bolao-accent', corValida);
 
   const badgeRodada = document.getElementById('adminRodadaBolaoBadge');
-  if (badgeRodada) {
-    badgeRodada.textContent = bolao ? bolao.nome : '';
-  }
+  if (badgeRodada) badgeRodada.textContent = bolao ? bolao.nome : '';
 
+  const drawerBolao = document.getElementById('drawerActiveBolao');
+  if (drawerBolao) drawerBolao.textContent = bolao ? `• ${bolao.nome}` : '';
+
+  atualizarVisibilidadeTopoPorAba(state.abaAtual);
   renderizarCarrosselBoloes();
   if (typeof renderMeusBoloesPerfil === 'function') renderMeusBoloesPerfil();
 }
@@ -524,12 +562,28 @@ function renderizarCarrosselBoloes() {
     ['APROVADO', 'PENDENTE'].includes(String(b.status_membro || '').toUpperCase())
   );
 
-  atualizarVisibilidadeTopoPorAba(state.abaAtual);
-  if (visiveis.length === 0) return;
+  if (visiveis.length === 0) {
+    if (counterEl) counterEl.textContent = '';
+    dotsWrap.classList.add('hidden');
+    dotsWrap.innerHTML = '';
+    track.innerHTML = `
+      <div class="bolao-hero-card" style="--card-accent:#10b981; margin:0 auto;">
+        <div class="bolao-hero-top">
+          <span class="bolao-hero-icon">🍀</span>
+          <span class="badge badge-blue">SEM BOLÕES</span>
+        </div>
+        <div class="bolao-hero-mid">
+          <div class="bolao-hero-name">Nenhum bolão ativo</div>
+          <div class="bolao-hero-meta">Acesse um link de convite para participar de um bolão.</div>
+        </div>
+      </div>
+    `;
+    return;
+  }
 
   const idxAtivo = Math.max(0, visiveis.findIndex(b => String(b.bolao_id) === String(state.bolaoId)));
   if (counterEl) {
-    counterEl.textContent = visiveis.length > 1 ? `${idxAtivo + 1}/${visiveis.length}` : 'Ativo';
+    counterEl.textContent = visiveis.length > 1 ? `${idxAtivo + 1}/${visiveis.length}` : '1/1';
   }
 
   track.innerHTML = visiveis.map(b => {
@@ -543,30 +597,43 @@ function renderizarCarrosselBoloes() {
     let badgeHtml = `<span class="badge badge-green">ATIVO</span>`;
     if (isPendente) badgeHtml = `<span class="badge badge-amber">PENDENTE</span>`;
     else if (statusBolao !== 'ATIVO') badgeHtml = `<span class="badge badge-blue">${escapeHtml(statusBolao)}</span>`;
-    else if (isAtivo) badgeHtml = `<span class="badge badge-green">SELECIONADO</span>`;
+    else if (isAtivo) badgeHtml = `<span class="badge badge-green">ATUAL</span>`;
 
     const tipoLabel = String(b.tipo || 'FREQUENTE').toUpperCase() === 'COMEMORATIVO' ? 'Comemorativo' : 'Frequente';
     const papelLabel = isPendente
       ? 'Aguardando aprovação'
-      : (String(b.papel || '').toLowerCase() === 'admin_bolao' ? 'Admin' : 'Membro');
+      : (String(b.papel || '').toLowerCase() === 'admin_bolao' ? 'Administrador' : 'Participante');
 
     const onclickFn = isPendente
       ? `abrirPendenteDoCarrossel('${idEnc}')`
-      : `trocarBolaoAtivo('${idEnc}')`;
+      : `abrirBolaoDoInicio('${idEnc}')`;
+
+    const ctaTexto = isPendente ? 'Aguardando liberação' : (isAtivo ? 'Bolão selecionado' : 'Toque para entrar');
+    const ctaBtn = isPendente
+      ? `<span class="badge badge-amber">Ver status →</span>`
+      : `<span class="btn-primary btn-sm">Abrir →</span>`;
 
     return `
       <button type="button"
-        class="bolao-slide-card ${isAtivo ? 'active' : ''} ${isPendente ? 'pending' : ''}"
+        class="bolao-hero-card ${isAtivo ? 'active' : ''} ${isPendente ? 'pending' : ''}"
         style="--card-accent:${cor}"
         data-bolao-id="${escapeHtml(b.bolao_id)}"
         onclick="${onclickFn}">
-        <div class="bolao-slide-top">
-          <span class="bolao-slide-name">🍀 ${escapeHtml(b.nome)}</span>
+        <div class="bolao-hero-top">
+          <span class="bolao-hero-icon">🍀</span>
           ${badgeHtml}
         </div>
-        <div class="bolao-slide-meta">
-          <span>${tipoLabel}</span>
-          <span>${papelLabel}</span>
+        <div class="bolao-hero-mid">
+          <div class="bolao-hero-name">${escapeHtml(b.nome)}</div>
+          <div class="bolao-hero-meta">
+            <span>${tipoLabel}</span>
+            <span>•</span>
+            <span>${papelLabel}</span>
+          </div>
+        </div>
+        <div class="bolao-hero-cta">
+          <span class="muted">${ctaTexto}</span>
+          ${ctaBtn}
         </div>
       </button>
     `;
@@ -585,20 +652,26 @@ function renderizarCarrosselBoloes() {
     dotsWrap.innerHTML = '';
   }
 
-  if (!ABAS_SEM_TOPO_GLOBAL.has(state.abaAtual)) {
-    const cardAtivo = track.querySelector('.bolao-slide-card.active');
-    if (cardAtivo) {
-      setTimeout(() => {
-        cardAtivo.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
-      }, 40);
-    }
+  if (state.abaAtual === 'tabInicio') {
+    centralizarCardAtivoCarrossel();
+  }
+}
+
+function centralizarCardAtivoCarrossel() {
+  const track = document.getElementById('boloesCarouselTrack');
+  if (!track) return;
+  const cardAtivo = track.querySelector('.bolao-hero-card.active') || track.querySelector('.bolao-hero-card');
+  if (cardAtivo) {
+    setTimeout(() => {
+      cardAtivo.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    }, 40);
   }
 }
 
 function rolarCarrosselParaIndice(idx) {
   const track = document.getElementById('boloesCarouselTrack');
   if (!track) return;
-  const cards = track.querySelectorAll('.bolao-slide-card');
+  const cards = track.querySelectorAll('.bolao-hero-card');
   if (cards[idx]) {
     cards[idx].scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
   }
@@ -610,7 +683,7 @@ function sincronizarDotsCarrossel() {
   const counterEl = document.getElementById('boloesCarouselCounter');
   if (!track || dots.length === 0) return;
 
-  const cards = [...track.querySelectorAll('.bolao-slide-card')];
+  const cards = [...track.querySelectorAll('.bolao-hero-card')];
   const center = track.scrollLeft + (track.clientWidth / 2);
   let maisProximo = 0;
   let menorDist = Infinity;
@@ -645,6 +718,31 @@ function abrirPendenteDoCarrossel(bolaoIdEnc) {
   if (typeof exibirTelaPendente === 'function') exibirTelaPendente();
 }
 
+async function abrirBolaoDoInicio(bolaoIdEnc) {
+  const alvoId = decodeURIComponent(String(bolaoIdEnc || '')).trim();
+  if (!alvoId) return;
+
+  const alvo = (state.boloes || []).find(b =>
+    String(b.bolao_id || '') === alvoId &&
+    String(b.status_membro || '').toUpperCase() === 'APROVADO'
+  );
+  if (!alvo) return;
+
+  const mudou = alvoId !== String(state.bolaoId || '');
+  state.bolaoId = alvoId;
+  state.user.bolao_id = alvoId;
+  state.user.perfil = (usuarioEhSuperAdmin() || String(alvo.papel || '').toLowerCase() === 'admin_bolao') ? 'admin' : 'user';
+  localStorage.setItem('bolao_ameba_user', JSON.stringify(state.user));
+
+  atualizarBadgesEPermissoes();
+  atualizarIdentidadeBolao();
+  trocarAba('tabPagar');
+
+  if (mudou || !state.dashboardCarregado) {
+    await carregarDashboard();
+  }
+}
+
 async function trocarBolaoAtivo(bolaoIdEnc, manterAbaAtual) {
   const novoId = decodeURIComponent(String(bolaoIdEnc || '')).trim();
   if (!novoId || novoId === String(state.bolaoId || '')) return;
@@ -670,15 +768,29 @@ async function trocarBolaoAtivo(bolaoIdEnc, manterAbaAtual) {
 }
 
 function atualizarBadgesEPermissoes() {
-  const roleBadge = document.getElementById('userRoleBadge');
   const isAdmin = usuarioEhAdminNoBolao();
   const ehSuper = usuarioEhSuperAdmin();
+  const labelPapel = ehSuper ? 'SUPER ADMIN' : (isAdmin ? 'ADMIN' : 'MEMBRO');
+  const classeBadge = isAdmin ? 'badge badge-amber' : 'badge badge-green';
 
+  const roleBadge = document.getElementById('userRoleBadge');
   if (roleBadge) {
-    roleBadge.textContent = ehSuper ? 'SUPER ADMIN' : (isAdmin ? 'ADMIN' : 'MEMBRO');
-    roleBadge.className = isAdmin ? 'badge badge-amber' : 'badge badge-green';
+    roleBadge.textContent = labelPapel;
+    roleBadge.className = classeBadge;
   }
-  document.getElementById('tabAdminBtn')?.classList.toggle('hidden', !isAdmin);
+
+  const drawerRole = document.getElementById('drawerUserRole');
+  if (drawerRole) {
+    drawerRole.textContent = labelPapel;
+    drawerRole.className = classeBadge;
+  }
+
+  const drawerName = document.getElementById('drawerUserName');
+  if (drawerName && state.user) {
+    drawerName.textContent = state.user.nome || 'Participante';
+  }
+
+  document.getElementById('menuAdminBtn')?.classList.toggle('hidden', !isAdmin);
   document.getElementById('adminBuscaResultadoWrap')?.classList.toggle('hidden', !isAdmin);
   document.getElementById('tourAdminGuideCard')?.classList.toggle('hidden', !isAdmin);
   document.getElementById('btnAbrirModalCriarBolao')?.classList.toggle('hidden', !ehSuper);
@@ -776,6 +888,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 
 window.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
+    fecharMenuLateral();
     fecharInfoModal();
     if (typeof fecharModalCriarBolao === 'function') fecharModalCriarBolao();
     if (typeof fecharModalEditarRodada === 'function') fecharModalEditarRodada();
@@ -824,6 +937,7 @@ async function fazerLogin() {
 }
 
 function fazerLogout() {
+  fecharMenuLateral();
   if (typeof encerrarTour === 'function') encerrarTour();
   if (typeof fecharCameraAoVivo === 'function') fecharCameraAoVivo();
   if (typeof fecharModalCriarBolao === 'function') fecharModalCriarBolao();
@@ -840,14 +954,14 @@ function fazerLogout() {
   state.boloes = [];
   state.boloesAdmin = [];
   state.membrosPorBolao = {};
+  state.dashboardCarregado = false;
   state.convitePendente = null;
 
-  document.getElementById('appHeader').classList.add('hidden');
-  document.getElementById('mainApp').classList.add('hidden');
-  document.getElementById('bottomNav').classList.add('hidden');
-  document.getElementById('inviteSection').classList.add('hidden');
-  document.getElementById('pendingSection').classList.add('hidden');
-  document.getElementById('loginSection').classList.remove('hidden');
+  document.getElementById('appHeader')?.classList.add('hidden');
+  document.getElementById('mainApp')?.classList.add('hidden');
+  document.getElementById('inviteSection')?.classList.add('hidden');
+  document.getElementById('pendingSection')?.classList.add('hidden');
+  document.getElementById('loginSection')?.classList.remove('hidden');
 }
 
 function entrarNoApp() {
@@ -886,7 +1000,6 @@ function entrarNoApp() {
   document.getElementById('pendingSection').classList.add('hidden');
   document.getElementById('appHeader').classList.remove('hidden');
   document.getElementById('mainApp').classList.remove('hidden');
-  document.getElementById('bottomNav').classList.remove('hidden');
 
   document.getElementById('userNameTop').textContent = state.user.nome;
   atualizarBadgesEPermissoes();
@@ -898,24 +1011,38 @@ function entrarNoApp() {
     });
   }
 
-  trocarAba('tabPagar');
-  carregarDashboard();
+  // Abre na tela inicial com o carrossel em tela cheia para escolher o bolão
+  trocarAba('tabInicio');
+  if (state.bolaoId) {
+    carregarDashboard();
+  }
 }
 
 function trocarAba(tabId, btnEl) {
+  // Compatibilidade caso algum fluxo antigo solicite tabJogos ou tabRodadas
+  if (tabId === 'tabJogos') {
+    tabId = 'tabJogosRodadas';
+    if (typeof trocarVisaoJogosRodadas === 'function') trocarVisaoJogosRodadas('jogos');
+  } else if (tabId === 'tabRodadas') {
+    tabId = 'tabJogosRodadas';
+    if (typeof trocarVisaoJogosRodadas === 'function') trocarVisaoJogosRodadas('rodadas');
+  }
+
   document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-  document.querySelectorAll('.bottom-nav-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.drawer-nav-btn').forEach(b => b.classList.remove('active'));
 
   const targetTab = document.getElementById(tabId);
   if (targetTab) targetTab.classList.remove('hidden');
 
-  const activeBtn = btnEl || document.querySelector(`.bottom-nav-btn[data-tab="${tabId}"]`);
+  const activeBtn = btnEl || document.querySelector(`.drawer-nav-btn[data-tab="${tabId}"]`);
   if (activeBtn) activeBtn.classList.add('active');
 
   state.abaAtual = tabId;
   atualizarVisibilidadeTopoPorAba(tabId);
 
-  if (tabId === 'tabCadastro' && typeof renderMeusBoloesPerfil === 'function') {
+  if (tabId === 'tabInicio') {
+    centralizarCardAtivoCarrossel();
+  } else if (tabId === 'tabCadastro' && typeof renderMeusBoloesPerfil === 'function') {
     renderMeusBoloesPerfil();
   }
 
@@ -925,6 +1052,7 @@ function trocarAba(tabId, btnEl) {
 }
 
 async function carregarDashboard() {
+  if (!state.bolaoId) return;
   try {
     const res = await apiPost({ action: 'getDashboard' });
     if (!res.success) {
@@ -936,6 +1064,7 @@ async function carregarDashboard() {
       return;
     }
 
+    state.dashboardCarregado = true;
     state.usuarios = res.usuarios || [];
     state.rodadas = res.rodadas || [];
     state.participacoes = res.participacoes || [];
