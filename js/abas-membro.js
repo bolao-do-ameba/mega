@@ -658,9 +658,16 @@ function renderResumoMensal() {
 function renderRankings() {
   const elAtual = document.getElementById('rankingAtual');
   const elHist = document.getElementById('rankingHistorico');
+  const btnCobrar = document.getElementById('btnCobrarDevedoresPush');
+  const fbCobrar = document.getElementById('feedbackCobrarDevedores');
   if (!elAtual || !elHist) return;
 
-  if (state.devedoresAtuais.length === 0) {
+  const temDevedores = state.devedoresAtuais.length > 0;
+  const mostrarBtnCobrar = usuarioEhAdminNoBolao() && temDevedores;
+  if (btnCobrar) btnCobrar.classList.toggle('hidden', !mostrarBtnCobrar);
+  if (fbCobrar && !temDevedores) fbCobrar.innerHTML = '';
+
+  if (!temDevedores) {
     elAtual.innerHTML = `<div class="alert alert-ok">Ninguém devendo! 🎉</div>`;
   } else {
     elAtual.innerHTML = state.devedoresAtuais.map((d, i) => `
@@ -683,6 +690,49 @@ function renderRankings() {
         <span class="badge badge-blue">${formatBRL(d.historico_dividas_geradas)}</span>
       </div>
     `).join('');
+  }
+}
+
+async function enviarPushTodosDevedores() {
+  if (!usuarioEhAdminNoBolao()) return;
+
+  const total = state.devedoresAtuais.length;
+  if (total === 0) {
+    showMsg('feedbackCobrarDevedores', 'Não há participantes devendo neste bolão.', 'ok');
+    return;
+  }
+
+  const bolao = obterBolaoAtivoLocal();
+  const nomeBolao = (bolao && bolao.nome) || 'este bolão';
+  if (!confirm(`Enviar notificação Push de cobrança para todos os ${total} devedor(es) de "${nomeBolao}"?`)) {
+    return;
+  }
+
+  const btn = document.getElementById('btnCobrarDevedoresPush');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Enviando...';
+  }
+  const fb = document.getElementById('feedbackCobrarDevedores');
+  if (fb) fb.innerHTML = '';
+
+  try {
+    const res = await apiPost({
+      action: 'notificarDevedoresAgora',
+      bolao_id: state.bolaoId
+    });
+    if (res.success) {
+      showMsg('feedbackCobrarDevedores', `✅ ${escapeHtml(res.message || 'Notificações enviadas!')}`, 'ok');
+    } else {
+      showMsg('feedbackCobrarDevedores', `❌ ${escapeHtml(res.message || 'Não foi possível enviar as notificações.')}`, 'err');
+    }
+  } catch (err) {
+    showMsg('feedbackCobrarDevedores', `Erro ao enviar notificações: ${escapeHtml(err.message || err)}`, 'err');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = '🔔 Cobrar Todos';
+    }
   }
 }
 
