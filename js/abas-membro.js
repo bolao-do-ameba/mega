@@ -83,10 +83,16 @@ function renderUltimoResultado() {
     ? `Próximo (${ult.data_proximo || '-'}): <strong>${formatBRL(ult.valor_estimado_proximo)}</strong>`
     : '';
 
+  const qtdHist = state.resultados.length;
+  const histBadge = `<span class="muted" style="font-size:0.76rem;">Histórico: ${qtdHist} concurso${qtdHist > 1 ? 's' : ''}</span>`;
+
   el.innerHTML = `
     <div class="row-between">
       <div><strong>Concurso ${ult.concurso}</strong> <span class="muted">(${ult.data_apuracao || '-'})</span> ${badgeStatus}</div>
-      <div class="muted">${proxInfo}</div>
+      <div class="toolbar-inline" style="gap:8px;">
+        <span class="muted">${proxInfo}</span>
+        ${histBadge}
+      </div>
     </div>
     <div class="balls-wrap">${bolinhas}</div>
   `;
@@ -288,16 +294,28 @@ function renderJogosPorConcurso() {
     }
 
     const tituloConcurso = ehValido ? `Concurso ${g.concurso}` : 'Sem concurso';
+    const btnEditResConc = (isAdmin && ehValido)
+      ? `<button type="button" class="btn-secondary icon-action-btn" onclick="abrirModalEditarResultado('${escapeHtml(g.concurso)}')">${resultado ? '✏️ Editar resultado' : '➕ Lançar resultado'}</button>`
+      : '';
+
     const subResultado = resultado
       ? `
         <div style="margin:10px 0;">
-          <div class="muted" style="margin-bottom:6px;">Sorteio ${resultado.concurso} (${resultado.data_apuracao || '-'})</div>
+          <div class="row-between" style="margin-bottom:6px;">
+            <span class="muted">Sorteio ${resultado.concurso} (${resultado.data_apuracao || '-'})</span>
+            ${btnEditResConc}
+          </div>
           <div class="balls-wrap" style="margin:0;">
             ${resultado.dezenas.map(d => `<span class="ball" style="width:32px; height:32px; font-size:0.84rem;">${d}</span>`).join('')}
           </div>
         </div>
       `
-      : `<div class="muted" style="margin:10px 0;">${ehValido ? `Aguardando concurso ${g.concurso}.` : 'Sem concurso vinculado.'}</div>`;
+      : `
+        <div class="row-between" style="margin:10px 0;">
+          <span class="muted">${ehValido ? `Aguardando concurso ${g.concurso}.` : 'Sem concurso vinculado.'}</span>
+          ${btnEditResConc}
+        </div>
+      `;
 
     return `
       <details class="concurso-accordion" ${gIdx === 0 ? 'open' : ''}>
@@ -409,74 +427,50 @@ function renderRodadas() {
   const container = document.getElementById('listaRodadas');
   if (!container) return;
   if (state.rodadas.length === 0) {
-    container.innerHTML = `<p class="muted">Nenhum concurso cadastrado.</p>`;
+    container.innerHTML = `<p class="muted">Nenhuma rodada cadastrada.</p>`;
     return;
   }
 
   const isAdmin = usuarioEhAdminNoBolao();
 
-  container.innerHTML = state.rodadas.map(r => {
-    const parts = state.participacoes.filter(p => p.id_rodada === r.id_rodada);
-    const linhas = parts.map(p => {
-      const saldo = Number((parseValorMembro_(p.valor_devido) - parseValorMembro_(p.valor_pago || 0)).toFixed(2));
-      const badge = saldo <= 0
-        ? `<span class="badge badge-green">PAGO</span>`
-        : `<span class="badge badge-red">FALTA ${formatBRL(saldo)}</span>`;
-
-      const links = Array.isArray(p.links_comprovantes) ? p.links_comprovantes : [];
-      const celulaComp = links.length > 0
-        ? links.map(url =>
-            `<a href="${url}" target="_blank" rel="noopener noreferrer" title="Ver comprovante" class="doc-link">📄</a>`
-          ).join('')
-        : `<span class="muted">-</span>`;
-
-      const acoesAdmin = isAdmin
-        ? `<div class="toolbar-inline" style="gap:4px;">
-            ${saldo > 0 ? `<button class="btn-warning icon-action-btn" onclick="baixaManualAdmin('${escapeHtml(p.id_participacao)}','${escapeHtml(p.id_usuario)}',${saldo})">Baixa</button>` : ''}
-            <button class="btn-secondary icon-action-btn" title="Editar pagamento" onclick="abrirModalEditarPagamento('${escapeHtml(p.id_participacao)}')">✏️</button>
-          </div>`
-        : '';
-
-      return `
-        <tr>
-          <td>${escapeHtml(p.nome_usuario)}</td>
-          <td>${p.fracao_cota}</td>
-          <td>${formatBRL(p.valor_devido)}</td>
-          <td>${badge}</td>
-          <td>${celulaComp}</td>
-          <td>${acoesAdmin}</td>
-        </tr>
-      `;
-    }).join('');
-
+  container.innerHTML = state.rodadas.map((r, rIdx) => {
+    const jogos = Array.isArray(r.jogos) ? r.jogos : [];
     const dispConc = obterDisplayConcursoRodada(r);
     const tagConcurso = dispConc ? `<span class="badge badge-blue">Conc. ${escapeHtml(dispConc)}</span>` : '';
     const tagDataBilhete = r.data_bilhete ? `<span class="badge badge-green">📅 ${escapeHtml(r.data_bilhete)}</span>` : '';
     const blocoJogos = montarBlocoJogosConferencia(r);
 
+    const parts = state.participacoes.filter(p => p.id_rodada === r.id_rodada);
+    const pendentesCount = parts.filter(p => (parseValorMembro_(p.valor_devido) - parseValorMembro_(p.valor_pago)) > 0).length;
+    const badgePagAdmin = isAdmin
+      ? `<button type="button" class="btn-secondary btn-sm" onclick="abrirModalPagamentosRodada('${escapeHtml(r.id_rodada)}')">💳 Pagamentos${pendentesCount > 0 ? ` (${pendentesCount})` : ''}</button>`
+      : '';
+
     const botoesRodadaAdmin = isAdmin
       ? `<div class="toolbar-inline" style="gap:6px;">
+          ${badgePagAdmin}
           <button type="button" class="btn-secondary btn-sm" onclick="abrirModalEditarRodada('${escapeHtml(r.id_rodada)}')">✏️ Editar</button>
-          <button type="button" class="btn-danger btn-sm" onclick="excluirRodadaAdmin('${escapeHtml(r.id_rodada)}')" aria-label="Excluir concurso">🗑️</button>
+          <button type="button" class="btn-danger btn-sm" onclick="excluirRodadaAdmin('${escapeHtml(r.id_rodada)}')" aria-label="Excluir rodada">🗑️</button>
         </div>`
       : '';
 
+    const metaResumo = [
+      r.data_criacao || '',
+      `Total: ${formatBRL(r.valor_total)}`,
+      `${jogos.length} jogo${jogos.length === 1 ? '' : 's'}`,
+      `${r.total_cotas} cota${Number(r.total_cotas) === 1 ? '' : 's'}`
+    ].filter(Boolean).join(' • ');
+
     return `
       <div class="list-item">
-        <div class="row-between" style="margin-bottom:8px;">
+        <div class="row-between" style="margin-bottom:4px;">
           <div>
             <strong>${escapeHtml(r.descricao)}</strong> ${tagConcurso} ${tagDataBilhete}
-            <div class="muted">${r.data_criacao} • ${formatBRL(r.valor_total)} • ${r.total_cotas} cota(s) (${formatBRL(r.valor_cota)})</div>
+            <div class="muted">${metaResumo}</div>
           </div>
           ${botoesRodadaAdmin}
         </div>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>Amigo</th><th>Cota</th><th>Valor</th><th>Status</th><th>Doc</th><th></th></tr></thead>
-            <tbody>${linhas}</tbody>
-          </table>
-        </div>
-        ${blocoJogos}
+        ${blocoJogos || '<div class="muted" style="margin-top:6px;">Sem dezenas cadastradas nesta rodada.</div>'}
       </div>
     `;
   }).join('');
@@ -494,7 +488,12 @@ async function baixaManualAdmin(idParticipacao, idUsuario, saldo) {
       metodo: 'MANUAL'
     });
     alert(res.message);
-    if (res.success) await carregarDashboard();
+    if (res.success) {
+      await carregarDashboard();
+      if (typeof atualizarModalPagamentosRodadaSeAberto === 'function') {
+        atualizarModalPagamentosRodadaSeAberto();
+      }
+    }
   } catch (err) {
     alert('Erro na baixa manual: ' + err.message);
   }
@@ -503,170 +502,234 @@ async function baixaManualAdmin(idParticipacao, idUsuario, saldo) {
 // =========================================================================
 // ABA 3: RESUMO MENSAL & RANKINGS
 // =========================================================================
-function calcularDadosResumoMensal() {
+function formatarLabelCurtoMes_(key, fallbackLabel) {
+  const m = String(key || '').match(/^(\d{4})-(\d{2})$/);
+  if (!m) return fallbackLabel || 'Sem data';
+  const nomes = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+  const idx = parseInt(m[2], 10) - 1;
+  if (idx < 0 || idx > 11) return fallbackLabel || key;
+  return `${nomes[idx]}/${m[1].slice(-2)}`;
+}
+
+function calcularDadosResumoPivot_() {
   const mapaRodadaMes = {};
   const mesesMap = {};
 
-  state.rodadas.forEach(r => {
+  (state.rodadas || []).forEach(r => {
     const infoMes = extrairChaveMes(r.data_bilhete || r.data_criacao);
     mapaRodadaMes[r.id_rodada] = infoMes;
-    mesesMap[infoMes.key] = infoMes.label;
+    if (!mesesMap[infoMes.key]) {
+      mesesMap[infoMes.key] = {
+        key: infoMes.key,
+        label: infoMes.label,
+        shortLabel: formatarLabelCurtoMes_(infoMes.key, infoMes.label),
+        totalConsumo: 0,
+        totalPago: 0,
+        totalDeve: 0
+      };
+    }
   });
 
-  const atualPorUsuario = {};
-  state.usuarios.forEach(u => {
-    atualPorUsuario[u.id_usuario] = {
-      id_usuario: u.id_usuario,
-      nome: u.nome,
-      consumo: 0,
-      pago: 0,
-      deve: 0
+  const membrosMap = {};
+  (state.usuarios || []).forEach(u => {
+    const uid = String(u.id_usuario || '').trim();
+    if (!uid) return;
+    membrosMap[uid] = {
+      id_usuario: uid,
+      nome: u.nome || uid,
+      cota_padrao: u.cota_padrao !== undefined && u.cota_padrao !== '' ? Number(u.cota_padrao) : null,
+      meses: {},
+      totalConsumo: 0,
+      totalPago: 0,
+      totalDeve: 0
     };
   });
 
-  const porMes = {};
-  Object.keys(mesesMap).forEach(k => {
-    porMes[k] = { key: k, label: mesesMap[k], usuarios: {} };
-  });
-
-  state.participacoes.forEach(p => {
+  (state.participacoes || []).forEach(p => {
     const uid = String(p.id_usuario || '').trim();
-    const nome = p.nome_usuario || (atualPorUsuario[uid] ? atualPorUsuario[uid].nome : uid);
+    if (!uid) return;
     const devido = parseValorMembro_(p.valor_devido);
     const pago = parseValorMembro_(p.valor_pago);
     const saldo = Math.max(0, Number((devido - pago).toFixed(2)));
 
-    if (!atualPorUsuario[uid]) {
-      atualPorUsuario[uid] = { id_usuario: uid, nome, consumo: 0, pago: 0, deve: 0 };
+    if (!membrosMap[uid]) {
+      membrosMap[uid] = {
+        id_usuario: uid,
+        nome: p.nome_usuario || uid,
+        cota_padrao: null,
+        meses: {},
+        totalConsumo: 0,
+        totalPago: 0,
+        totalDeve: 0
+      };
     }
-    atualPorUsuario[uid].consumo = Number((atualPorUsuario[uid].consumo + devido).toFixed(2));
-    atualPorUsuario[uid].pago = Number((atualPorUsuario[uid].pago + pago).toFixed(2));
-    atualPorUsuario[uid].deve = Number((atualPorUsuario[uid].deve + saldo).toFixed(2));
 
     const infoMes = mapaRodadaMes[p.id_rodada] || { key: '0000-00', label: 'Sem data' };
-    if (!porMes[infoMes.key]) {
-      porMes[infoMes.key] = { key: infoMes.key, label: infoMes.label, usuarios: {} };
+    if (!mesesMap[infoMes.key]) {
+      mesesMap[infoMes.key] = {
+        key: infoMes.key,
+        label: infoMes.label,
+        shortLabel: formatarLabelCurtoMes_(infoMes.key, infoMes.label),
+        totalConsumo: 0,
+        totalPago: 0,
+        totalDeve: 0
+      };
     }
-    if (!porMes[infoMes.key].usuarios[uid]) {
-      porMes[infoMes.key].usuarios[uid] = { id_usuario: uid, nome, consumo: 0, pago: 0, deve: 0 };
+
+    if (!membrosMap[uid].meses[infoMes.key]) {
+      membrosMap[uid].meses[infoMes.key] = { consumo: 0, pago: 0, deve: 0 };
     }
-    porMes[infoMes.key].usuarios[uid].consumo = Number((porMes[infoMes.key].usuarios[uid].consumo + devido).toFixed(2));
-    porMes[infoMes.key].usuarios[uid].pago = Number((porMes[infoMes.key].usuarios[uid].pago + pago).toFixed(2));
-    porMes[infoMes.key].usuarios[uid].deve = Number((porMes[infoMes.key].usuarios[uid].deve + saldo).toFixed(2));
+
+    const cel = membrosMap[uid].meses[infoMes.key];
+    cel.consumo = Number((cel.consumo + devido).toFixed(2));
+    cel.pago = Number((cel.pago + pago).toFixed(2));
+    cel.deve = Number((cel.deve + saldo).toFixed(2));
+
+    membrosMap[uid].totalConsumo = Number((membrosMap[uid].totalConsumo + devido).toFixed(2));
+    membrosMap[uid].totalPago = Number((membrosMap[uid].totalPago + pago).toFixed(2));
+    membrosMap[uid].totalDeve = Number((membrosMap[uid].totalDeve + saldo).toFixed(2));
+
+    mesesMap[infoMes.key].totalConsumo = Number((mesesMap[infoMes.key].totalConsumo + devido).toFixed(2));
+    mesesMap[infoMes.key].totalPago = Number((mesesMap[infoMes.key].totalPago + pago).toFixed(2));
+    mesesMap[infoMes.key].totalDeve = Number((mesesMap[infoMes.key].totalDeve + saldo).toFixed(2));
   });
 
-  const mesesOrdenados = Object.values(porMes).sort((a, b) => b.key.localeCompare(a.key));
-  return {
-    atual: Object.values(atualPorUsuario).sort((a, b) => (b.deve - a.deve) || (b.consumo - a.consumo)),
-    meses: mesesOrdenados
-  };
-}
-
-function popularFiltroMesesResumo() {
-  const sel = document.getElementById('filtroMesResumo');
-  if (!sel) return;
-  const valorAtual = sel.value || '__TODOS__';
-  const { meses } = calcularDadosResumoMensal();
-
-  let options = `
-    <option value="__TODOS__">Todos (Atual + Meses)</option>
-    <option value="__ATUAL__">Situação Atual</option>
-  `;
-  meses.forEach(m => {
-    options += `<option value="${m.key}">${m.label}</option>`;
+  // Ordem cronológica crescente da esquerda para a direita (mês mais recente ao lado da coluna Total)
+  const meses = Object.values(mesesMap).sort((a, b) => {
+    if (a.key === '0000-00') return -1;
+    if (b.key === '0000-00') return 1;
+    return a.key.localeCompare(b.key);
   });
 
-  sel.innerHTML = options;
-  sel.value = [...sel.options].some(o => o.value === valorAtual) ? valorAtual : '__TODOS__';
+  const membros = Object.values(membrosMap).sort((a, b) =>
+    (b.totalDeve - a.totalDeve) ||
+    (b.totalConsumo - a.totalConsumo) ||
+    String(a.nome).localeCompare(String(b.nome))
+  );
+
+  let geralConsumo = 0;
+  let geralPago = 0;
+  let geralDeve = 0;
+  membros.forEach(m => {
+    geralConsumo = Number((geralConsumo + m.totalConsumo).toFixed(2));
+    geralPago = Number((geralPago + m.totalPago).toFixed(2));
+    geralDeve = Number((geralDeve + m.totalDeve).toFixed(2));
+  });
+
+  return { meses, membros, geralConsumo, geralPago, geralDeve };
 }
 
-function badgeStatusFinanceiro(consumo, pago, deve) {
-  if (deve <= 0) {
-    return consumo > 0
-      ? `<span class="badge badge-green">EM DIA</span>`
-      : `<span class="badge badge-blue">SEM GASTOS</span>`;
-  }
-  if (pago > 0) return `<span class="badge badge-amber">PARCIAL</span>`;
-  return `<span class="badge badge-red">PENDENTE</span>`;
-}
+// Mantido como no-op para compatibilidade com chamadas legadas
+function popularFiltroMesesResumo() {}
 
 function renderResumoMensal() {
+  const thead = document.getElementById('tabelaResumoHead');
   const tbody = document.getElementById('tabelaResumoBody');
+  const tfoot = document.getElementById('tabelaResumoFoot');
   const kpiEl = document.getElementById('resumoKpiStrip');
-  const sel = document.getElementById('filtroMesResumo');
+  const periodoEl = document.getElementById('resumoPeriodoLabel');
   if (!tbody || !kpiEl) return;
 
-  const filtro = sel ? sel.value : '__TODOS__';
-  const { atual, meses } = calcularDadosResumoMensal();
+  const { meses, membros, geralConsumo, geralPago, geralDeve } = calcularDadosResumoPivot_();
 
-  let kpiConsumo = 0, kpiPago = 0, kpiDeve = 0;
-  if (filtro === '__TODOS__' || filtro === '__ATUAL__') {
-    atual.forEach(u => { kpiConsumo += u.consumo; kpiPago += u.pago; kpiDeve += u.deve; });
-  } else {
-    const mesAlvo = meses.find(m => m.key === filtro);
-    if (mesAlvo) {
-      Object.values(mesAlvo.usuarios).forEach(u => {
-        kpiConsumo += u.consumo; kpiPago += u.pago; kpiDeve += u.deve;
-      });
-    }
+  if (periodoEl) {
+    const txtMeses = meses.length > 0 ? `${meses.length} mês${meses.length > 1 ? 'es' : ''}` : 'Sem meses';
+    const txtMembros = `${membros.length} membro${membros.length === 1 ? '' : 's'}`;
+    periodoEl.textContent = `${txtMeses} • ${txtMembros}`;
   }
 
   kpiEl.innerHTML = `
     <div class="kpi-box">
-      <div class="kpi-label">Consumo</div>
-      <div class="kpi-value">${formatBRL(kpiConsumo)}</div>
+      <div class="kpi-label">Total Gasto</div>
+      <div class="kpi-value">${formatBRL(geralConsumo)}</div>
     </div>
     <div class="kpi-box">
-      <div class="kpi-label">Pago</div>
-      <div class="kpi-value" style="color:#34d399;">${formatBRL(kpiPago)}</div>
+      <div class="kpi-label">Total Pago</div>
+      <div class="kpi-value" style="color:#34d399;">${formatBRL(geralPago)}</div>
     </div>
     <div class="kpi-box">
       <div class="kpi-label">Em Aberto</div>
-      <div class="kpi-value" style="color:${kpiDeve > 0 ? '#f87171' : '#34d399'};">${formatBRL(kpiDeve)}</div>
+      <div class="kpi-value" style="color:${geralDeve > 0 ? '#f87171' : '#34d399'};">${formatBRL(geralDeve)}</div>
     </div>
   `;
 
-  let html = '';
-
-  const montarLinhasGrupo = (titulo, lista) => {
-    const totConsumo = lista.reduce((acc, x) => acc + x.consumo, 0);
-    const totDeve = lista.reduce((acc, x) => acc + x.deve, 0);
-
-    let bloco = `
-      <tr class="group-header-row">
-        <td colspan="2">${titulo}</td>
-        <td colspan="2" style="text-align:right;">Gasto: ${formatBRL(totConsumo)} • Deve: ${formatBRL(totDeve)}</td>
+  if (thead) {
+    thead.innerHTML = `
+      <tr>
+        <th class="col-membro">Membro</th>
+        ${meses.map(m => `<th title="${escapeHtml(m.label)}">${escapeHtml(m.shortLabel)}</th>`).join('')}
+        <th class="col-total">Total</th>
       </tr>
     `;
-
-    if (lista.length === 0) {
-      bloco += `<tr><td colspan="4" class="muted">Sem movimentações.</td></tr>`;
-      return bloco;
-    }
-
-    bloco += lista.map(u => `
-      <tr>
-        <td><strong>${escapeHtml(u.nome)}</strong></td>
-        <td>${formatBRL(u.consumo)}</td>
-        <td style="color:${u.deve > 0 ? '#f87171' : '#34d399'}; font-weight:700;">${formatBRL(u.deve)}</td>
-        <td>${badgeStatusFinanceiro(u.consumo, u.pago, u.deve)}</td>
-      </tr>
-    `).join('');
-
-    return bloco;
-  };
-
-  if (filtro === '__TODOS__' || filtro === '__ATUAL__') {
-    html += montarLinhasGrupo('📌 Situação Atual (Geral)', atual);
   }
 
-  meses.forEach(m => {
-    if (filtro !== '__TODOS__' && filtro !== m.key) return;
-    const listaMes = Object.values(m.usuarios).sort((a, b) => (b.deve - a.deve) || (b.consumo - a.consumo));
-    html += montarLinhasGrupo(`📅 ${m.label}`, listaMes);
-  });
+  if (membros.length === 0) {
+    const colSpan = meses.length + 2;
+    tbody.innerHTML = `<tr><td colspan="${colSpan}" class="muted" style="text-align:left;">Nenhum membro encontrado neste bolão.</td></tr>`;
+    if (tfoot) tfoot.innerHTML = '';
+    return;
+  }
 
-  tbody.innerHTML = html || `<tr><td colspan="4" class="muted">Sem registros.</td></tr>`;
+  tbody.innerHTML = membros.map(u => {
+    const cotaTag = (u.cota_padrao !== null && !isNaN(u.cota_padrao))
+      ? `<span class="pivot-cota-tag">(${String(u.cota_padrao).replace('.', ',')}c)</span>`
+      : '';
+
+    const celulasMes = meses.map(m => {
+      const cel = u.meses[m.key];
+      if (!cel || cel.consumo <= 0) {
+        return `<td class="pivot-cell-zero">—</td>`;
+      }
+      const sub = cel.deve > 0
+        ? `<span class="pivot-cell-sub pivot-cell-deve">Deve ${formatBRL(cel.deve)}</span>`
+        : `<span class="pivot-cell-sub pivot-cell-pago">Pago</span>`;
+      return `<td>${formatBRL(cel.consumo)}${sub}</td>`;
+    }).join('');
+
+    let subTotal;
+    if (u.totalDeve > 0) {
+      subTotal = `<span class="pivot-cell-sub pivot-cell-deve">Deve ${formatBRL(u.totalDeve)}</span>`;
+    } else if (u.totalConsumo > 0) {
+      subTotal = `<span class="pivot-cell-sub pivot-cell-pago">Em dia</span>`;
+    } else {
+      subTotal = `<span class="pivot-cell-sub pivot-cell-zero">—</span>`;
+    }
+
+    return `
+      <tr>
+        <td class="col-membro" title="${escapeHtml(u.nome)}"><strong>${escapeHtml(u.nome)}</strong>${cotaTag}</td>
+        ${celulasMes}
+        <td class="col-total">${formatBRL(u.totalConsumo)}${subTotal}</td>
+      </tr>
+    `;
+  }).join('');
+
+  if (tfoot) {
+    const footMeses = meses.map(m => {
+      const sub = m.totalDeve > 0
+        ? `<span class="pivot-cell-sub pivot-cell-deve">Deve ${formatBRL(m.totalDeve)}</span>`
+        : '';
+      return `<td>${formatBRL(m.totalConsumo)}${sub}</td>`;
+    }).join('');
+
+    const subGeral = geralDeve > 0
+      ? `<span class="pivot-cell-sub pivot-cell-deve">Deve ${formatBRL(geralDeve)}</span>`
+      : `<span class="pivot-cell-sub pivot-cell-pago">Quitado</span>`;
+
+    tfoot.innerHTML = `
+      <tr>
+        <td class="col-membro">Total Geral</td>
+        ${footMeses}
+        <td class="col-total">${formatBRL(geralConsumo)}${subGeral}</td>
+      </tr>
+    `;
+  }
+
+  // Posiciona a rolagem horizontal no final (meses mais recentes ao lado da coluna fixa Total)
+  const scrollWrap = tbody.closest('.table-pivot-scroll');
+  if (scrollWrap && scrollWrap.scrollWidth > scrollWrap.clientWidth) {
+    setTimeout(() => { scrollWrap.scrollLeft = scrollWrap.scrollWidth; }, 20);
+  }
 }
 
 function obterDevedoresAtuaisConsolidados() {
