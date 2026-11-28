@@ -917,7 +917,10 @@ function renderBoloesAdmin() {
           <div class="bolao-subbox">
             <div class="bolao-subbox-title">
               <span>🧑‍🤝‍🧑 Membros <span id="qtdMembros_${idEnc}" class="badge badge-blue">...</span></span>
-              <button type="button" class="btn-secondary icon-action-btn" onclick="carregarMembrosDoBolao(decodeURIComponent('${idEnc}'), true)">↻</button>
+              <div class="toolbar-inline" style="gap:6px;">
+                <button type="button" class="btn-primary icon-action-btn" onclick="abrirModalAdicionarMembro('${idEnc}')">＋ Adicionar</button>
+                <button type="button" class="btn-secondary icon-action-btn" onclick="carregarMembrosDoBolao(decodeURIComponent('${idEnc}'), true)" aria-label="Recarregar membros">↻</button>
+              </div>
             </div>
             <div id="membrosBolaoLista_${idEnc}"><div class="muted">Carregando membros...</div></div>
             <div id="feedbackMembros_${idEnc}"></div>
@@ -1377,3 +1380,148 @@ async function salvarEdicaoPagamento() {
     btn.textContent = 'Salvar';
   }
 }
+
+// =========================================================================
+// MODAL ADICIONAR MEMBRO AO BOLÃO (USUÁRIO EXISTENTE OU NOVO CADASTRO)
+// =========================================================================
+let modoAdicionarMembroAtual = 'existente';
+
+async function abrirModalAdicionarMembro(bolaoIdEnc) {
+  if (!usuarioEhAdminNoBolao()) return;
+  const bolaoId = decodeURIComponent(String(bolaoIdEnc || state.bolaoId || '')).trim();
+  if (!bolaoId) return;
+
+  const bolaoObj = (state.boloesAdmin || []).find(b => String(b.bolao_id) === bolaoId) || obterBolaoAtivoLocal();
+  document.getElementById('addMembroBolaoId').value = bolaoId;
+  const nomeEl = document.getElementById('addMembroBolaoNome');
+  if (nomeEl) nomeEl.textContent = bolaoObj ? `Bolão: ${bolaoObj.nome}` : bolaoId;
+
+  document.getElementById('addMembroNome').value = '';
+  document.getElementById('addMembroTelefone').value = '';
+  document.getElementById('addMembroSenha').value = '';
+  document.getElementById('addMembroNomeComprovante').value = '';
+  document.getElementById('addMembroPapel').value = 'participante';
+  document.getElementById('feedbackAddMembroModal').innerHTML = '';
+
+  const sel = document.getElementById('addMembroUsuarioSelect');
+  const hint = document.getElementById('addMembroExistenteHint');
+  if (sel) sel.innerHTML = '<option value="">Carregando usuários...</option>';
+  if (hint) hint.textContent = '';
+
+  trocarModoAdicionarMembro('existente');
+  document.getElementById('adicionarMembroModal')?.classList.remove('hidden');
+
+  try {
+    const res = await apiPost({ action: 'listarUsuariosDisponiveisBolao', bolao_id: bolaoId });
+    if (res && res.success && Array.isArray(res.usuarios)) {
+      if (res.usuarios.length === 0) {
+        if (sel) sel.innerHTML = '<option value="">Todos os usuários já estão neste bolão</option>';
+        if (hint) hint.innerHTML = 'Nenhuma conta pendente de vínculo. Use a aba <strong>Novo Cadastro</strong> acima para criar uma pessoa nova.';
+        trocarModoAdicionarMembro('novo');
+      } else {
+        if (sel) {
+          sel.innerHTML = '<option value="">-- Escolha uma pessoa --</option>' +
+            res.usuarios.map(u => {
+              const statusTag = u.status_anterior ? ` [${u.status_anterior}]` : '';
+              return `<option value="${escapeHtml(u.id_usuario)}">${escapeHtml(u.nome)} (${escapeHtml(u.telefone || u.id_usuario)})${escapeHtml(statusTag)}</option>`;
+            }).join('');
+        }
+        if (hint) hint.textContent = `${res.usuarios.length} usuário(s) já cadastrado(s) disponível(is) para vincular imediatamente.`;
+      }
+    } else {
+      throw new Error((res && res.message) || 'Não foi possível listar usuários cadastrados.');
+    }
+  } catch (err) {
+    if (sel) sel.innerHTML = '<option value="">Indisponível (use Novo Cadastro)</option>';
+    if (hint) hint.innerHTML = `<span style="color:#fbbf24;">${escapeHtml(err.message || err)}</span>`;
+  }
+}
+
+function trocarModoAdicionarMembro(modo) {
+  modoAdicionarMembroAtual = modo === 'novo' ? 'novo' : 'existente';
+  const ehNovo = modoAdicionarMembroAtual === 'novo';
+
+  document.getElementById('btnModoMembroExistente')?.classList.toggle('active', !ehNovo);
+  document.getElementById('btnModoMembroNovo')?.classList.toggle('active', ehNovo);
+  document.getElementById('blocoAddMembroExistente')?.classList.toggle('hidden', ehNovo);
+  document.getElementById('blocoAddMembroNovo')?.classList.toggle('hidden', !ehNovo);
+  const fb = document.getElementById('feedbackAddMembroModal');
+  if (fb) fb.innerHTML = '';
+}
+
+function fecharModalAdicionarMembro() {
+  document.getElementById('adicionarMembroModal')?.classList.add('hidden');
+}
+
+async function confirmarAdicionarMembroBolao() {
+  const bolaoId = document.getElementById('addMembroBolaoId')?.value.trim() || state.bolaoId;
+  const papel = document.getElementById('addMembroPapel')?.value || 'participante';
+  const payload = {
+    action: 'adicionarMembroBolao',
+    bolao_id: bolaoId,
+    papel
+  };
+
+  if (modoAdicionarMembroAtual === 'existente') {
+    const idUsuarioAlvo = document.getElementById('addMembroUsuarioSelect')?.value.trim() || '';
+    if (!idUsuarioAlvo) {
+      showMsg('feedbackAddMembroModal', 'Selecione um usuário da lista ou mude para "Novo Cadastro".', 'err');
+      return;
+    }
+    payload.id_usuario_alvo = idUsuarioAlvo;
+  } else {
+    const nome = document.getElementById('addMembroNome')?.value.trim() || '';
+    const telefone = document.getElementById('addMembroTelefone')?.value.trim() || '';
+    const senha = document.getElementById('addMembroSenha')?.value.trim() || '';
+    const nomeComprovante = document.getElementById('addMembroNomeComprovante')?.value.trim() || '';
+
+    if (nome.length < 2) {
+      showMsg('feedbackAddMembroModal', 'Informe o nome completo do novo membro.', 'err');
+      return;
+    }
+    if (telefone.replace(/\D/g, '').length < 10) {
+      showMsg('feedbackAddMembroModal', 'Informe um telefone válido com DDD (10 ou 11 dígitos).', 'err');
+      return;
+    }
+    if (senha.length < 4) {
+      showMsg('feedbackAddMembroModal', 'Informe uma senha inicial com pelo menos 4 caracteres.', 'err');
+      return;
+    }
+    payload.nome = nome;
+    payload.telefone = telefone;
+    payload.senha = senha;
+    payload.nome_comprovante = nomeComprovante;
+  }
+
+  const btn = document.getElementById('btnConfirmarAddMembro');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Adicionando...';
+  }
+
+  try {
+    const res = await apiPost(payload);
+    if (!res.success) throw new Error(res.message || 'Erro ao adicionar membro.');
+
+    const idEnc = encodeURIComponent(bolaoId);
+    fecharModalAdicionarMembro();
+    showMsg('feedbackMembros_' + idEnc, `✅ ${escapeHtml(res.message || 'Membro adicionado com sucesso!')}`, 'ok');
+    await carregarMembrosDoBolao(bolaoId, true);
+    if (bolaoId === state.bolaoId) {
+      await carregarDashboard();
+    }
+  } catch (err) {
+    showMsg('feedbackAddMembroModal', err.message || String(err), 'err');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Adicionar ao Bolão';
+    }
+  }
+}
+
+window.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    fecharModalAdicionarMembro();
+  }
+});
