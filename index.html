@@ -13,7 +13,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Bolão Ameba" />
 
-  <link rel="stylesheet" href="./css/styles.css?v=6" />
+  <link rel="stylesheet" href="./css/styles.css?v=7" />
 
   <script src="./config.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -682,6 +682,64 @@
   </div>
 </div>
 
+<!-- MODAL DE ADICIONAR MEMBRO AO BOLÃO (ADMIN) -->
+<div id="adicionarMembroModal" class="info-modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="addMembroModalTitle" onclick="if(event.target===this) fecharModalAdicionarMembro()">
+  <div class="edit-modal-card" style="width:min(480px, 100%);">
+    <div class="info-modal-head">
+      <div>
+        <h3 id="addMembroModalTitle">＋ Adicionar Membro</h3>
+        <div id="addMembroBolaoNome" class="muted" style="font-size:0.78rem; margin-top:2px;"></div>
+      </div>
+      <button type="button" class="tour-close-btn" onclick="fecharModalAdicionarMembro()" aria-label="Fechar">✕</button>
+    </div>
+
+    <input id="addMembroBolaoId" type="hidden" />
+
+    <div class="filter-pills" style="margin-bottom:12px;">
+      <button id="btnModoMembroExistente" type="button" class="pill-btn active" onclick="trocarModoAdicionarMembro('existente')">Usuário Existente</button>
+      <button id="btnModoMembroNovo" type="button" class="pill-btn" onclick="trocarModoAdicionarMembro('novo')">Novo Cadastro</button>
+    </div>
+
+    <div id="blocoAddMembroExistente">
+      <label for="addMembroUsuarioSelect">Selecionar pessoa cadastrada</label>
+      <select id="addMembroUsuarioSelect"></select>
+      <div id="addMembroExistenteHint" class="muted" style="margin-top:6px; font-size:0.78rem;"></div>
+    </div>
+
+    <div id="blocoAddMembroNovo" class="hidden">
+      <label for="addMembroNome">Nome completo</label>
+      <input id="addMembroNome" type="text" placeholder="Ex: João da Silva" />
+
+      <div class="grid-2">
+        <div>
+          <label for="addMembroTelefone">Telefone (com DDD)</label>
+          <input id="addMembroTelefone" type="tel" inputmode="tel" placeholder="12999999999" />
+        </div>
+        <div>
+          <label for="addMembroSenha">Senha inicial</label>
+          <input id="addMembroSenha" type="text" placeholder="Ex: 1234" />
+        </div>
+      </div>
+
+      <label for="addMembroNomeComprovante">Nome no comprovante (opcional)</label>
+      <input id="addMembroNomeComprovante" type="text" placeholder="Deixe vazio para usar o nome completo" />
+    </div>
+
+    <label for="addMembroPapel">Papel neste bolão</label>
+    <select id="addMembroPapel">
+      <option value="participante">Participante</option>
+      <option value="admin_bolao">Administrador</option>
+    </select>
+
+    <div id="feedbackAddMembroModal"></div>
+
+    <div class="toolbar-inline" style="margin-top:16px; justify-content:flex-end;">
+      <button type="button" class="btn-secondary btn-sm" onclick="fecharModalAdicionarMembro()">Cancelar</button>
+      <button id="btnConfirmarAddMembro" type="button" class="btn-primary btn-sm" onclick="confirmarAdicionarMembroBolao()">Adicionar ao Bolão</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL DE EDIÇÃO DE CONCURSO E JOGOS (ADMIN) -->
 <div id="editRodadaModal" class="info-modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="editRodadaModalTitle" onclick="if(event.target===this) fecharModalEditarRodada()">
   <div class="edit-modal-card">
@@ -867,12 +925,12 @@
 </div>
 
 <!-- MÓDULOS JAVASCRIPT (CARREGADOS EM ORDEM) -->
-<script src="./js/core.js?v=6"></script>
-<script src="./js/convite.js?v=6"></script>
-<script src="./js/ocr-pix.js?v=6"></script>
-<script src="./js/ocr-bilhete.js?v=6"></script>
-<script src="./js/abas-membro.js?v=6"></script>
-<script src="./js/abas-admin.js?v=6"></script>
-<script src="./js/tour.js?v=6"></script>
+<script src="./js/core.js?v=7"></script>
+<script src="./js/convite.js?v=7"></script>
+<script src="./js/ocr-pix.js?v=7"></script>
+<script src="./js/ocr-bilhete.js?v=7"></script>
+<script src="./js/abas-membro.js?v=7"></script>
+<script src="./js/abas-admin.js?v=7"></script>
+<script src="./js/tour.js?v=7"></script>
 </body>
 </html>
