@@ -16,6 +16,17 @@ function parseNumeroBR(valor) {
   return isNaN(num) ? 0 : num;
 }
 
+function obterCotaPadraoUsuario_(u) {
+  if (!u) return 1;
+  const raw = u.cota_padrao;
+  if (raw !== undefined && raw !== null && String(raw).trim() !== '') {
+    const num = parseNumeroBR(raw);
+    if (!isNaN(num) && num >= 0) return num;
+  }
+  return 1;
+}
+
+
 // =========================================================================
 // ABERTURA / FECHAMENTO DO PAINEL "CADASTRAR JOGOS" (EM JOGOS & CONCURSOS)
 // =========================================================================
@@ -25,19 +36,19 @@ async function abrirCadastroJogos() {
   const card = document.getElementById('cardAdminRodada');
   if (!card) return;
 
+  const estavaOculto = card.classList.contains('hidden');
   if (!Array.isArray(state.jogosBuilderNovo) || state.jogosBuilderNovo.length === 0) {
     state.jogosBuilderNovo = [[]];
   }
 
   card.classList.remove('hidden');
-  renderAdminFormRodada();
+  renderAdminFormRodada(estavaOculto);
   renderJogosBuilder('novo');
 
   setTimeout(() => {
     card.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, 40);
 
-  // Se os participantes ainda não estiverem carregados no estado, busca automaticamente
   if (!Array.isArray(state.usuarios) || state.usuarios.length === 0) {
     await recarregarParticipantesCadastro();
   }
@@ -62,7 +73,8 @@ async function recarregarParticipantesCadastro() {
           .map(m => ({
             id_usuario: m.id_usuario,
             nome: m.nome || 'Participante',
-            papel_bolao: m.papel || 'participante'
+            papel_bolao: m.papel || 'participante',
+            cota_padrao: obterCotaPadraoUsuario_(m)
           }));
         if (aprovados.length > 0) {
           state.usuarios = aprovados;
@@ -74,7 +86,8 @@ async function recarregarParticipantesCadastro() {
       state.usuarios = [{
         id_usuario: state.user.id_usuario,
         nome: state.user.nome || 'Administrador',
-        papel_bolao: 'admin_bolao'
+        papel_bolao: 'admin_bolao',
+        cota_padrao: 1
       }];
     }
   } catch (err) {
@@ -82,7 +95,11 @@ async function recarregarParticipantesCadastro() {
       container.innerHTML = `<div class="alert alert-err">Erro ao carregar participantes: ${escapeHtml(err.message || err)}</div>`;
     }
   }
-  renderAdminFormRodada();
+  renderAdminFormRodada(true);
+}
+
+function aplicarCotasPadraoRodada() {
+  renderAdminFormRodada(true);
 }
 
 function definirCotaTodosAdmin(valor) {
@@ -308,7 +325,9 @@ function renderModalSeletorDezenas() {
   const alvo = state.dezenaPickerAlvo;
   if (!alvo) return;
 
-  const selecionadas = normalizarDezenasJogo(alvo.selecionadas);
+  const ehResultado = alvo.modo === 'resultado';
+  const maxDez = ehResultado ? 6 : 20;
+  const selecionadas = normalizarDezenasJogo(alvo.selecionadas).slice(0, maxDez);
   alvo.selecionadas = selecionadas;
   const setSel = new Set(selecionadas);
   const qtd = selecionadas.length;
@@ -320,9 +339,15 @@ function renderModalSeletorDezenas() {
   const avisoEl = document.getElementById('dezenaPickerAviso');
   const btnOk = document.getElementById('btnConfirmarDezenasModal');
 
-  if (titleEl) titleEl.textContent = `Jogo #${alvo.jogoIdx + 1} • Dezenas (${qtd})`;
+  if (titleEl) {
+    titleEl.textContent = ehResultado
+      ? `Resultado Oficial • Dezenas (${qtd}/6)`
+      : `Jogo #${alvo.jogoIdx + 1} • Dezenas (${qtd})`;
+  }
   if (subEl) {
-    subEl.textContent = 'Toque nos números para marcar ou desmarcar (de 6 até 20 dezenas)';
+    subEl.textContent = ehResultado
+      ? 'Marque exatamente as 6 dezenas sorteadas (01 a 60)'
+      : 'Toque nos números para marcar ou desmarcar (de 6 até 20 dezenas)';
   }
 
   if (barEl) {
@@ -355,7 +380,13 @@ function renderModalSeletorDezenas() {
   }
 
   if (avisoEl) {
-    if (qtd === 0) {
+    if (ehResultado) {
+      if (qtd < 6) {
+        avisoEl.innerHTML = `<span style="color:#fbbf24;">Falta(m) <strong>${6 - qtd}</strong> dezena(s) para completar as 6 dezenas sorteadas.</span>`;
+      } else {
+        avisoEl.innerHTML = `<span style="color:#34d399;">✓ 6 dezenas selecionadas. Toque em <strong>Confirmar</strong>.</span>`;
+      }
+    } else if (qtd === 0) {
       avisoEl.innerHTML = 'Escolha 6 dezenas (jogo simples) ou mais dezenas (até 20).';
     } else if (qtd < 6) {
       avisoEl.innerHTML = `<span style="color:#fbbf24;">Falta(m) <strong>${6 - qtd}</strong> dezena(s) para completar um jogo mínimo de 6.</span>`;
@@ -365,7 +396,7 @@ function renderModalSeletorDezenas() {
   }
 
   if (btnOk) {
-    btnOk.disabled = qtd > 0 && qtd < 6;
+    btnOk.disabled = ehResultado ? (qtd !== 6) : (qtd > 0 && qtd < 6);
     btnOk.textContent = qtd >= 6 ? `Confirmar (${qtd})` : 'Confirmar';
   }
 }
@@ -373,16 +404,20 @@ function renderModalSeletorDezenas() {
 function alternarDezenaModal(numStr) {
   const alvo = state.dezenaPickerAlvo;
   if (!alvo) return;
+  const ehResultado = alvo.modo === 'resultado';
+  const maxDez = ehResultado ? 6 : 20;
   const n = String(numStr).padStart(2, '0');
   const idx = alvo.selecionadas.indexOf(n);
 
   if (idx >= 0) {
     alvo.selecionadas.splice(idx, 1);
   } else {
-    if (alvo.selecionadas.length >= 20) {
+    if (alvo.selecionadas.length >= maxDez) {
       const avisoEl = document.getElementById('dezenaPickerAviso');
       if (avisoEl) {
-        avisoEl.innerHTML = '<span style="color:#f87171;">Limite máximo de 20 dezenas por jogo atingido.</span>';
+        avisoEl.innerHTML = ehResultado
+          ? '<span style="color:#f87171;">Um resultado da Mega-Sena tem exatamente 6 dezenas. Desmarque uma para trocar.</span>'
+          : '<span style="color:#f87171;">Limite máximo de 20 dezenas por jogo atingido.</span>';
       }
       return;
     }
@@ -398,6 +433,16 @@ function confirmarDezenasSelecionadas() {
   if (!alvo) return;
 
   const selecionadas = normalizarDezenasJogo(alvo.selecionadas);
+
+  if (alvo.modo === 'resultado') {
+    if (selecionadas.length !== 6) return;
+    const inp = document.getElementById('editResDezenasTexto');
+    if (inp) inp.value = selecionadas.join(' ');
+    fecharSeletorDezena();
+    sincronizarPreviewDezenasResultado();
+    return;
+  }
+
   if (selecionadas.length > 0 && selecionadas.length < 6) return;
 
   const lista = obterListaJogosBuilder(alvo.modo);
@@ -423,7 +468,7 @@ function fecharSeletorDezena() {
 // =========================================================================
 // FORMULÁRIO DE NOVO CONCURSO / CADASTRO DE JOGOS
 // =========================================================================
-function renderAdminFormRodada() {
+function renderAdminFormRodada(forcarPadrao = false) {
   const container = document.getElementById('listaParticipantesAdmin');
   if (!container) return;
 
@@ -432,9 +477,12 @@ function renderAdminFormRodada() {
   if (badgeRodada) badgeRodada.textContent = bolao ? bolao.nome : '';
 
   const mapaSelecionadas = {};
-  container.querySelectorAll('.select-cota-admin').forEach(s => {
-    mapaSelecionadas[s.dataset.uid] = s.value;
-  });
+  if (!forcarPadrao) {
+    container.querySelectorAll('.select-cota-admin').forEach(s => {
+      mapaSelecionadas[s.dataset.uid] = s.value;
+    });
+  }
+  const temSelecaoAnterior = Object.keys(mapaSelecionadas).length > 0;
 
   if (!Array.isArray(state.usuarios) || state.usuarios.length === 0) {
     container.innerHTML = `
@@ -448,17 +496,26 @@ function renderAdminFormRodada() {
   }
 
   container.innerHTML = state.usuarios.map(u => {
-    const val = mapaSelecionadas[u.id_usuario] || '0';
+    const cotaPadrao = obterCotaPadraoUsuario_(u);
+    const val = (!forcarPadrao && temSelecaoAnterior && mapaSelecionadas[u.id_usuario] !== undefined)
+      ? mapaSelecionadas[u.id_usuario]
+      : String(cotaPadrao);
+
+    const opcoes = ['0', '0.5', '1', '1.5', '2', '2.5', '3'];
+    if (!opcoes.includes(val)) opcoes.push(val);
+
+    const labelPadrao = String(cotaPadrao).replace('.', ',');
     return `
       <div class="cota-row">
-        <div><strong>${escapeHtml(u.nome)}</strong></div>
+        <div>
+          <strong>${escapeHtml(u.nome)}</strong>
+          <div class="muted" style="font-size:0.74rem;">Cota padrão: ${labelPadrao}</div>
+        </div>
         <select class="select-cota-admin" data-uid="${u.id_usuario}" data-nome="${escapeHtml(u.nome)}" onchange="recalcularPreviewRodada()">
-          <option value="0" ${val === '0' ? 'selected' : ''}>0</option>
-          <option value="0.5" ${val === '0.5' ? 'selected' : ''}>0,5 (Meia)</option>
-          <option value="1" ${val === '1' ? 'selected' : ''}>1 (Inteira)</option>
-          <option value="1.5" ${val === '1.5' ? 'selected' : ''}>1,5</option>
-          <option value="2" ${val === '2' ? 'selected' : ''}>2</option>
-          <option value="3" ${val === '3' ? 'selected' : ''}>3</option>
+          ${opcoes.map(op => {
+            const lbl = op === '0.5' ? '0,5 (Meia)' : (op === '1' ? '1 (Inteira)' : op.replace('.', ','));
+            return `<option value="${op}" ${val === op ? 'selected' : ''}>${lbl}</option>`;
+          }).join('')}
         </select>
       </div>
     `;
@@ -484,18 +541,18 @@ function recalcularPreviewRodada() {
   let motivoBloqueio = '';
   if (totalCotas === 0) {
     statusEl.className = 'badge badge-red';
-    statusEl.textContent = 'Selecione';
-    motivoBloqueio = 'Selecione a cota de pelo menos 1 participante acima (ou toque em "Todos: 1") para liberar o botão Salvar Concurso.';
+    statusEl.textContent = 'Sem cotas';
+    motivoBloqueio = 'Configure a cota padrão dos membros em Admin → Bolões → Membros ou abra "Cotas desta rodada" abaixo.';
     btn.disabled = true;
   } else if (!ehInteiro) {
     statusEl.className = 'badge badge-amber';
     statusEl.textContent = 'Meia sem par';
-    motivoBloqueio = 'A soma das cotas está fracionada. Adicione outra meia cota (0,5) para fechar um número inteiro.';
+    motivoBloqueio = 'A soma das cotas está fracionada. Ajuste em "Cotas desta rodada" (ou em Admin → Membros) para fechar um número inteiro.';
     btn.disabled = true;
   } else if (valorTotal <= 0) {
     statusEl.className = 'badge badge-amber';
     statusEl.textContent = 'Sem valor';
-    motivoBloqueio = 'Informe o Valor Total do bilhete (ex.: 72,00) para liberar o botão Salvar Concurso.';
+    motivoBloqueio = 'Informe o Valor Total gasto na rodada (ex.: 72,00) para liberar o botão Salvar Rodada.';
     btn.disabled = true;
   } else {
     statusEl.className = 'badge badge-green';
@@ -523,15 +580,25 @@ function limparFormularioRodada() {
   document.getElementById('rodadaJogosTexto').value = '';
   document.getElementById('previewIntervaloConcursos').innerHTML = '';
   document.getElementById('bilheteOcrFeedback').innerHTML = '';
+
+  const fotosWrap = document.getElementById('bilheteOcrFotosWrap');
+  if (fotosWrap) {
+    fotosWrap.innerHTML = '';
+    fotosWrap.classList.add('hidden');
+  }
   const chips = document.getElementById('bilheteOcrResumo');
   if (chips) {
     chips.innerHTML = '';
     chips.classList.add('hidden');
   }
   document.getElementById('detalhesBilheteBruto')?.classList.add('hidden');
-  document.querySelectorAll('.select-cota-admin').forEach(s => { s.value = '0'; });
 
+  state.ocrFotosLidas = 0;
+  state.ocrValorAcumulado = 0;
+  state.ocrLogsAcumulados = [];
   state.jogosBuilderNovo = [[]];
+
+  renderAdminFormRodada(true);
   renderJogosBuilder('novo');
   recalcularPreviewRodada();
 }
@@ -543,9 +610,8 @@ function cancelarCadastroRodada() {
   const dataBil = document.getElementById('rodadaDataBilhete').value.trim();
   const val = document.getElementById('rodadaValorTotal').value.trim();
   const temDezena = obterListaJogosBuilder('novo').some(j => j.length > 0);
-  const temCota = [...document.querySelectorAll('.select-cota-admin')].some(s => parseFloat(s.value) > 0);
 
-  if ((desc || conc || concFim || dataBil || val || temDezena || temCota) && !confirm('Cancelar e limpar os campos deste concurso?')) {
+  if ((desc || conc || concFim || dataBil || val || temDezena || state.ocrFotosLidas > 0) && !confirm('Cancelar e limpar os campos desta rodada?')) {
     return;
   }
 
@@ -586,8 +652,8 @@ async function criarNovaRodada() {
 
   if (!descricao && concursos.length > 0) {
     descricao = concursos.length > 1
-      ? `Mega-Sena Conc. ${concursos[0]} a ${concursos[concursos.length - 1]}`
-      : `Mega-Sena Conc. ${concursos[0]}`;
+      ? `Rodada Conc. ${concursos[0]} a ${concursos[concursos.length - 1]}`
+      : `Rodada Conc. ${concursos[0]}`;
   }
 
   const selects = [...document.querySelectorAll('.select-cota-admin')];
@@ -596,7 +662,7 @@ async function criarNovaRodada() {
     .filter(p => p.fracao_cota > 0);
 
   if (!descricao || valorTotal <= 0 || participantes.length === 0) {
-    showMsg('adminRodadaFeedback', 'Preencha descrição, valor total e participantes.', 'err');
+    showMsg('adminRodadaFeedback', 'Preencha descrição, valor total e cotas dos participantes.', 'err');
     return;
   }
 
@@ -622,14 +688,14 @@ async function criarNovaRodada() {
       limparFormularioRodada();
       fecharCadastroJogos();
       await carregarDashboard();
-      alert(res.message || 'Concurso e jogos cadastrados com sucesso!');
+      alert(res.message || 'Rodada e jogos cadastrados com sucesso!');
     } else {
-      showMsg('adminRodadaFeedback', res.message || 'Erro ao salvar concurso.', 'err');
+      showMsg('adminRodadaFeedback', res.message || 'Erro ao salvar rodada.', 'err');
     }
   } catch (err) {
     showMsg('adminRodadaFeedback', err.message, 'err');
   } finally {
-    btn.textContent = 'Salvar Concurso';
+    btn.textContent = 'Salvar Rodada';
     recalcularPreviewRodada();
   }
 }
@@ -1101,19 +1167,29 @@ function renderMembrosDoBolao(bolaoId, lista) {
     const aprovado = status === 'APROVADO';
     const papel = String(m.papel || 'participante').toLowerCase();
     const podeEditar = aprovado && status !== 'REMOVIDO';
+    const cotaNum = obterCotaPadraoUsuario_(m);
+    const cotaStr = String(cotaNum);
+    const opcoesCota = ['0', '0.5', '1', '1.5', '2', '2.5', '3'];
+    if (!opcoesCota.includes(cotaStr)) opcoesCota.push(cotaStr);
 
     return `
       <div class="member-mini-item">
         <div class="admin-item-top">
           <div>
             <strong>${escapeHtml(m.nome || 'Participante')}</strong>
-            <div class="admin-item-meta">${escapeHtml(m.telefone || '—')}</div>
+            <div class="admin-item-meta">${escapeHtml(m.telefone || '—')} • Cota padrão: <strong>${cotaStr.replace('.', ',')}</strong></div>
           </div>
           <span class="badge ${aprovado ? 'badge-green' : (status === 'PENDENTE' ? 'badge-amber' : 'badge-red')}">${escapeHtml(status)}</span>
         </div>
         ${podeEditar ? `
           <div class="toolbar-inline" style="margin-top:8px;">
-            <select style="flex:1; min-width:140px; padding:7px 9px; font-size:0.84rem;" onchange="alterarPapelMembroNoBolao('${idEnc}','${uidEnc}',this.value)">
+            <select style="flex:1; min-width:118px; padding:7px 9px; font-size:0.82rem;" aria-label="Cota padrão de ${escapeHtml(m.nome)}" onchange="alterarCotaMembroNoBolao('${idEnc}','${uidEnc}',this.value)">
+              ${opcoesCota.map(op => {
+                const lbl = op === '0' ? 'Cota: 0' : (op === '0.5' ? 'Cota: 0,5' : `Cota: ${op.replace('.', ',')}`);
+                return `<option value="${op}" ${cotaStr === op ? 'selected' : ''}>${lbl}</option>`;
+              }).join('')}
+            </select>
+            <select style="flex:1; min-width:124px; padding:7px 9px; font-size:0.82rem;" aria-label="Papel de ${escapeHtml(m.nome)}" onchange="alterarPapelMembroNoBolao('${idEnc}','${uidEnc}',this.value)">
               <option value="participante" ${papel === 'participante' ? 'selected' : ''}>Participante</option>
               <option value="admin_bolao" ${papel === 'admin_bolao' ? 'selected' : ''}>Administrador</option>
             </select>
@@ -1125,6 +1201,10 @@ function renderMembrosDoBolao(bolaoId, lista) {
   }).join('');
 }
 
+async function alterarCotaMembroNoBolao(bolaoIdEnc, uidEnc, cotaPadrao) {
+  await executarGerenciamentoMembroNoBolao(bolaoIdEnc, uidEnc, 'cota', undefined, parseFloat(cotaPadrao));
+}
+
 async function alterarPapelMembroNoBolao(bolaoIdEnc, uidEnc, papel) {
   await executarGerenciamentoMembroNoBolao(bolaoIdEnc, uidEnc, 'papel', papel);
 }
@@ -1134,16 +1214,19 @@ async function removerMembroNoBolao(bolaoIdEnc, uidEnc) {
   await executarGerenciamentoMembroNoBolao(bolaoIdEnc, uidEnc, 'remover');
 }
 
-async function executarGerenciamentoMembroNoBolao(bolaoIdEnc, uidEnc, acao, papel) {
+async function executarGerenciamentoMembroNoBolao(bolaoIdEnc, uidEnc, acao, papel, cotaPadrao) {
   const bolaoId = decodeURIComponent(String(bolaoIdEnc || ''));
   try {
-    const res = await apiPost({
+    const req = {
       action: 'gerenciarMembroBolao',
       bolao_id: bolaoId,
       id_usuario_alvo: decodeURIComponent(String(uidEnc || '')),
-      acao,
-      papel
-    });
+      acao
+    };
+    if (papel !== undefined) req.papel = papel;
+    if (cotaPadrao !== undefined && !isNaN(cotaPadrao)) req.cota_padrao = cotaPadrao;
+
+    const res = await apiPost(req);
     if (!res.success) throw new Error(res.message || 'Erro ao atualizar membro.');
     showMsg('feedbackMembros_' + bolaoIdEnc, res.message || 'Membro atualizado.', 'ok');
     await carregarMembrosDoBolao(bolaoId, true);
@@ -1373,6 +1456,7 @@ async function salvarEdicaoPagamento() {
     if (!res.success) throw new Error(res.message || 'Erro ao salvar pagamento.');
     fecharModalEditarPagamento();
     await carregarDashboard();
+    atualizarModalPagamentosRodadaSeAberto();
   } catch (err) {
     showMsg('editPagFeedback', err.message || String(err), 'err');
   } finally {
@@ -1401,6 +1485,8 @@ async function abrirModalAdicionarMembro(bolaoIdEnc) {
   document.getElementById('addMembroSenha').value = '';
   document.getElementById('addMembroNomeComprovante').value = '';
   document.getElementById('addMembroPapel').value = 'participante';
+  const cotaAddEl = document.getElementById('addMembroCota');
+  if (cotaAddEl) cotaAddEl.value = '1';
   document.getElementById('feedbackAddMembroModal').innerHTML = '';
 
   const sel = document.getElementById('addMembroUsuarioSelect');
@@ -1456,10 +1542,13 @@ function fecharModalAdicionarMembro() {
 async function confirmarAdicionarMembroBolao() {
   const bolaoId = document.getElementById('addMembroBolaoId')?.value.trim() || state.bolaoId;
   const papel = document.getElementById('addMembroPapel')?.value || 'participante';
+  const cotaVal = parseFloat(document.getElementById('addMembroCota')?.value);
+  const cota_padrao = !isNaN(cotaVal) && cotaVal >= 0 ? cotaVal : 1;
   const payload = {
     action: 'adicionarMembroBolao',
     bolao_id: bolaoId,
-    papel
+    papel,
+    cota_padrao
   };
 
   if (modoAdicionarMembroAtual === 'existente') {
@@ -1525,3 +1614,277 @@ window.addEventListener('keydown', e => {
     fecharModalAdicionarMembro();
   }
 });
+
+
+// =========================================================================
+// MODAL DE PAGAMENTOS DA RODADA (ADMIN)
+// =========================================================================
+let rodadaPagamentosAbertaId = '';
+
+function abrirModalPagamentosRodada(idRodada) {
+  if (!usuarioEhAdminNoBolao()) return;
+  const r = (state.rodadas || []).find(item => String(item.id_rodada) === String(idRodada));
+  if (!r) return;
+
+  rodadaPagamentosAbertaId = String(r.id_rodada);
+  renderConteudoModalPagamentosRodada_(r);
+  document.getElementById('pagamentosRodadaModal')?.classList.remove('hidden');
+}
+
+function renderConteudoModalPagamentosRodada_(r) {
+  const titleEl = document.getElementById('pagRodadaModalTitle');
+  const subEl = document.getElementById('pagRodadaModalSub');
+  const bodyEl = document.getElementById('pagRodadaModalBody');
+  if (!bodyEl) return;
+
+  if (titleEl) titleEl.textContent = `💳 Pagamentos — ${r.descricao}`;
+  if (subEl) {
+    subEl.textContent = `Total: ${formatBRL(r.valor_total)} • ${r.total_cotas} cota(s) (${formatBRL(r.valor_cota)} por cota)`;
+  }
+
+  const parts = (state.participacoes || []).filter(p => String(p.id_rodada) === String(r.id_rodada));
+  if (parts.length === 0) {
+    bodyEl.innerHTML = '<div class="muted">Nenhuma participação registrada nesta rodada.</div>';
+    return;
+  }
+
+  const linhas = parts.map(p => {
+    const devido = parseNumeroBR(p.valor_devido);
+    const pago = parseNumeroBR(p.valor_pago);
+    const saldo = Math.max(0, Number((devido - pago).toFixed(2)));
+    const badge = saldo <= 0
+      ? `<span class="badge badge-green">PAGO</span>`
+      : `<span class="badge badge-red">FALTA ${formatBRL(saldo)}</span>`;
+
+    const links = Array.isArray(p.links_comprovantes) ? p.links_comprovantes : [];
+    const celulaComp = links.length > 0
+      ? links.map(url => `<a href="${url}" target="_blank" rel="noopener noreferrer" title="Ver comprovante" class="doc-link">📄</a>`).join('')
+      : `<span class="muted">-</span>`;
+
+    return `
+      <tr>
+        <td><strong>${escapeHtml(p.nome_usuario)}</strong></td>
+        <td>${String(p.fracao_cota).replace('.', ',')}</td>
+        <td>${formatBRL(devido)}</td>
+        <td>${badge}</td>
+        <td>${celulaComp}</td>
+        <td>
+          <div class="toolbar-inline" style="gap:4px;">
+            ${saldo > 0 ? `<button type="button" class="btn-warning icon-action-btn" onclick="baixaManualAdmin('${escapeHtml(p.id_participacao)}','${escapeHtml(p.id_usuario)}',${saldo})">Baixa</button>` : ''}
+            <button type="button" class="btn-secondary icon-action-btn" title="Editar pagamento" onclick="abrirModalEditarPagamento('${escapeHtml(p.id_participacao)}')">✏️</button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  bodyEl.innerHTML = `
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Membro</th><th>Cota</th><th>Devido</th><th>Status</th><th>Doc</th><th></th></tr>
+        </thead>
+        <tbody>${linhas}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+function atualizarModalPagamentosRodadaSeAberto() {
+  const modal = document.getElementById('pagamentosRodadaModal');
+  if (!modal || modal.classList.contains('hidden') || !rodadaPagamentosAbertaId) return;
+  const r = (state.rodadas || []).find(item => String(item.id_rodada) === String(rodadaPagamentosAbertaId));
+  if (r) renderConteudoModalPagamentosRodada_(r);
+  else fecharModalPagamentosRodada();
+}
+
+function fecharModalPagamentosRodada() {
+  rodadaPagamentosAbertaId = '';
+  document.getElementById('pagamentosRodadaModal')?.classList.add('hidden');
+}
+
+// =========================================================================
+// MODAL DE EDIÇÃO / CADASTRO DE RESULTADO RETROATIVO DE CONCURSO (ADMIN)
+// =========================================================================
+function abrirModalEditarResultado(concursoPrefill) {
+  if (!usuarioEhAdminNoBolao()) return;
+
+  const manualInput = String(document.getElementById('inputConcursoManual')?.value || '').trim();
+  let concAlvo = String(concursoPrefill || '').replace(/\D/g, '');
+  if (!concAlvo && /^\d{3,5}$/.test(manualInput)) {
+    concAlvo = manualInput;
+  }
+
+  renderChipsHistoricoResultados_(concAlvo);
+
+  if (concAlvo) {
+    carregarResultadoNoModal_(concAlvo);
+  } else if (Array.isArray(state.resultados) && state.resultados.length > 0) {
+    carregarResultadoNoModal_(state.resultados[0].concurso);
+  } else {
+    limparCamposModalResultado_('');
+  }
+
+  document.getElementById('editResFeedback').innerHTML = '';
+  document.getElementById('editResultadoModal')?.classList.remove('hidden');
+}
+
+function renderChipsHistoricoResultados_(concursoAtivo) {
+  const wrap = document.getElementById('editResHistoricoWrap');
+  const listaEl = document.getElementById('editResHistoricoLista');
+  if (!wrap || !listaEl) return;
+
+  const lista = Array.isArray(state.resultados) ? state.resultados : [];
+  if (lista.length === 0) {
+    wrap.classList.add('hidden');
+    listaEl.innerHTML = '';
+    return;
+  }
+
+  wrap.classList.remove('hidden');
+  listaEl.innerHTML = `<button type="button" class="pill-btn ${!concursoAtivo ? 'active' : ''}" onclick="limparCamposModalResultado_('')">＋ Novo</button>` +
+    lista.slice(0, 30).map(r => {
+      const ativo = String(r.concurso).trim() === String(concursoAtivo || '').trim();
+      return `<button type="button" class="pill-btn ${ativo ? 'active' : ''}" onclick="carregarResultadoNoModal_('${escapeHtml(r.concurso)}')">Conc. ${escapeHtml(r.concurso)}</button>`;
+    }).join('');
+}
+
+function limparCamposModalResultado_(numeroConcurso) {
+  document.getElementById('editResConcurso').value = numeroConcurso || '';
+  document.getElementById('editResDataApuracao').value = '';
+  document.getElementById('editResDezenasTexto').value = '';
+  document.getElementById('editResAcumulou').value = 'SIM';
+  document.getElementById('editResValorProximo').value = '';
+  document.getElementById('editResDataProximo').value = '';
+  document.getElementById('editResFeedback').innerHTML = '';
+  document.getElementById('btnExcluirResultado')?.classList.add('hidden');
+  renderChipsHistoricoResultados_(numeroConcurso || '');
+  sincronizarPreviewDezenasResultado();
+}
+
+function carregarResultadoNoModal_(concursoStr) {
+  const alvo = String(concursoStr || '').replace(/\D/g, '');
+  const existente = (state.resultados || []).find(r => String(r.concurso).trim() === alvo);
+
+  if (!existente) {
+    limparCamposModalResultado_(alvo);
+    return;
+  }
+
+  document.getElementById('editResConcurso').value = existente.concurso || alvo;
+  document.getElementById('editResDataApuracao').value = existente.data_apuracao || '';
+  document.getElementById('editResDezenasTexto').value = Array.isArray(existente.dezenas) ? existente.dezenas.join(' ') : '';
+  document.getElementById('editResAcumulou').value = existente.acumulou ? 'SIM' : 'NAO';
+  document.getElementById('editResValorProximo').value = existente.valor_estimado_proximo > 0
+    ? Number(existente.valor_estimado_proximo).toFixed(2).replace('.', ',')
+    : '';
+  document.getElementById('editResDataProximo').value = existente.data_proximo || '';
+  document.getElementById('editResFeedback').innerHTML = '';
+  document.getElementById('btnExcluirResultado')?.classList.remove('hidden');
+
+  renderChipsHistoricoResultados_(alvo);
+  sincronizarPreviewDezenasResultado();
+}
+
+function parseDezenasResultadoInput_() {
+  const txt = document.getElementById('editResDezenasTexto')?.value || '';
+  const nums = (txt.match(/\d+/g) || [])
+    .map(n => parseInt(n, 10))
+    .filter(n => !isNaN(n) && n >= 1 && n <= 60);
+  return [...new Set(nums)].sort((a, b) => a - b).map(n => String(n).padStart(2, '0'));
+}
+
+function sincronizarPreviewDezenasResultado() {
+  const prev = document.getElementById('editResDezenasPreview');
+  if (!prev) return;
+  const dezenas = parseDezenasResultadoInput_();
+  if (dezenas.length === 0) {
+    prev.innerHTML = '<span class="muted" style="font-size:0.8rem;">Digite as 6 dezenas ou toque em "Escolher (01 a 60)"</span>';
+    return;
+  }
+  prev.innerHTML = dezenas.map(d => `<span class="ball" style="width:34px; height:34px; font-size:0.86rem;">${d}</span>`).join('') +
+    (dezenas.length !== 6 ? `<span class="badge badge-amber" style="margin-left:6px;">${dezenas.length}/6</span>` : `<span class="badge badge-green" style="margin-left:6px;">6 OK</span>`);
+}
+
+function abrirSeletorDezenasResultado() {
+  const atuais = parseDezenasResultadoInput_().slice(0, 6);
+  state.dezenaPickerAlvo = {
+    modo: 'resultado',
+    jogoIdx: 0,
+    selecionadas: atuais,
+    focoValor: ''
+  };
+  renderModalSeletorDezenas();
+  document.getElementById('dezenaPickerModal')?.classList.remove('hidden');
+}
+
+function fecharModalEditarResultado() {
+  fecharSeletorDezena();
+  document.getElementById('editResultadoModal')?.classList.add('hidden');
+}
+
+async function salvarResultadoConcursoAdmin() {
+  const concurso = String(document.getElementById('editResConcurso')?.value || '').replace(/\D/g, '');
+  const data_apuracao = String(document.getElementById('editResDataApuracao')?.value || '').trim();
+  const dezenas = parseDezenasResultadoInput_();
+  const acumulou = document.getElementById('editResAcumulou')?.value || 'SIM';
+  const valor_estimado_proximo = parseNumeroBR(document.getElementById('editResValorProximo')?.value);
+  const data_proximo = String(document.getElementById('editResDataProximo')?.value || '').trim();
+
+  if (!concurso || parseInt(concurso, 10) <= 0) {
+    showMsg('editResFeedback', 'Informe o número do concurso.', 'err');
+    return;
+  }
+  if (dezenas.length !== 6) {
+    showMsg('editResFeedback', `Informe exatamente 6 dezenas válidas de 01 a 60 (atual: ${dezenas.length}).`, 'err');
+    return;
+  }
+
+  const btn = document.getElementById('btnSalvarResultado');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Salvando...';
+  }
+
+  try {
+    const res = await apiPost({
+      action: 'salvarResultadoConcurso',
+      concurso,
+      data_apuracao,
+      dezenas,
+      acumulou,
+      valor_estimado_proximo,
+      data_proximo
+    });
+    if (!res.success) throw new Error(res.message || 'Erro ao salvar resultado.');
+    fecharModalEditarResultado();
+    await carregarDashboard();
+    alert(res.message || `Resultado do concurso ${concurso} salvo no histórico!`);
+  } catch (err) {
+    showMsg('editResFeedback', err.message || String(err), 'err');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Salvar Resultado';
+    }
+  }
+}
+
+async function excluirResultadoConcursoAdmin() {
+  const concurso = String(document.getElementById('editResConcurso')?.value || '').replace(/\D/g, '');
+  if (!concurso) return;
+  if (!confirm(`Excluir o resultado salvo do concurso ${concurso} do histórico?`)) return;
+
+  try {
+    const res = await apiPost({
+      action: 'excluirResultadoConcurso',
+      concurso
+    });
+    if (!res.success) throw new Error(res.message || 'Erro ao excluir resultado.');
+    fecharModalEditarResultado();
+    await carregarDashboard();
+    alert(res.message || `Resultado do concurso ${concurso} removido.`);
+  } catch (err) {
+    showMsg('editResFeedback', err.message || String(err), 'err');
+  }
+}
