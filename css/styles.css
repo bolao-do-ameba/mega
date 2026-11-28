@@ -1199,3 +1199,195 @@ pre {
   outline: 2px solid #fbbf24;
   outline-offset: 1px;
 }
+
+/* =========================================================================
+   TABELA PIVÔ DO RESUMO (MEMBROS x MESES + COLUNA TOTAL FIXA À DIREITA)
+   ========================================================================= */
+.table-pivot-scroll {
+  position: relative;
+  max-height: 460px;
+  overflow: auto;
+  touch-action: pan-x pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+.pivot-table {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+.pivot-table th,
+.pivot-table td {
+  white-space: nowrap;
+  padding: 10px 11px;
+  border-bottom: 1px solid var(--border);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.pivot-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  background: #131e31;
+}
+.pivot-table th.col-membro,
+.pivot-table td.col-membro {
+  position: sticky;
+  left: 0;
+  z-index: 5;
+  text-align: left;
+  background: #0f172a;
+  border-right: 1px solid var(--border);
+  min-width: 122px;
+  max-width: 170px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pivot-table thead th.col-membro {
+  z-index: 8;
+  background: #131e31;
+}
+.pivot-table th.col-total,
+.pivot-table td.col-total {
+  position: sticky;
+  right: 0;
+  z-index: 5;
+  background: #111c30;
+  border-left: 2px solid rgba(16, 185, 129, 0.45);
+  box-shadow: -6px 0 12px rgba(4, 9, 20, 0.45);
+  font-weight: 800;
+  min-width: 108px;
+}
+.pivot-table thead th.col-total {
+  z-index: 8;
+  background: #15253d;
+  color: #34d399;
+}
+.pivot-table tfoot td {
+  position: sticky;
+  bottom: 0;
+  z-index: 6;
+  background: #132035;
+  font-weight: 800;
+  border-top: 2px solid rgba(16, 185, 129, 0.4);
+  border-bottom: none;
+}
+.pivot-table tfoot td.col-membro {
+  z-index: 8;
+  background: #132035;
+}
+.pivot-table tfoot td.col-total {
+  z-index: 8;
+  background: #15283f;
+  color: #34d399;
+}
+.pivot-cell-sub {
+  display: block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  margin-top: 2px;
+}
+.pivot-cell-deve { color: #f87171; }
+.pivot-cell-pago { color: #34d399; }
+.pivot-cell-zero { color: #475569; }
+.pivot-cota-tag {
+  display: inline-block;
+  margin-left: 4px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+/* MÚLTIPLAS FOTOS OCR + DETALHES DE COTAS DA RODADA */
+.ocr-fotos-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 8px 10px;
+  margin: 8px 0 4px;
+  border-radius: 8px;
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  font-size: 0.8rem;
+  color: #a7f3d0;
+}
+.cota-override-details {
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px 12px;
+  margin-top: 8px;
+}
+.cota-override-details > summary {
+  margin-top: 0;
+  color: var(--text);
+  font-size: 0.84rem;
+}
+
+/* =========================================================================
+   OVERLAY DE LOADING AO TROCAR DE BOLÃO (TREVO 4 FOLHAS PULSANDO GLOW VERDE)
+   ========================================================================= */
+.bolao-loading-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 995;
+  background: rgba(4, 9, 20, 0.88);
+  backdrop-filter: blur(7px);
+  -webkit-backdrop-filter: blur(7px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.bolao-loading-card {
+  width: min(300px, 88vw);
+  background: rgba(16, 27, 46, 0.94);
+  border: 1px solid rgba(16, 185, 129, 0.45);
+  border-radius: 20px;
+  padding: 28px 22px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 14px;
+  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.78), 0 0 36px rgba(16, 185, 129, 0.18);
+}
+.clover-glow-ring {
+  width: 86px;
+  height: 86px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(16, 185, 129, 0.28) 0%, rgba(16, 185, 129, 0.04) 70%);
+  border: 1.5px solid rgba(52, 211, 153, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: cloverGlowPulse 1.35s ease-in-out infinite;
+}
+.clover-glow-svg {
+  width: 52px;
+  height: 52px;
+  filter: drop-shadow(0 0 12px rgba(16, 185, 129, 0.9));
+}
+@keyframes cloverGlowPulse {
+  0%, 100% {
+    transform: scale(0.94);
+    box-shadow: 0 0 14px rgba(16, 185, 129, 0.45), 0 0 28px rgba(16, 185, 129, 0.2);
+  }
+  50% {
+    transform: scale(1.08);
+    box-shadow: 0 0 28px rgba(52, 211, 153, 0.95), 0 0 56px rgba(16, 185, 129, 0.55);
+  }
+}
+.bolao-loading-title {
+  font-size: 1.08rem;
+  font-weight: 800;
+  color: #ecfdf5;
+  letter-spacing: 0.01em;
+}
+.bolao-loading-sub {
+  font-size: 0.84rem;
+  color: #6ee7b7;
+  min-height: 18px;
+}
