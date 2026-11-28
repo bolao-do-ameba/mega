@@ -3,6 +3,19 @@
 // RESUMO MENSAL, RANKINGS E PERFIL (COM BOLÕES QUE PARTICIPO)
 // =========================================================================
 
+function parseValorMembro_(val) {
+  if (typeof parseNumeroBR === 'function') return parseNumeroBR(val);
+  if (typeof val === 'number') return isNaN(val) ? 0 : val;
+  const limpo = String(val || '').trim().replace(/R\$/gi, '').replace(/\s+/g, '');
+  if (!limpo) return 0;
+  if (limpo.includes(',')) {
+    const num = parseFloat(limpo.replace(/\./g, '').replace(',', '.'));
+    return isNaN(num) ? 0 : num;
+  }
+  const num = parseFloat(limpo);
+  return isNaN(num) ? 0 : num;
+}
+
 function conferirListaJogos(jogos, resultadoObj) {
   const setSorteadas = resultadoObj
     ? new Set((resultadoObj.dezenas || []).map(d => String(d).padStart(2, '0')))
@@ -118,9 +131,10 @@ function renderMinhasPendencias() {
   const container = document.getElementById('listaMinhasPendencias');
   if (!container || !state.user) return;
 
+  const meuUid = String(state.user.id_usuario || '').trim();
   const minhas = state.participacoes.filter(p =>
-    p.id_usuario === state.user.id_usuario &&
-    Number(p.valor_devido) > Number(p.valor_pago || 0)
+    String(p.id_usuario || '').trim() === meuUid &&
+    parseValorMembro_(p.valor_devido) > parseValorMembro_(p.valor_pago || 0)
   );
 
   if (minhas.length === 0) {
@@ -130,7 +144,7 @@ function renderMinhasPendencias() {
 
   container.innerHTML = minhas.map(p => {
     const rodada = state.rodadas.find(r => r.id_rodada === p.id_rodada);
-    const saldo = Number((Number(p.valor_devido) - Number(p.valor_pago || 0)).toFixed(2));
+    const saldo = Number((parseValorMembro_(p.valor_devido) - parseValorMembro_(p.valor_pago || 0)).toFixed(2));
     const dispConc = rodada ? obterDisplayConcursoRodada(rodada) : '';
     const extraConc = dispConc ? ` • Conc. ${escapeHtml(dispConc)}` : '';
 
@@ -404,7 +418,7 @@ function renderRodadas() {
   container.innerHTML = state.rodadas.map(r => {
     const parts = state.participacoes.filter(p => p.id_rodada === r.id_rodada);
     const linhas = parts.map(p => {
-      const saldo = Number((Number(p.valor_devido) - Number(p.valor_pago || 0)).toFixed(2));
+      const saldo = Number((parseValorMembro_(p.valor_devido) - parseValorMembro_(p.valor_pago || 0)).toFixed(2));
       const badge = saldo <= 0
         ? `<span class="badge badge-green">PAGO</span>`
         : `<span class="badge badge-red">FALTA ${formatBRL(saldo)}</span>`;
@@ -516,10 +530,10 @@ function calcularDadosResumoMensal() {
   });
 
   state.participacoes.forEach(p => {
-    const uid = p.id_usuario;
+    const uid = String(p.id_usuario || '').trim();
     const nome = p.nome_usuario || (atualPorUsuario[uid] ? atualPorUsuario[uid].nome : uid);
-    const devido = Number(p.valor_devido) || 0;
-    const pago = Number(p.valor_pago) || 0;
+    const devido = parseValorMembro_(p.valor_devido);
+    const pago = parseValorMembro_(p.valor_pago);
     const saldo = Math.max(0, Number((devido - pago).toFixed(2)));
 
     if (!atualPorUsuario[uid]) {
@@ -655,6 +669,84 @@ function renderResumoMensal() {
   tbody.innerHTML = html || `<tr><td colspan="4" class="muted">Sem registros.</td></tr>`;
 }
 
+function obterDevedoresAtuaisConsolidados() {
+  if (Array.isArray(state.participacoes) && state.participacoes.length > 0) {
+    const nomesPorUid = {};
+    (state.usuarios || []).forEach(u => {
+      const uid = String(u.id_usuario || '').trim();
+      if (uid) nomesPorUid[uid] = u.nome || uid;
+    });
+    (state.devedoresAtuais || []).forEach(d => {
+      const uid = String(d.id_usuario || '').trim();
+      if (uid && !nomesPorUid[uid]) nomesPorUid[uid] = d.nome || uid;
+    });
+
+    const mapa = {};
+    state.participacoes.forEach(p => {
+      const uid = String(p.id_usuario || '').trim();
+      if (!uid) return;
+      const devido = parseValorMembro_(p.valor_devido);
+      const pago = parseValorMembro_(p.valor_pago);
+      const saldo = Math.max(0, Number((devido - pago).toFixed(2)));
+      if (saldo <= 0) return;
+
+      if (!mapa[uid]) {
+        mapa[uid] = {
+          id_usuario: uid,
+          nome: nomesPorUid[uid] || p.nome_usuario || uid,
+          divida_atual: 0,
+          rodadas_pendentes: 0
+        };
+      }
+      mapa[uid].divida_atual = Number((mapa[uid].divida_atual + saldo).toFixed(2));
+      mapa[uid].rodadas_pendentes += 1;
+    });
+
+    const consolidados = Object.values(mapa).sort((a, b) => b.divida_atual - a.divida_atual);
+    state.devedoresAtuais = consolidados;
+    return consolidados;
+  }
+
+  return Array.isArray(state.devedoresAtuais) ? state.devedoresAtuais : [];
+}
+
+function obterRankingHistoricoConsolidado() {
+  if (Array.isArray(state.participacoes) && state.participacoes.length > 0) {
+    const nomesPorUid = {};
+    (state.usuarios || []).forEach(u => {
+      const uid = String(u.id_usuario || '').trim();
+      if (uid) nomesPorUid[uid] = u.nome || uid;
+    });
+    (state.rankingHistorico || []).forEach(d => {
+      const uid = String(d.id_usuario || '').trim();
+      if (uid && !nomesPorUid[uid]) nomesPorUid[uid] = d.nome || uid;
+    });
+
+    const mapa = {};
+    state.participacoes.forEach(p => {
+      const uid = String(p.id_usuario || '').trim();
+      if (!uid) return;
+      const devido = parseValorMembro_(p.valor_devido);
+      if (devido <= 0) return;
+
+      if (!mapa[uid]) {
+        mapa[uid] = {
+          id_usuario: uid,
+          nome: nomesPorUid[uid] || p.nome_usuario || uid,
+          historico_dividas_geradas: 0
+        };
+      }
+      mapa[uid].historico_dividas_geradas = Number((mapa[uid].historico_dividas_geradas + devido).toFixed(2));
+    });
+
+    const consolidados = Object.values(mapa).sort((a, b) => b.historico_dividas_geradas - a.historico_dividas_geradas);
+    state.rankingHistorico = consolidados;
+    return consolidados;
+  }
+
+  return Array.isArray(state.rankingHistorico) ? state.rankingHistorico : [];
+}
+
 function renderRankings() {
   const elAtual = document.getElementById('rankingAtual');
   const elHist = document.getElementById('rankingHistorico');
@@ -662,7 +754,10 @@ function renderRankings() {
   const fbCobrar = document.getElementById('feedbackCobrarDevedores');
   if (!elAtual || !elHist) return;
 
-  const temDevedores = state.devedoresAtuais.length > 0;
+  const devedores = obterDevedoresAtuaisConsolidados();
+  const historico = obterRankingHistoricoConsolidado();
+
+  const temDevedores = devedores.length > 0;
   const mostrarBtnCobrar = usuarioEhAdminNoBolao() && temDevedores;
   if (btnCobrar) btnCobrar.classList.toggle('hidden', !mostrarBtnCobrar);
   if (fbCobrar && !temDevedores) fbCobrar.innerHTML = '';
@@ -670,7 +765,7 @@ function renderRankings() {
   if (!temDevedores) {
     elAtual.innerHTML = `<div class="alert alert-ok">Ninguém devendo! 🎉</div>`;
   } else {
-    elAtual.innerHTML = state.devedoresAtuais.map((d, i) => `
+    elAtual.innerHTML = devedores.map((d, i) => `
       <div class="list-item row-between">
         <div>
           <strong>#${i + 1} ${escapeHtml(d.nome)}</strong>
@@ -681,10 +776,10 @@ function renderRankings() {
     `).join('');
   }
 
-  if (state.rankingHistorico.length === 0) {
+  if (historico.length === 0) {
     elHist.innerHTML = `<p class="muted">Sem registros.</p>`;
   } else {
-    elHist.innerHTML = state.rankingHistorico.map((d, i) => `
+    elHist.innerHTML = historico.map((d, i) => `
       <div class="list-item row-between">
         <div><strong>#${i + 1} ${escapeHtml(d.nome)}</strong></div>
         <span class="badge badge-blue">${formatBRL(d.historico_dividas_geradas)}</span>
@@ -696,7 +791,8 @@ function renderRankings() {
 async function enviarPushTodosDevedores() {
   if (!usuarioEhAdminNoBolao()) return;
 
-  const total = state.devedoresAtuais.length;
+  const devedores = obterDevedoresAtuaisConsolidados();
+  const total = devedores.length;
   if (total === 0) {
     showMsg('feedbackCobrarDevedores', 'Não há participantes devendo neste bolão.', 'ok');
     return;
@@ -803,13 +899,14 @@ function renderMinhasTransferencias() {
   const statusBadge = document.getElementById('meuStatusGeralBadge');
   if (!kpiEl || !tbody || !state.user) return;
 
-  const todasMinhas = state.participacoes.filter(p => p.id_usuario === state.user.id_usuario);
+  const meuUid = String(state.user.id_usuario || '').trim();
+  const todasMinhas = state.participacoes.filter(p => String(p.id_usuario || '').trim() === meuUid);
 
   let totalDevido = 0, totalPago = 0, totalSaldo = 0, totalDocs = 0;
 
   todasMinhas.forEach(p => {
-    const dev = Number(p.valor_devido) || 0;
-    const pag = Number(p.valor_pago) || 0;
+    const dev = parseValorMembro_(p.valor_devido);
+    const pag = parseValorMembro_(p.valor_pago);
     const sal = Math.max(0, Number((dev - pag).toFixed(2)));
     totalDevido += dev;
     totalPago += pag;
@@ -848,8 +945,8 @@ function renderMinhasTransferencias() {
   `;
 
   const filtradas = todasMinhas.filter(p => {
-    const dev = Number(p.valor_devido) || 0;
-    const pag = Number(p.valor_pago) || 0;
+    const dev = parseValorMembro_(p.valor_devido);
+    const pag = parseValorMembro_(p.valor_pago);
     const sal = Math.max(0, Number((dev - pag).toFixed(2)));
     if (state.filtroMinhasTransferencias === 'pagas') return pag > 0;
     if (state.filtroMinhasTransferencias === 'pendentes') return sal > 0;
@@ -863,8 +960,8 @@ function renderMinhasTransferencias() {
 
   tbody.innerHTML = filtradas.map(p => {
     const rodada = state.rodadas.find(r => r.id_rodada === p.id_rodada);
-    const dev = Number(p.valor_devido) || 0;
-    const pag = Number(p.valor_pago) || 0;
+    const dev = parseValorMembro_(p.valor_devido);
+    const pag = parseValorMembro_(p.valor_pago);
     const sal = Math.max(0, Number((dev - pag).toFixed(2)));
 
     const badge = sal <= 0
