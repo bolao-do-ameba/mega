@@ -35,9 +35,13 @@ let state = {
   pushSincronizado: false,
   pushBannerDispensado: false,
   pushAutoTentado: false,
-  jogosBuilderNovo: [['', '', '', '', '', '']],
+  jogosBuilderNovo: [[]],
   jogosBuilderEditar: [],
   dezenaPickerAlvo: null,
+  ocrFotosLidas: 0,
+  ocrValorAcumulado: 0,
+  ocrLogsAcumulados: [],
+  trocandoBolao: false,
   convite: {
     codigo: '',
     bolao: null,
@@ -66,7 +70,7 @@ const INFO_MODAL_CONTENT = {
   },
   menu_lateral: {
     titulo: '☰ Menu Principal',
-    html: '<p>Toque no ícone <strong>☰</strong> no canto superior esquerdo para abrir todos os menus do aplicativo: <strong>Meus Bolões</strong>, <strong>Pagar</strong>, <strong>Jogos & Concursos</strong>, <strong>Resumo</strong>, <strong>Perfil</strong>, <strong>Tour</strong> e <strong>Admin</strong>.</p>'
+    html: '<p>Toque no ícone <strong>☰</strong> no canto superior esquerdo para abrir todos os menus do aplicativo: <strong>Meus Bolões</strong>, <strong>Pagar</strong>, <strong>Rodadas & Concursos</strong>, <strong>Resumo</strong>, <strong>Perfil</strong>, <strong>Tour</strong> e <strong>Admin</strong>.</p>'
   },
   boloes_carrossel: {
     titulo: '🎯 Meus Bolões',
@@ -78,7 +82,7 @@ const INFO_MODAL_CONTENT = {
   },
   resultado: {
     titulo: '🎱 Resultado da Mega-Sena',
-    html: '<p>Exibe o último concurso oficial apurado, as 6 dezenas sorteadas, se acumulou e a estimativa do próximo prêmio.</p><p style="margin-top:8px;">Administradores podem buscar um concurso específico ou um intervalo (ex.: <code>3087-3090</code>) pelo botão <strong>Buscar</strong>.</p>'
+    html: '<p>Exibe o último concurso oficial apurado e guarda o histórico de todos os resultados consultados.</p><p style="margin-top:8px;">Administradores podem buscar um concurso ou intervalo (ex.: <code>3087-3090</code>) em <strong>🔄 Buscar</strong> ou cadastrar/corrigir concursos antigos em <strong>✏️ Retroativo</strong>.</p>'
   },
   push: {
     titulo: '🔔 Notificações Push',
@@ -97,20 +101,20 @@ const INFO_MODAL_CONTENT = {
     html: '<p>Envie o PDF ou print do comprovante (até 10 MB). A leitura roda localmente no seu aparelho (sem IA) e valida:</p><ul><li>Valor exato da pendência;</li><li>Nome do recebedor ou chave Pix;</li><li>ID único da transação (antifraude);</li><li>Bloqueio automático de agendamentos.</li></ul><p style="margin-top:8px;">Aprovado, o sistema registra a baixa na hora e guarda uma cópia no Google Drive do bolão.</p>'
   },
   jogos_rodadas: {
-    titulo: '🎟️ Jogos & Concursos',
-    html: '<p>Reúne em uma única tela os <strong>Jogos por Concurso</strong>, os <strong>Concursos & Rateios</strong> e o botão <strong>＋ Cadastrar Jogos</strong> (para administradores).</p><p style="margin-top:8px;">Use os botões no topo (<strong>Tudo</strong>, <strong>Jogos</strong> ou <strong>Concursos</strong>) para filtrar a visualização.</p>'
+    titulo: '🎟️ Rodadas & Concursos',
+    html: '<p><strong>Rodada</strong> é cada conjunto de jogos apostados para um ou mais concursos.</p><p style="margin-top:8px;">Use os filtros no topo para visualizar os jogos agrupados <strong>Por Concurso</strong>, <strong>Por Rodada</strong> ou <strong>Tudo</strong>. Administradores podem lançar novas rodadas pelo botão <strong>＋ Nova Rodada</strong>.</p>'
   },
   jogos: {
     titulo: '🎟️ Jogos por Concurso',
     html: '<p>Agrupa todos os jogos apostados por número de concurso. Bilhetes de <strong>Teimosinha</strong> (vários concursos seguidos) aparecem automaticamente em cada concurso em que valem.</p><p style="margin-top:8px;">Quando o resultado daquele concurso é publicado, os acertos acendem em verde e destacam <strong>Quadra</strong>, <strong>Quina</strong> e <strong>Sena</strong>. Administradores podem tocar em <strong>✏️</strong> para corrigir dezenas ou concursos.</p>'
   },
   rodadas: {
-    titulo: '🎱 Concursos & Rateios',
-    html: '<p>Mostra cada concurso lançado, a data do bilhete, o intervalo de concursos, o valor por cota, o status de cada participante e o link <strong>📄</strong> para abrir o comprovante salvo no Drive.</p><p style="margin-top:8px;">Administradores podem editar concursos, jogos, cotas e pagamentos usando os botões <strong>✏️</strong> e <strong>🗑️</strong>.</p>'
+    titulo: '🎱 Rodadas',
+    html: '<p>Lista cada rodada registrada com suas dezenas apostadas, concursos vinculados, valor total e conferência automática dos resultados.</p><p style="margin-top:8px;">Administradores podem conferir ou dar baixa nos pagamentos pelo botão <strong>💳 Pagamentos</strong>, editar a rodada em <strong>✏️</strong> ou excluir em <strong>🗑️</strong>.</p>'
   },
   resumo: {
-    titulo: '📊 Resumo Mensal & Situação Atual',
-    html: '<p>Consolida quanto cada participante consumiu, quanto ainda deve e o status financeiro — agrupado na <strong>Situação Atual</strong> e separado mês a mês.</p>'
+    titulo: '📊 Resumo por Membro e Mês',
+    html: '<p>Tabela única com todos os membros do bolão nas linhas, os meses nas colunas e a coluna <strong>Total</strong> fixa à direita. Arraste a tabela horizontalmente dentro do card para ver todos os meses.</p>'
   },
   devedores: {
     titulo: '🚨 Devedores Atuais',
@@ -133,12 +137,12 @@ const INFO_MODAL_CONTENT = {
     html: '<p>Faz um passeio guiado destacando na tela cada função principal do aplicativo, passo a passo.</p>'
   },
   admin_rodada: {
-    titulo: '➕ Cadastrar Jogos',
-    html: '<p>Cadastre um concurso definindo descrição, concurso inicial e final (para Teimosinha), data do bilhete, valor total, dezenas e cotas dos participantes.</p><p style="margin-top:8px;">A soma das cotas precisa fechar um <strong>número inteiro</strong> (quem escolhe 0,5 precisa formar par com outro 0,5). Depois de salvo, qualquer dado pode ser editado tocando em <strong>✏️</strong>.</p>'
+    titulo: '➕ Nova Rodada',
+    html: '<p>Cadastre uma rodada com um ou mais jogos para um ou mais concursos (Teimosinha).</p><p style="margin-top:8px;">O valor total gasto é dividido automaticamente conforme a <strong>cota padrão configurada para cada membro</strong> neste bolão (em <strong>Admin → Bolões → Membros</strong>).</p>'
   },
   admin_ocr: {
-    titulo: '📷 Leitura OCR & Seletor de Dezenas',
-    html: '<p>Você pode preencher os jogos de duas formas (ou combinar as duas):</p><ul><li><strong>Automático (Foto, Câmera ao Vivo ou Arquivo):</strong> lê os jogos do canhoto da Caixa, intervalo de concursos (ex.: <code>3087 ATÉ 3090</code>), valor total e data;</li><li><strong>Manual (01 a 60):</strong> toque diretamente em qualquer campo de dezena para abrir o seletor estilo calendário e escolher ou corrigir o número.</li></ul>'
+    titulo: '📷 Múltiplas Fotos, OCR & Seletor 01–60',
+    html: '<p>Para cada rodada você pode combinar:</p><ul><li><strong>1 ou mais fotos / PDFs:</strong> selecione várias fotos de uma vez ou tire fotos em sequência — os jogos são acumulados e os valores dos bilhetes somados automaticamente;</li><li><strong>Câmera ao vivo ou manual (01 a 60):</strong> toque em qualquer número para marcar ou desmarcar de 6 a 20 dezenas no modal.</li></ul>'
   },
   admin_pendentes: {
     titulo: '👥 Solicitações Pendentes',
@@ -146,7 +150,7 @@ const INFO_MODAL_CONTENT = {
   },
   admin_boloes: {
     titulo: '🛠️ Gerenciar Bolões',
-    html: '<p>Todos os bolões administrados por você aparecem aqui uma única vez. Clique em qualquer bolão para expandir e gerenciar:</p><ul><li>Nome, tipo, cor do gradiente dos cards, Recebedor, Chave Pix e Pasta Drive;</li><li>Link e código de convite (copiar, WhatsApp, pausar ou gerar novo código);</li><li>Lista de membros daquele bolão (alterar papel ou remover vínculo).</li></ul><p style="margin-top:8px;">Super Admins também podem criar novos bolões pelo botão <strong>＋ Criar bolão</strong> ou arquivar bolões existentes.</p>'
+    html: '<p>Todos os bolões administrados por você aparecem aqui uma única vez. Clique em qualquer bolão para expandir e gerenciar:</p><ul><li>Nome, tipo, cor do gradiente dos cards, Recebedor, Chave Pix e Pasta Drive;</li><li>Link e código de convite (copiar, WhatsApp, pausar ou gerar novo código);</li><li>Lista de membros daquele bolão (definir <strong>cota padrão</strong>, papel, adicionar ou remover vínculo).</li></ul><p style="margin-top:8px;">Super Admins também podem criar novos bolões pelo botão <strong>＋ Criar bolão</strong> ou arquivar bolões existentes.</p>'
   },
   convite_tela: {
     titulo: '🍀 Acesso por Convite',
@@ -863,9 +867,40 @@ function abrirPendenteDoCarrossel(bolaoIdEnc) {
   if (typeof exibirTelaPendente === 'function') exibirTelaPendente();
 }
 
+function mostrarOverlayTrocaBolao(nomeBolao) {
+  state.trocandoBolao = true;
+  const modal = document.getElementById('bolaoLoadingModal');
+  const sub = document.getElementById('bolaoLoadingSub');
+  if (sub) sub.textContent = nomeBolao ? String(nomeBolao) : '';
+  if (modal) modal.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+}
+
+function ocultarOverlayTrocaBolao() {
+  state.trocandoBolao = false;
+  const modal = document.getElementById('bolaoLoadingModal');
+  if (modal) modal.classList.add('hidden');
+  const drawer = document.getElementById('sideMenuDrawer');
+  const drawerAberto = drawer && !drawer.classList.contains('hidden');
+  if (!drawerAberto) document.body.style.overflow = '';
+}
+
+function limparEstadoTemporarioBolao_() {
+  state.dashboardCarregado = false;
+  state.usuarios = [];
+  state.rodadas = [];
+  state.participacoes = [];
+  state.devedoresAtuais = [];
+  state.rankingHistorico = [];
+  state.configPix = { NOME_RECEBEDOR: '-', CHAVE_PIX: '-', URL_PORTAL: state.configPix.URL_PORTAL || '' };
+  try { localStorage.removeItem('bolao_ameba_pix_override'); } catch (_) {}
+  document.getElementById('cardAdminRodada')?.classList.add('hidden');
+  if (typeof fecharLeitor === 'function') fecharLeitor();
+}
+
 async function abrirBolaoDoInicio(bolaoIdEnc) {
   const alvoId = decodeURIComponent(String(bolaoIdEnc || '')).trim();
-  if (!alvoId) return;
+  if (!alvoId || state.trocandoBolao) return;
 
   const alvo = (state.boloes || []).find(b =>
     String(b.bolao_id || '') === alvoId &&
@@ -874,23 +909,36 @@ async function abrirBolaoDoInicio(bolaoIdEnc) {
   if (!alvo) return;
 
   const mudou = alvoId !== String(state.bolaoId || '');
-  state.bolaoId = alvoId;
-  state.user.bolao_id = alvoId;
-  state.user.perfil = (usuarioEhSuperAdmin() || String(alvo.papel || '').toLowerCase() === 'admin_bolao') ? 'admin' : 'user';
-  localStorage.setItem('bolao_ameba_user', JSON.stringify(state.user));
+  const precisaCarregar = mudou || !state.dashboardCarregado;
 
-  atualizarBadgesEPermissoes();
-  atualizarIdentidadeBolao();
-  trocarAba('tabPagar');
+  if (precisaCarregar) {
+    mostrarOverlayTrocaBolao(alvo.nome);
+    await new Promise(resolve => setTimeout(resolve, 35));
+  }
 
-  if (mudou || !state.dashboardCarregado) {
-    await carregarDashboard();
+  try {
+    if (mudou) limparEstadoTemporarioBolao_();
+
+    state.bolaoId = alvoId;
+    state.user.bolao_id = alvoId;
+    state.user.perfil = (usuarioEhSuperAdmin() || String(alvo.papel || '').toLowerCase() === 'admin_bolao') ? 'admin' : 'user';
+    localStorage.setItem('bolao_ameba_user', JSON.stringify(state.user));
+
+    atualizarBadgesEPermissoes();
+    atualizarIdentidadeBolao();
+    trocarAba('tabPagar');
+
+    if (precisaCarregar) {
+      await carregarDashboard();
+    }
+  } finally {
+    if (precisaCarregar) ocultarOverlayTrocaBolao();
   }
 }
 
 async function trocarBolaoAtivo(bolaoIdEnc, manterAbaAtual) {
   const novoId = decodeURIComponent(String(bolaoIdEnc || '')).trim();
-  if (!novoId || novoId === String(state.bolaoId || '')) return;
+  if (!novoId || novoId === String(state.bolaoId || '') || state.trocandoBolao) return;
 
   const alvo = (state.boloes || []).find(b =>
     String(b.bolao_id || '') === novoId &&
@@ -898,18 +946,27 @@ async function trocarBolaoAtivo(bolaoIdEnc, manterAbaAtual) {
   );
   if (!alvo) return;
 
-  state.bolaoId = novoId;
-  state.user.bolao_id = novoId;
-  state.user.perfil = (usuarioEhSuperAdmin() || String(alvo.papel || '').toLowerCase() === 'admin_bolao') ? 'admin' : 'user';
-  localStorage.setItem('bolao_ameba_user', JSON.stringify(state.user));
+  mostrarOverlayTrocaBolao(alvo.nome);
+  await new Promise(resolve => setTimeout(resolve, 35));
 
-  atualizarBadgesEPermissoes();
-  atualizarIdentidadeBolao();
+  try {
+    limparEstadoTemporarioBolao_();
 
-  if (!manterAbaAtual || (state.abaAtual === 'tabAdmin' && !usuarioEhAdminNoBolao())) {
-    trocarAba('tabPagar');
+    state.bolaoId = novoId;
+    state.user.bolao_id = novoId;
+    state.user.perfil = (usuarioEhSuperAdmin() || String(alvo.papel || '').toLowerCase() === 'admin_bolao') ? 'admin' : 'user';
+    localStorage.setItem('bolao_ameba_user', JSON.stringify(state.user));
+
+    atualizarBadgesEPermissoes();
+    atualizarIdentidadeBolao();
+
+    if (!manterAbaAtual || (state.abaAtual === 'tabAdmin' && !usuarioEhAdminNoBolao())) {
+      trocarAba('tabPagar');
+    }
+    await carregarDashboard();
+  } finally {
+    ocultarOverlayTrocaBolao();
   }
-  await carregarDashboard();
 }
 
 function atualizarBadgesEPermissoes() {
@@ -1045,6 +1102,9 @@ window.addEventListener('keydown', e => {
     fecharMenuLateral();
     fecharInfoModal();
     if (typeof fecharModalCriarBolao === 'function') fecharModalCriarBolao();
+    if (typeof fecharModalAdicionarMembro === 'function') fecharModalAdicionarMembro();
+    if (typeof fecharModalPagamentosRodada === 'function') fecharModalPagamentosRodada();
+    if (typeof fecharModalEditarResultado === 'function') fecharModalEditarResultado();
     if (typeof fecharModalEditarRodada === 'function') fecharModalEditarRodada();
     if (typeof fecharModalEditarPagamento === 'function') fecharModalEditarPagamento();
     if (typeof fecharCameraAoVivo === 'function') fecharCameraAoVivo();
@@ -1096,8 +1156,12 @@ function fazerLogout() {
   if (typeof fecharSeletorDezena === 'function') fecharSeletorDezena();
   if (typeof fecharCameraAoVivo === 'function') fecharCameraAoVivo();
   if (typeof fecharModalCriarBolao === 'function') fecharModalCriarBolao();
+  if (typeof fecharModalAdicionarMembro === 'function') fecharModalAdicionarMembro();
+  if (typeof fecharModalPagamentosRodada === 'function') fecharModalPagamentosRodada();
+  if (typeof fecharModalEditarResultado === 'function') fecharModalEditarResultado();
   if (typeof fecharModalEditarRodada === 'function') fecharModalEditarRodada();
   if (typeof fecharModalEditarPagamento === 'function') fecharModalEditarPagamento();
+  ocultarOverlayTrocaBolao();
   fecharInfoModal();
 
   localStorage.removeItem('bolao_ameba_user');
