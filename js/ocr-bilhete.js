@@ -1,5 +1,5 @@
 // =========================================================================
-// OCR DE BILHETE CAIXA v4 — DETECÇÃO DE LINHAS TRACEJADAS, REMOÇÃO DE
+// OCR DE BILHETE CAIXA v5 — MÚLTIPLAS FOTOS POR RODADA, — DETECÇÃO DE LINHAS TRACEJADAS, REMOÇÃO DE
 // RISCO DIAGONAL DOS ZEROS (Ø -> 0), FOTO, CÂMERA AO VIVO E PDF
 // =========================================================================
 function acionarCameraBilhete() {
@@ -73,9 +73,57 @@ async function capturarFrameCamera() {
 }
 
 async function lerFotoBilhete(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-  await executarOcrBilheteDeFonte(file);
+  const files = Array.from((event && event.target && event.target.files) || []);
+  if (files.length === 0) return;
+
+  for (let i = 0; i < files.length; i++) {
+    await executarOcrBilheteDeFonte(files[i], {
+      indice: i + 1,
+      totalLote: files.length
+    });
+  }
+}
+
+function renderizarBarraFotosOCR_() {
+  const wrap = document.getElementById('bilheteOcrFotosWrap');
+  if (!wrap) return;
+  const qtdFotos = Number(state.ocrFotosLidas || 0);
+  if (qtdFotos <= 0) {
+    wrap.classList.add('hidden');
+    wrap.innerHTML = '';
+    return;
+  }
+
+  const totalJogos = typeof extrairJogosDoBuilder === 'function'
+    ? extrairJogosDoBuilder('novo').jogosValidos.length
+    : 0;
+  const infoValor = state.ocrValorAcumulado > 0
+    ? ` • Soma bilhetes: <strong>${formatBRL(state.ocrValorAcumulado)}</strong>`
+    : '';
+
+  wrap.innerHTML = `
+    <span>📸 <strong>${qtdFotos}</strong> foto(s)/arquivo(s) lido(s) nesta rodada (${totalJogos} jogo(s)${infoValor})</span>
+    <button type="button" class="btn-secondary icon-action-btn" onclick="limparFotosOcrRodada()">Limpar leitura</button>
+  `;
+  wrap.classList.remove('hidden');
+}
+
+function limparFotosOcrRodada() {
+  state.ocrFotosLidas = 0;
+  state.ocrValorAcumulado = 0;
+  state.ocrLogsAcumulados = [];
+  renderizarBarraFotosOCR_();
+
+  const chips = document.getElementById('bilheteOcrResumo');
+  if (chips) {
+    chips.innerHTML = '';
+    chips.classList.add('hidden');
+  }
+  const fb = document.getElementById('bilheteOcrFeedback');
+  if (fb) fb.innerHTML = '';
+  document.getElementById('detalhesBilheteBruto')?.classList.add('hidden');
+  const pre = document.getElementById('textoBilheteBruto');
+  if (pre) pre.textContent = '';
 }
 
 // =========================================================================
@@ -948,18 +996,21 @@ function renderizarResumoChipsOCR(dados) {
 // =========================================================================
 // PIPELINE PRINCIPAL DO OCR (COM DETECÇÃO DE TRACEJADOS + LIMPEZA DE Ø -> 0)
 // =========================================================================
-async function executarOcrBilheteDeFonte(fonte) {
+async function executarOcrBilheteDeFonte(fonte, loteInfo = null) {
   const progWrap = document.getElementById('bilheteOcrProgressoWrap');
   const progBar = document.getElementById('bilheteOcrBar');
   const progTxt = document.getElementById('bilheteOcrStatus');
   const feedback = document.getElementById('bilheteOcrFeedback');
   const resumoChips = document.getElementById('bilheteOcrResumo');
 
+  const prefixoLote = (loteInfo && loteInfo.totalLote > 1)
+    ? `[Foto ${loteInfo.indice}/${loteInfo.totalLote}] `
+    : '';
+
   progWrap.classList.remove('hidden');
   progBar.style.width = '8%';
-  progTxt.textContent = 'Tratando imagem e removendo marca d’água...';
+  progTxt.textContent = `${prefixoLote}Tratando imagem e removendo marca d’água...`;
   feedback.innerHTML = '';
-  if (resumoChips) resumoChips.classList.add('hidden');
 
   try {
     let resultado = null;
@@ -1131,28 +1182,60 @@ async function executarOcrBilheteDeFonte(fonte) {
       }
     }
 
-    document.getElementById('textoBilheteBruto').textContent = logsOcr.join('\n\n');
+    state.ocrFotosLidas = (Number(state.ocrFotosLidas) || 0) + 1;
+    const fotoNum = state.ocrFotosLidas;
+    if (!Array.isArray(state.ocrLogsAcumulados)) state.ocrLogsAcumulados = [];
+    state.ocrLogsAcumulados.push(`=== FOTO / ARQUIVO #${fotoNum} ===\n` + logsOcr.join('\n\n'));
+
+    document.getElementById('textoBilheteBruto').textContent = state.ocrLogsAcumulados.join('\n\n');
     document.getElementById('detalhesBilheteBruto').classList.remove('hidden');
 
+    // Mescla intervalo de concursos entre múltiplas fotos da mesma rodada (min inicial .. max final)
     if (resultado.concursoInicio) {
-      document.getElementById('rodadaConcurso').value = resultado.concursoInicio;
-      document.getElementById('rodadaConcursoFim').value = resultado.concursoFim || resultado.concursoInicio;
+      const inpIni = document.getElementById('rodadaConcurso');
+      const inpFim = document.getElementById('rodadaConcursoFim');
+      const iniAtual = parseInt(String(inpIni?.value || '').replace(/\D/g, ''), 10);
+      const fimAtual = parseInt(String(inpFim?.value || '').replace(/\D/g, ''), 10);
+      const novoIni = parseInt(resultado.concursoInicio, 10);
+      const novoFim = parseInt(resultado.concursoFim || resultado.concursoInicio, 10);
+
+      const finalIni = (!isNaN(iniAtual) && iniAtual > 0) ? Math.min(iniAtual, novoIni) : novoIni;
+      const finalFim = (!isNaN(fimAtual) && fimAtual > 0) ? Math.max(fimAtual, novoFim) : novoFim;
+
+      if (inpIni) inpIni.value = String(finalIni);
+      if (inpFim) inpFim.value = String(finalFim);
       atualizarPreviewIntervaloConcursos();
     }
 
-    if (resultado.dataBilhete) {
-      document.getElementById('rodadaDataBilhete').value = resultado.dataBilhete;
+    const inpData = document.getElementById('rodadaDataBilhete');
+    if (resultado.dataBilhete && inpData && !inpData.value.trim()) {
+      inpData.value = resultado.dataBilhete;
     }
 
+    // Soma o valor de múltiplos bilhetes lidos para a mesma rodada
     if (resultado.valorTotal !== null) {
-      document.getElementById('rodadaValorTotal').value = resultado.valorTotal.toFixed(2).replace('.', ',');
+      const inpVal = document.getElementById('rodadaValorTotal');
+      const atualVal = typeof parseNumeroBR === 'function'
+        ? parseNumeroBR(inpVal?.value)
+        : (parseFloat(String(inpVal?.value || '').replace(',', '.')) || 0);
+
+      if (fotoNum === 1 && atualVal <= 0) {
+        state.ocrValorAcumulado = Number(resultado.valorTotal.toFixed(2));
+        if (inpVal) inpVal.value = state.ocrValorAcumulado.toFixed(2).replace('.', ',');
+      } else {
+        const novoTotal = Number((atualVal + resultado.valorTotal).toFixed(2));
+        state.ocrValorAcumulado = Number(((Number(state.ocrValorAcumulado) || 0) + resultado.valorTotal).toFixed(2));
+        if (inpVal) inpVal.value = novoTotal.toFixed(2).replace('.', ',');
+      }
     }
 
     const descEl = document.getElementById('rodadaDescricao');
     if (descEl && !descEl.value.trim() && resultado.concursoInicio) {
-      descEl.value = resultado.concursos.length > 1
-        ? `Mega-Sena Conc. ${resultado.concursoInicio} a ${resultado.concursoFim}`
-        : `Mega-Sena Conc. ${resultado.concursoInicio}`;
+      const iniTxt = document.getElementById('rodadaConcurso')?.value || resultado.concursoInicio;
+      const fimTxt = document.getElementById('rodadaConcursoFim')?.value || resultado.concursoFim || iniTxt;
+      descEl.value = iniTxt !== fimTxt
+        ? `Rodada Conc. ${iniTxt} a ${fimTxt}`
+        : `Rodada Conc. ${iniTxt}`;
     }
 
     if (resultado.jogos.length > 0) {
@@ -1169,6 +1252,7 @@ async function executarOcrBilheteDeFonte(fonte) {
 
     if (typeof recalcularPreviewRodada === 'function') recalcularPreviewRodada();
     renderizarResumoChipsOCR(resultado);
+    renderizarBarraFotosOCR_();
 
     const faltantes = [];
     if (resultado.jogos.length === 0) faltantes.push('jogos');
@@ -1177,17 +1261,21 @@ async function executarOcrBilheteDeFonte(fonte) {
     if (!resultado.dataBilhete) faltantes.push('data');
 
     if (faltantes.length === 0) {
-      showMsg('bilheteOcrFeedback', '✅ Bilhete lido por completo! Toque em qualquer dezena para ajustar o jogo ou selecione as cotas abaixo.', 'ok');
+      showMsg(
+        'bilheteOcrFeedback',
+        `✅ ${prefixoLote}Bilhete #${fotoNum} lido! Você pode adicionar mais fotos nesta mesma rodada ou tocar em qualquer dezena para ajustar.`,
+        'ok'
+      );
     } else if (resultado.jogos.length > 0 || resultado.concursoInicio || resultado.valorTotal !== null) {
       showMsg(
         'bilheteOcrFeedback',
-        `⚠️ Leitura parcial. Não identificado automaticamente: <strong>${faltantes.join(', ')}</strong>. Complete manualmente tocando nos campos.`,
+        `⚠️ ${prefixoLote}Leitura parcial no bilhete #${fotoNum}. Não identificado: <strong>${faltantes.join(', ')}</strong>. Ajuste manualmente ou envie outra foto.`,
         'warn'
       );
     } else {
       showMsg(
         'bilheteOcrFeedback',
-        'Não foi possível ler o bilhete. Tente fotografar mais de perto, sem brilho e com o canhoto reto, ou preencha tocando nos jogos.',
+        `${prefixoLote}Não foi possível ler o bilhete #${fotoNum}. Tente fotografar mais de perto e sem brilho, ou preencha tocando nos jogos.`,
         'err'
       );
     }
